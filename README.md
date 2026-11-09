@@ -2,7 +2,7 @@
 
 A simulated electronic exchange designed to match orders, settle trades, and monitor its own trading activity for signs of market manipulation.
 
-> **Project status:** The repository currently contains the project scaffold. The sections below describe the intended design; functionality, performance characteristics, and setup steps are implementation targets rather than verified capabilities.
+> **Project status.** Day 1 includes the local database stack, schema, synthetic seed data, and database integration tests. The application tiers and performance targets below describe the intended design.
 
 ## Table of Contents
 
@@ -172,7 +172,7 @@ The application validates a role-scoped JWT on each request. Independently, the 
 
 ## Schema
 
-The planned DDL lives in [`db/schema.sql`](db/schema.sql), with separate directories for procedures, triggers, views, and representative queries. The design includes 13 tables, two database roles, row-level security policies, and indexes.
+The DDL lives in [`db/schema.sql`](db/schema.sql) and defines 13 tables, two database roles, row-level security policies, and indexes. The [ER diagram](docs/er/tradegraph-er.md) and [Day 1 architecture decisions](docs/architecture/day1-decisions.md) describe the relationships and constraints.
 
 | Table | Purpose |
 | --- | --- |
@@ -336,65 +336,54 @@ The matching tier is designed to be independently replaceable. Potential improve
 
 ## Getting Started
 
-The commands below describe the intended development workflow using this repository's paths. The configuration, dependencies, schema, seed scripts, and application entry points are currently placeholders, so this workflow will become runnable as those files are implemented.
+Day 1 uses Python 3, Git, and Docker Compose with the Docker Engine running. The local stack uses ports 5432 (PostgreSQL), 6380 (Redis), and 7474 and 7687 (Neo4j).
 
-### Prerequisites
-
-- Git
-- Python and pip
-- Node.js and npm
-- Docker with Docker Compose
-- PostgreSQL client tools (`psql`)
-
-### 1. Clone and Configure
-
-Replace `<repo-url>` with the repository URL. From the repository root:
+### 1. Configure the local environment
 
 ```bash
-git clone <repo-url> tradegraph
-cd tradegraph
-cp .env.example .env
+test -f .env || cp .env.example .env
 ```
 
-Populate `.env` with the required connection settings and credentials once the configuration is defined. Export `DATABASE_URL` in your shell before running `psql`; copying `.env` alone does not export shell variables.
+On a fresh stack, replace the placeholders in `.env` with local development secrets before startup. For an existing stack, keep the credentials that match its initialized data. Keep `.env` out of Git.
 
-### 2. Install Backend Dependencies
+### 2. Install the Day 1 dependencies
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-### 3. Start Infrastructure
+### 3. Initialize a fresh local database
 
 ```bash
-docker compose up -d
+docker info
+bash scripts/setup_day1.sh
 ```
 
-The planned Compose configuration starts PostgreSQL with pgvector, Redis, and Neo4j.
+The script starts PostgreSQL with pgvector, Redis, and Neo4j. It applies the schema and reference rows in one transaction, prompts for synthetic trader and compliance passwords, and runs the verifier and integration tests. It stops if PostgreSQL already contains public tables.
 
-### 4. Initialize the Database
+### 4. Verify an initialized Day 1 database
 
 ```bash
-psql "$DATABASE_URL" -f db/schema.sql
-psql "$DATABASE_URL" -f db/seed.sql
-python scripts/seed_demo_accounts.py
+python scripts/verify_schema.py
+python -m pytest -m day1
+docker compose ps
 ```
 
-Procedure, trigger, and view installation must be included in the eventual database initialization workflow. Two demo accounts are planned: one `TRADER` and one `COMPLIANCE_ADMIN`, allowing each role's access to be checked directly.
+If the current schema was installed and setup stopped at the demo password prompt, resume with `python scripts/seed_demo_accounts.py`. It creates Alice, Bob, and Carol as traders and one compliance administrator. Reruns preserve existing login passwords, balances, and manager assignments. Keep existing volumes when troubleshooting an initialized database.
 
-### 5. Start the Backend
+### Planned application startup
 
-From the repository root, with the virtual environment activated:
+The following commands are for the later application phases.
+
+Backend, from the repository root with the virtual environment activated.
 
 ```bash
 uvicorn backend.api.main:app --reload
 ```
 
-### 6. Start the Frontend
-
-In a separate terminal:
+Frontend, from a separate terminal.
 
 ```bash
 cd frontend
