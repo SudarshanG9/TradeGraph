@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import warnings
-from getpass import GetPassWarning, getpass
+from getpass import GetPassWarning, getpass, getuser
 from pathlib import Path
 
 import bcrypt
@@ -16,11 +16,10 @@ load_dotenv(ROOT / ".env")
 
 def db_connect():
     return psycopg.connect(
-        host=os.getenv("POSTGRES_HOST", "127.0.0.1"),
+        host=os.getenv("POSTGRES_ADMIN_HOST", "/tmp"),
         port=int(os.getenv("POSTGRES_PORT", "5432")),
-        dbname=os.environ["POSTGRES_DB"],
-        user=os.environ["POSTGRES_USER"],
-        password=os.environ["POSTGRES_PASSWORD"],
+        dbname=os.getenv("POSTGRES_DB", "tradegraph"),
+        user=os.getenv("POSTGRES_ADMIN_USER") or getuser(),
         connect_timeout=10,
     )
 

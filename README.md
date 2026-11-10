@@ -100,7 +100,6 @@ TradeGraph/
 ├── scripts/                   # Schema verification, demo seed, simulation
 ├── docs/                      # ER, architecture, normalization, data models,
 │                              # query plans, demo, report
-├── docker-compose.yml
 ├── .env
 ├── .env.example
 ├── .gitignore
@@ -332,21 +331,44 @@ The matching tier is designed to be independently replaceable. Potential improve
 | Matching engine | Standalone in-memory Python engine |
 | Cache | Redis |
 | Graph | Neo4j |
-| Infrastructure | Docker Compose |
+| Day 1 infrastructure | Native PostgreSQL with pgvector |
 
 ## Getting Started
 
-Day 1 uses Python 3, Git, and Docker Compose with the Docker Engine running. The local stack uses ports 5432 (PostgreSQL), 6380 (Redis), and 7474 and 7687 (Neo4j).
+Day 1 uses Python 3, Git, and native PostgreSQL with pgvector. Redis and Neo4j are part of later development phases.
 
-### 1. Configure the local environment
+### 1. Prepare native PostgreSQL
+
+On macOS with Homebrew, install PostgreSQL 17 and pgvector if you need a new local instance. [PostgreSQL 17 formula](https://formulae.brew.sh/formula/postgresql@17) and [pgvector formula](https://formulae.brew.sh/formula/pgvector).
+
+```bash
+brew install postgresql@17 pgvector
+export PATH="$(brew --prefix postgresql@17)/bin:$PATH"
+brew services start postgresql@17
+pg_isready -h /tmp -p 5432
+```
+
+The default connection uses the `/tmp` socket, port `5432`, and your macOS username as the PostgreSQL administrator. Check for the project database.
+
+```bash
+psql -h /tmp -p 5432 -d postgres -c "SELECT datname FROM pg_database WHERE datname = 'tradegraph';"
+```
+
+If the query returns zero rows, create the database.
+
+```bash
+createdb -h /tmp -p 5432 tradegraph
+```
+
+### 2. Configure the local environment
 
 ```bash
 test -f .env || cp .env.example .env
 ```
 
-On a fresh stack, replace the placeholders in `.env` with local development secrets before startup. For an existing stack, keep the credentials that match its initialized data. Keep `.env` out of Git.
+If your native PostgreSQL connection differs from the defaults, use the matching options in `psql` and `createdb`, and set `POSTGRES_ADMIN_HOST`, `POSTGRES_ADMIN_USER`, `POSTGRES_PORT`, or `POSTGRES_DB` in `.env` as needed. For a local server that requires a password, configure libpq's `.pgpass`. Keep `.env` out of Git.
 
-### 2. Install the Day 1 dependencies
+### 3. Install the Day 1 dependencies
 
 ```bash
 python3 -m venv .venv
@@ -354,24 +376,22 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-### 3. Initialize a fresh local database
+### 4. Initialize a fresh local database
 
 ```bash
-docker info
 bash scripts/setup_day1.sh
 ```
 
-The script starts PostgreSQL with pgvector, Redis, and Neo4j. It applies the schema and reference rows in one transaction, prompts for synthetic trader and compliance passwords, and runs the verifier and integration tests. It stops if PostgreSQL already contains public tables.
+With the native PostgreSQL server running, the script applies the schema and reference rows in one transaction, prompts for synthetic trader and compliance passwords, and runs the verifier and integration tests. It stops if the selected database already contains public tables.
 
-### 4. Verify an initialized Day 1 database
+### 5. Verify an initialized Day 1 database
 
 ```bash
 python scripts/verify_schema.py
 python -m pytest -m day1
-docker compose ps
 ```
 
-If the current schema was installed and setup stopped at the demo password prompt, resume with `python scripts/seed_demo_accounts.py`. It creates Alice, Bob, and Carol as traders and one compliance administrator. Reruns preserve existing login passwords, balances, and manager assignments. Keep existing volumes when troubleshooting an initialized database.
+If the current schema was installed and setup stopped at the demo password prompt, resume with `python scripts/seed_demo_accounts.py`. It creates Alice, Bob, and Carol as traders and one compliance administrator. Reruns preserve existing login passwords, balances, and manager assignments.
 
 ### Planned application startup
 

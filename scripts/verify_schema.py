@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from getpass import getuser
 from pathlib import Path
 
 import psycopg
@@ -40,11 +41,10 @@ def assert_ok(condition: bool, description: str):
 
 def db_connect():
     return psycopg.connect(
-        host=os.getenv("POSTGRES_HOST", "127.0.0.1"),
+        host=os.getenv("POSTGRES_ADMIN_HOST", "/tmp"),
         port=int(os.getenv("POSTGRES_PORT", "5432")),
-        dbname=os.environ["POSTGRES_DB"],
-        user=os.environ["POSTGRES_USER"],
-        password=os.environ["POSTGRES_PASSWORD"],
+        dbname=os.getenv("POSTGRES_DB", "tradegraph"),
+        user=os.getenv("POSTGRES_ADMIN_USER") or getuser(),
         connect_timeout=10,
     )
 

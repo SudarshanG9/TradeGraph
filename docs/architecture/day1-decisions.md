@@ -31,7 +31,7 @@
 - PostgreSQL separately has `trader_role` and `compliance_admin_role`, both NOLOGIN.
 - Two RLS policies restrict `market_disclosure` and `regime_snapshot` to the compliance role AND the trusted request context.
 - `app.role` is **not an identity check** and can be set by a database client. Real enforcement later must use authenticated requests, least-privileged DB identities/role membership, and controlled DB grants.
-- PostgreSQL superusers bypass RLS; the Docker initialization user is not the model for runtime authentication.
+- The native PostgreSQL administrator runs Day 1 setup and verification. Runtime authentication will use a separate database identity because superusers bypass RLS.
 - Trader role deliberately has no direct UPDATE privilege on `margin_account` or unrestricted INSERT/UPDATE on orders. Day 2's secure SQL routines will be the intended write boundary.
 
 ## Normalization and syllabus evidence
