@@ -259,3 +259,36 @@ It excludes the untouched, pre-existing untracked master plan and seed_users.sql
 COMMIT PERFORMED: NO. PUSH PERFORMED: NO. STAGING PERFORMED: NO.
 GATE DECISION: PLANNED REVIEW #1. STOPPED AFTER PHASE 1.
 
+
+## Phase 2 — PASS (15 November 2026)
+
+Source Day 2. Batch A and fee/queue decisions approved by user. User subsequently
+authorized staging, phase commits and GitHub pushes, overriding the earlier ban.
+Added pure Engine single-thread ownership and idempotent settled-fill analytics,
+sparse-coordinate Fenwick tree (existing-coordinate O(log M), expansion rebuild
+O(M log M)), true N+1 cumulative-prefix ring VWAP. Matcher untouched.
+Created scripts/setup_backend.sh in existing scripts directory: guarded,
+transactional installation of existing reservation SQL; no bootstrap/seeding.
+Installer executed twice: installed once, then preserved existing function.
+`PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/unit tests/concurrency/test_reservation.py -q`
+-> 132 passed in 6.51s. Includes 2/8-client real PostgreSQL races, rollback,
+fees/overflow, 4x2000 differential orders, BIT and prefix-ring references.
+13-table ER unchanged; frontend untouched; native services baseline PASS.
+No API/settlement claimed. NEXT: automatic Phase 3 after phase commit/push.
+
+```text
+ backend/matching/engine.py       | 40 +++++++++++++++++++++++
+ backend/matching/fenwick.py      | 68 ++++++++++++++++++++++++++++++++++++++++
+ backend/matching/rolling_vwap.py | 35 +++++++++++++++++++++
+ tests/unit/test_fenwick.py       | 33 +++++++++++++++++++
+ tests/unit/test_order_book.py    | 19 +++++++++++
+ tests/unit/test_rolling_vwap.py  | 31 ++++++++++++++++++
+ 6 files changed, 226 insertions(+)
+ M backend/matching/engine.py
+ M backend/matching/fenwick.py
+ M backend/matching/rolling_vwap.py
+ M tests/unit/test_fenwick.py
+ M tests/unit/test_order_book.py
+ M tests/unit/test_rolling_vwap.py
+?? scripts/setup_backend.sh
+```
