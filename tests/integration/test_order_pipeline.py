@@ -19,7 +19,7 @@ def accounts(request):
     password = 'synthetic-test-password'
     hashed = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode()
     with db_connect() as conn:
-        instrument = conn.execute("SELECT id FROM instrument WHERE symbol='ACME'").fetchone()[0]
+        instrument = conn.execute('INSERT INTO instrument(symbol,tick_size,lot_size) VALUES (%s,1,1) RETURNING id',('T'+uuid4().hex[:16],)).fetchone()[0]
         tier = conn.execute('SELECT id FROM fee_tier WHERE tier_name=%s',(getattr(request,'param','STANDARD'),)).fetchone()[0]
         for role in ('TRADER','TRADER','TRADER','COMPLIANCE_ADMIN'):
             email = f'pipeline-{uuid4()}@tradegraph.test'
@@ -39,6 +39,7 @@ def accounts(request):
                 key = 'id' if table=='trader' else 'trader_id'
                 conn.execute(f'DELETE FROM public."{table}" WHERE {key}=ANY(%s)',(traders,))
             conn.execute('DELETE FROM user_account WHERE id=ANY(%s)',([u['id'] for u in users],))
+            conn.execute('DELETE FROM instrument WHERE id=%s',(instrument,))
 
 
 def login(client, user):
@@ -172,3 +173,16 @@ def test_financial_worker_failure_retains_event_and_fails_closed(accounts):
         assert client.post(f'/orders/{service.worker.pending.buy_order_id}/cancel',headers=a).status_code==503
         with db_connect() as conn:
             assert conn.execute('SELECT count(*) FROM execution WHERE buy_trader_id=%s',(users[0]['trader_id'],)).fetchone()[0]==0
+
+
+def test_admin_query_role_gates_and_actual_plan(accounts):
+    users,instrument=accounts
+    with TestClient(create_app()) as client:
+        trader_headers=login(client,users[0]); admin_headers=login(client,users[3])
+        for path in ('/admin/desks/rollup','/admin/optimizer/compare'):
+            assert client.get(path,headers=trader_headers).status_code==403
+            result=client.get(path,headers=admin_headers)
+            assert result.status_code==200, result.text
+        plan=client.get('/admin/optimizer/compare',headers=admin_headers).json()
+        assert 'Actual Rows' in plan['plans']['automatic']['Plan']
+        assert client.get('/admin/optimizer/compare?scenario=SELECT%201',headers=admin_headers).status_code==422

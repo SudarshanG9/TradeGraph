@@ -423,3 +423,64 @@ Frontend/schema structure untouched. NEXT: automatic Phase 5 after commit/push.
  M tests/integration/test_order_pipeline.py
 ?? db/procedures/cancel_order.sql
 ```
+
+## Phase 5 — PASS (15 November 2026)
+
+Source Day 4 advanced SQL/Unit 2–3. Phase 4 committed/pushed ada6298. Implemented
+persisted active-order depth view, grouped HAVING, recursive cycle-guarded desk
+rollup without join fanout (trader-leg volume), ten-minute RANGE VWAP, maker/taker
+UNION/INTERSECT/EXCEPT, nested and correlated subqueries, atomic scoped terminal
+DELETE RETURNING/INSERT archival retaining IDs, parameterized FTS/vector query
+artifacts (live data proof deferred to Phase 8). Admin rollup and allowlisted actual
+EXPLAIN API enforce JWT role and effective PG admin role. No arbitrary SQL input.
+Added db/queries/query_indexes.sql (existing directory) for compatible BRIN and
+covering B-tree indexes; source-authorized physical objects only.
+
+Native install --phase 5 passed. Initial query/API acceptance: 20 passed in 13.62s.
+Final `.venv/bin/python -m pytest -p no:cacheprovider tests/integration/test_database_integrity.py tests/integration/test_order_pipeline.py tests/concurrency/test_settlement_locks.py -q`
+(PYTHONDONTWRITEBYTECODE=1) -> 35 passed in 23.00s. Tests now create isolated
+instruments as well as accounts, so their metadata/cache/analytics cannot disturb
+existing instruments. SQL tests prove recursive volume increments, old-window
+exclusion, active-order exclusion from archive, archive rollback/idempotency,
+execution references retained, actual query membership and API role gates.
+
+Optimizer lab: 4,000 genuinely reserved/settled fills, 40 pairs, rollback of all
+lab rows. EXPLAIN ANALYZE BUFFERS FORMAT JSON captured in query-optimization.md.
+Observed ms: forced sequential .226; automatic price-cover bitmap .032; existing
+instrument/time B-tree bitmap .013; automatic BRIN time .273; forced BRIN .257.
+These query shapes differ; no universal speedup or index-only visibility claim.
+Planner changes scoped to savepoints/read-only demo transactions; no global GUC
+changes. FTS/vector functional results await Phase 8. 13-table ER unchanged,
+frontend untouched; one upstream httpx warning. NEXT: automatic Phase 6.
+
+```text
+ backend/api/main.py                          |   3 +-
+ backend/api/routes/admin.py                  |  17 ++++
+ backend/stores/postgres.py                   |  54 +++++++++++++
+ db/queries/full_text_search.sql              |   4 +
+ db/queries/order_archive.sql                 |  12 +++
+ db/queries/recursive_desk_rollup.sql         |  14 ++++
+ db/queries/rolling_vwap.sql                  |   7 ++
+ db/queries/set_operations.sql                |  22 ++++++
+ db/queries/vector_similarity.sql             |   4 +
+ db/views/order_book_view.sql                 |   6 ++
+ scripts/setup_backend.sh                     |   6 +-
+ tests/integration/test_database_integrity.py | 113 +++++++++++++++++++++++++++
+ tests/integration/test_order_pipeline.py     |  16 +++-
+ 13 files changed, 275 insertions(+), 3 deletions(-)
+ M backend/api/main.py
+ M backend/api/routes/admin.py
+ M backend/stores/postgres.py
+ M db/queries/full_text_search.sql
+ M db/queries/order_archive.sql
+ M db/queries/recursive_desk_rollup.sql
+ M db/queries/rolling_vwap.sql
+ M db/queries/set_operations.sql
+ M db/queries/vector_similarity.sql
+ M db/views/order_book_view.sql
+ M scripts/setup_backend.sh
+ M tests/integration/test_database_integrity.py
+ M tests/integration/test_order_pipeline.py
+?? db/queries/query_indexes.sql
+?? docs/architecture/query-optimization.md
+```

@@ -10,7 +10,7 @@ from typing import Literal
 from backend.config import Settings
 from backend.stores.postgres import Database
 from backend.risk.order_reservation import Coordinator
-from backend.api.routes import auth, orders
+from backend.api.routes import auth, orders, admin
 from backend.workers.settlement_worker import SettlementWorker
 
 
@@ -39,6 +39,7 @@ def create_app(settings=None, *, settlement=True):
     application = FastAPI(title='TradeGraph', version='1.0', lifespan=lifespan)
     application.include_router(auth.router)
     application.include_router(orders.router)
+    application.include_router(admin.router)
 
     @application.exception_handler(StarletteHTTPException)
     async def http_error(request, exc):

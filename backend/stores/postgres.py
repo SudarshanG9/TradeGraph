@@ -2,6 +2,33 @@
 from contextlib import contextmanager
 import psycopg
 from psycopg.rows import dict_row
+from decimal import Decimal
+from backend.config import ROOT
+
+
+QUERY_FILES = {
+    'bands':'price_band_having.sql','rollup':'recursive_desk_rollup.sql',
+    'vwap':'rolling_vwap.sql','archive':'order_archive.sql',
+    'fts':'full_text_search.sql','similar':'vector_similarity.sql',
+    'maker_taker':'set_operations.sql','nested_range':'set_operations.sql',
+    'correlated_orders':'set_operations.sql',
+}
+
+
+def query_text(name):
+    text = (ROOT / 'db' / 'queries' / QUERY_FILES[name]).read_text()
+    if '-- name:' in text:
+        sections = {part.split('\n',1)[0].strip():part.split('\n',1)[1] for part in text.split('-- name:')[1:]}
+        text = sections[name]
+    return text
+
+
+def json_units(value):
+    if isinstance(value, Decimal):
+        return int(value) if value==value.to_integral_value() else str(value)
+    if isinstance(value, dict): return {k:json_units(v) for k,v in value.items()}
+    if isinstance(value, (list,tuple)): return [json_units(v) for v in value]
+    return value
 
 
 class Database:
@@ -22,6 +49,33 @@ class Database:
     def identity(self, subject):
         rows = self.query('SELECT u.id,u.role,t.id AS trader_id FROM user_account u LEFT JOIN trader t ON t.user_account_id=u.id WHERE u.id=%s', (subject,))
         return rows[0] if rows else None
+
+    def named(self, name, params=None):
+        if name=='archive':
+            raise ValueError('Archival is an operator write, not a query endpoint')
+        with self.admin_context() as conn:
+            return json_units(conn.execute(query_text(name),params or {}).fetchall())
+
+    def optimizer(self, scenario, instrument_id, lower, upper):
+        if scenario=='price_band':
+            query='SELECT SUM(quantity) FROM public.execution WHERE instrument_id=%s AND price_ticks BETWEEN %s AND %s'
+            params=(instrument_id,lower,upper)
+        elif scenario=='recent_executions':
+            query="SELECT count(*) FROM public.execution WHERE executed_at >= now()-interval '10 minutes'"
+            params=()
+        else:
+            raise ValueError('Unknown optimizer scenario')
+        plans={}
+        for mode in ('forced_sequential','automatic'):
+            with self.admin_context() as conn:
+                conn.execute('SET TRANSACTION READ ONLY')
+                if mode=='forced_sequential':
+                    conn.execute('SET LOCAL enable_indexscan=off')
+                    conn.execute('SET LOCAL enable_indexonlyscan=off')
+                    conn.execute('SET LOCAL enable_bitmapscan=off')
+                plans[mode]=conn.execute('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+query,params).fetchone()['QUERY PLAN'][0]
+        count=self.query('SELECT count(*) AS n FROM execution')[0]['n']
+        return {'scenario':scenario,'dataset_size':count,'plans':plans}
 
     def reserve(self, trader_id, request):
         with self.connect() as conn:
