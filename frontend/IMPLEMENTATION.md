@@ -38,3 +38,6 @@ All interactions are mock-only, all commits are local, and all implementation ch
 
 ## Phases 0–1 verification
 Strict TypeScript, six financial/service tests and production build passed. Authentication visually compared to PDF 1 at desktop and narrow viewport; sign-up submission confirms no account creation. Screenshot: evidence/01-auth.jpg. Requested role/mode controls increase card height. Components and per-component history are committed. No live integration.
+
+## Phase 2 — Dashboard
+AccountSummary, PositionsTable, RecentOrders and ExecutionsTable completed in separate commits; assembled in src/app/trader/dashboard/page.tsx. Refresh and the terminal action work. Exact Account/OwnOrders/Trades fixtures used. Desktop and narrow layouts visually compared with PDF 2; evidence/02-dashboard.jpg. Typecheck and six tests pass. Minor-unit labels replace unsupported dollars; execution rows are scoped to ACME. No backend integration.
