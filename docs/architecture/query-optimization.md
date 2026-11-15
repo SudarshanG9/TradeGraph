@@ -497,3 +497,113 @@ Full measured JSON (no synthetic EXPLAIN output):
   "note": "Uncommitted real settled rows; visibility map not vacuumed. Forced plans are labelled; no forced speedup claim."
 }
 ```
+
+## Phase 10 measured core and latency isolation
+
+Hardware: Apple M1; macOS-26.5.2-arm64-arm-64bit-Mach-O; 8 logical CPUs. Python 3.13.0 (v3.13.0:60403a5409f, Oct  7 2024, 00:37:40) [Clang 15.0.0 (clang-1500.3.9.4)]. Warmup: 200 calls per pure operation. Orders are prebuilt; core timers exclude network/database work.
+
+| Operation (microseconds) | Samples | Median | p95 | p99 |
+|---|---:|---:|---:|---:|
+| submit_existing_level_us | 5000 | 1.958 | 2.291 | 2.625 |
+| submit_new_level_us | 5000 | 2.084 | 2.375 | 3.625 |
+| known_node_cancel_us | 5000 | 0.333 | 0.375 | 0.375 |
+| one_fill_match_us | 5000 | 2.250 | 2.333 | 2.334 |
+| depth_1024_levels_us | 2000 | 96.770 | 105.250 | 159.125 |
+| fenwick_point_add_us | 5000 | 1.291 | 1.541 | 1.625 |
+| fenwick_range_65536_us | 2000 | 0.875 | 0.917 | 0.959 |
+| direct_scan_range_65536_us | 2000 | 291.125 | 293.459 | 299.000 |
+| prefix_ring_add_us | 5000 | 0.333 | 0.375 | 0.458 |
+| prefix_ring_vwap_4096_us | 2000 | 0.917 | 0.959 | 1.000 |
+| rescan_vwap_4096_us | 2000 | 286.292 | 288.291 | 294.958 |
+
+Fenwick uses 65,536 stable coordinates; dynamic expansion costs O(M log M) and
+was not included in the steady-state timing. Prefix-ring comparison uses N=4096
+and actual cumulative-prefix subtraction, compared with an independent history
+rescan. Depth snapshots scan/sort 1024 levels and are not the matching hot path.
+
+A real Neo4j reconciliation worker was gated: 2,000 fills completed while the
+worker remained blocked, before release. Both baseline and gated core distributions
+are reported; shared scheduling can vary. Separate native ASGI tests measure 20
+API order pairs/settlements per case, plus 40 isolated submit calls per case,
+with an injected 50ms graph-consumer delay. They include actual PG financial
+transactions and actual graph writes; ASGI transport excludes external TCP/client
+latency. These samples have no artificial latency pass threshold, and they do not
+prove statistically identical distributions, production scalability or a guaranteed
+microsecond SLA. Core structural nondependency is tested with an explicit gate.
+
+Reproduce:
+
+```bash
+TRADEGRAPH_BENCHMARK_REPORT=/private/tmp/tradegraph-core.json TRADEGRAPH_ISOLATION_REPORT=/private/tmp/tradegraph-isolation.json PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/benchmarks -q
+```
+
+Full measured latency evidence:
+
+```json
+{
+  "gated_graph": {
+    "baseline_core_us": {
+      "samples": 2000,
+      "median": 2.625,
+      "p95": 2.709,
+      "p99": 2.792
+    },
+    "gated_core_us": {
+      "samples": 2000,
+      "median": 2.833,
+      "p95": 2.917,
+      "p99": 3.042
+    },
+    "downstream_completion_ms": 74.19725,
+    "core_completed_while_graph_gated": true,
+    "interpretation": "Structural independence proven; distributions may vary due to shared CPU scheduling."
+  },
+  "native_api": {
+    "baseline": {
+      "core_us": {
+        "samples": 40,
+        "median": 13.8335,
+        "p95": 32.75,
+        "p99": 74.708
+      },
+      "settlement_transaction_ms": {
+        "samples": 20,
+        "median": 6.201021000000001,
+        "p95": 12.04475,
+        "p99": 17.070625
+      },
+      "api_pair_to_settled_ms": {
+        "samples": 20,
+        "median": 28.862145499999997,
+        "p95": 45.101917,
+        "p99": 80.656625
+      },
+      "shutdown_derived_drain_ms": 15.21425,
+      "injected_graph_delay_ms": 0
+    },
+    "slow_graph": {
+      "core_us": {
+        "samples": 40,
+        "median": 14.000499999999999,
+        "p95": 32.042,
+        "p99": 34.667
+      },
+      "settlement_transaction_ms": {
+        "samples": 20,
+        "median": 6.3795835,
+        "p95": 8.560375,
+        "p99": 9.367167
+      },
+      "api_pair_to_settled_ms": {
+        "samples": 20,
+        "median": 28.0231875,
+        "p95": 33.89375,
+        "p99": 50.29975
+      },
+      "shutdown_derived_drain_ms": 994.287542,
+      "injected_graph_delay_ms": 50
+    },
+    "transport": "in-process ASGI HTTP plus real native services; excludes external TCP/client latency"
+  }
+}
+```

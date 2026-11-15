@@ -689,3 +689,42 @@ Schema and frontend preserved. No production crash durability claimed. NEXT: Pha
  M scripts/run_simulation.py
  M tests/integration/test_order_pipeline.py
 ```
+
+## Phase 10 — PASS (15 November 2026)
+
+Source Day 8 performance/isolation. Phase 9 committed/pushed 9e83383. Added
+actual standard-library timing benchmarks: existing/new-level submission, single
+fill, known-node cancellation, depth snapshot, Fenwick update/range versus direct
+scan, true prefix-ring add/VWAP versus history rescan. Prebuilt orders, 200 warmup
+calls, 5,000 core samples or 2,000 scan/query samples; median/p95/p99 and hardware
+recorded in query-optimization.md. Apple M1, Python 3.13.0. No timing thresholds
+were used to fabricate correctness/performance acceptance.
+
+Real Neo4j worker gate test: 2,000 matches completed before downstream release;
+observed baseline/gated core medians 2.625/2.833us (shared scheduling differs).
+Native ASGI/SQL/graph comparison: 20 actual settlement pairs per case, 40 submit
+calls; injected graph delay 50ms. Baseline transaction median 6.201ms, ASGI pair
+to committed execution median 28.862ms; delayed case 6.380ms and 28.023ms.
+Derived shutdown drain increased 15.214ms -> 994.288ms. These are sampled runs,
+not evidence that delay improves latency, identical distributions, external-TCP
+measurements or production/microsecond SLA guarantees. Pure one-fill median
+2.250us, cancel .333us; Fenwick range .875us vs scan 291.125us; prefix VWAP
+.917us vs rescan 286.292us at the documented sizes. Exact independent results
+were checked before comparisons. Actual optimizer plans remain in the same report.
+
+Focused benchmark acceptance: 3 passed in 7.88s. Full native backend command:
+`PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider -q`
+-> 189 passed in 64.49s, one upstream Starlette/httpx deprecation warning, zero
+skips/failures. Includes all original 4x2000 randomized differential sequences,
+real reservation/settlement concurrency, SQL, polyglot, simulator and benchmarks.
+13 tables retained; frontend untouched. NEXT: Phase 11 documentation/final audit.
+
+```text
+ docs/architecture/query-optimization.md    | 110 +++++++++++++++++++++++++++
+ tests/benchmarks/test_latency_isolation.py | 115 +++++++++++++++++++++++++++++
+ tests/benchmarks/test_matching_latency.py  |  86 +++++++++++++++++++++
+ 3 files changed, 311 insertions(+)
+ M docs/architecture/query-optimization.md
+ M tests/benchmarks/test_latency_isolation.py
+ M tests/benchmarks/test_matching_latency.py
+```
