@@ -50,7 +50,7 @@
 - Cash plus actual fee budgeting, pending-order inventory bounds, four outstanding
   orders, five lots/order and 1,000,000 minor units/order maximum notional.
 - `.venv/bin/python -m pytest -q tests/unit`: **128 passed** (0.68s), including
-  all 111 original unit tests and 17 new strategy tests. Next: shared supervisor.
+  all 112 original unit tests and 16 new strategy tests. Next: shared supervisor.
 - Phase 1 isolation commit: `3a23a23b2d381cc5f9d836c75224d33554ed19b1`.
 - Phase 2 commit: `dae7a49d95128017bb473f00771fcc512aba2228`.
 
@@ -104,3 +104,44 @@
   (9.59s). Evidence captured at `/tmp/tradegraph-live-proof.json`; summarize exact
   observations in final documentation. No persistent/demo financial history deleted.
 - Next: remaining lifecycle/failure tests, full regression, deterministic CLI.
+- Phase 5 commit: `fd60eee2a90bbdd9f32f04f5f26d7a60511851ba`.
+
+## Phase 6 — safety and regressions
+
+- Added native reservation/settlement acknowledgement gates, real STP and funds
+  rejection, outstanding limits, and live Redis/Neo4j outage/retry tests to
+  `tests/integration/test_live_simulator.py`; factored its isolated fixture.
+- Added supervisor tests for expired slow observations, pipeline pressure,
+  dependency retry status, settlement drain, forbidden identities/cancels,
+  incomplete bot associations, unresolved bot orders and runtime import isolation.
+- Focused corrections limited to NEW components: recheck duration after slow reads;
+  HOLD if external liquidity prevents bounded passive maker quotes; defer admin
+  environment/connection imports until explicit provisioning CLI; recount SQL
+  execution history only on status/final cleanup, not every scheduling decision.
+- Documented simulator error envelopes in OpenAPI and tested their schemas.
+- Unit suite: **157 passed** (1.51s). Native safety selection before adding outage
+  cases: **4 passed**, one warning (5.58s). Full suite including real outage cases
+  reached **254 passed**; subsequent final import/recount checks included below.
+- A–R coverage: duplicate/conflicting lifecycle and invalid config (unit/API);
+  actual insufficient funds, STP, partial refund and outstanding bound (native);
+  admission/settlement stop races (native); Redis/Neo4j outage and recovery (native);
+  bounded queue pressure, auto-expiry, repeated sessions (unit/API); human order,
+  fee/position/replay invariants and restart protection (native plus old regressions).
+- Structural diff: no changes to schema, financial SQL, matching engine, stores,
+  workers, auth, deterministic harness, original tests, frontend or dependencies.
+  No new top-level directory or infrastructure. Only existing source change so far
+  is the six-line FastAPI lifecycle/router integration.
+- Final full suite, standalone deterministic CLI, native checks and commit below.
+- FINAL native `.venv/bin/python -m pytest -q`: **256 passed, 0 failed,
+  0 skipped**, one existing Starlette/httpx warning (56.12s). Original 192 tests
+  preserved; 64 new tests independently collected. Unit-only: **157 passed**.
+- Standalone unchanged `scripts/run_simulation.py --seed 20261115`:
+  **18 executions**, race 3 accepted/5 rejected, replay no-op/conflict rejected,
+  analytics rehydrated, scoped cleanup complete, existing data preserved.
+- Final native schema verifier passed; bot CLI dry-run validates all eight;
+  exactly 13 tables, zero OPEN/PARTIAL orders, nonprivileged NOINHERIT runtime,
+  Redis ping and Neo4j connectivity healthy. Compileall and structural diff passed.
+- Final isolated proof: instrument 730 / LIVEea91924077b8; bot quote 5488,
+  human crossing 5490, PostgreSQL execution **88457**, price **100**, quantity **1**.
+  Fixture history survived safe stop/restart before owned cleanup.
+- Phase 6 commit follows; next and final phase is documentation only.

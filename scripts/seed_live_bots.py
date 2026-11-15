@@ -10,10 +10,6 @@ import sys
 import bcrypt
 from psycopg.rows import dict_row
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scripts.verify_schema import db_connect
-
-
 @dataclass(frozen=True)
 class BotSpec:
     email: str
@@ -91,6 +87,11 @@ def provision_missing_bots(conn, specs, initial_cash=10_000_000):
 
 
 def main(argv=None):
+    # Runtime imports only the immutable definitions. Administrative environment
+    # loading/connection helpers belong exclusively to this explicit CLI path.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from scripts.verify_schema import db_connect
+
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--dry-run', action='store_true', help='Read-only inspection (default)')

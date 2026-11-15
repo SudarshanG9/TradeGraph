@@ -169,7 +169,7 @@ class LiveMarketSupervisor:
         # Keep a run's order list and response consistent across a concurrent start.
         async with self.state_lock:
             if self.accepted:
-                await self._reconcile()
+                await self._reconcile(include_executions=True)
             return self._snapshot()
 
     def _snapshot(self):
@@ -210,7 +210,7 @@ class LiveMarketSupervisor:
             raise SimulationUnavailable('BOT_ACCOUNT_UNAVAILABLE')
         return AccountState(**rows[0])
 
-    async def _reconcile(self):
+    async def _reconcile(self, *, include_executions=False):
         accepted = dict(self.accepted)
         if not accepted:
             self.active = []
@@ -224,8 +224,11 @@ class LiveMarketSupervisor:
             or any(r['trader_id'] != accepted[r['id']] for r in rows)):
             raise SimulationUnavailable('BOT_ORDER_RECONCILIATION_REQUIRED')
         self.active = [r for r in rows if r['status'] in ('OPEN', 'PARTIAL')]
-        self.committed_executions = (await self._query('''SELECT count(*) AS n FROM execution
-            WHERE buy_order_id=ANY(%s) OR sell_order_id=ANY(%s)''', (ids, ids)))[0]['n']
+        # Execution-order IDs have no dedicated index in the frozen schema.
+        # Count only for requested status/final acceptance, never each decision.
+        if include_executions:
+            self.committed_executions = (await self._query('''SELECT count(*) AS n FROM execution
+                WHERE buy_order_id=ANY(%s) OR sell_order_id=ANY(%s)''', (ids, ids)))[0]['n']
 
     def _orders_for(self, agent):
         return tuple(ActiveOrder(r['id'], r['side'], r['price_ticks'], r['quantity'] - r['filled_quantity'])
@@ -249,7 +252,7 @@ class LiveMarketSupervisor:
     async def _execute_action(self, agent, action):
         if agent not in self.agents or agent.trader_id not in self.bot_ids:
             raise ValueError('INVALID_BOT_IDENTITY')
-        if self.stop_event.is_set():
+        if self.stop_event.is_set() or time.monotonic() >= self.deadline:
             return
         if isinstance(action, HoldAction):
             return
@@ -271,7 +274,8 @@ class LiveMarketSupervisor:
         account = await self._account(agent)
         pending = sum(o.remaining_quantity for o in orders if o.side == action.side)
         exposure = (account.net_quantity if action.side == 'BUY' else -account.net_quantity) + pending + action.quantity
-        if exposure > MAX_INVENTORY_LOTS * meta['lot_size'] or self.stop_event.is_set():
+        if (exposure > MAX_INVENTORY_LOTS * meta['lot_size'] or self.stop_event.is_set()
+            or time.monotonic() >= self.deadline):
             return
         request = NewOrder(**asdict(action))
         self.metrics['orders_attempted'] += 1
@@ -346,7 +350,7 @@ class LiveMarketSupervisor:
             await self.coordinator.worker.drain()
             await self._cancel_bot_orders()
             await self.coordinator.worker.drain()
-            await self._reconcile()
+            await self._reconcile(include_executions=True)
             if self.active:
                 raise SimulationUnavailable('UNRESOLVED_BOT_ORDERS')
         except Exception:

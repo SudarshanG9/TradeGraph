@@ -3,9 +3,11 @@ import asyncio
 from decimal import Decimal
 from types import SimpleNamespace
 import time
+import subprocess
+import sys
 import pytest
 from psycopg.errors import RaiseException
-from backend.simulator.agents import HoldAction, PlaceOrderAction, TradingAgent
+from backend.simulator.agents import HoldAction, PlaceOrderAction, TradingAgent, CancelOrderAction
 from backend.simulator.live_supervisor import (
     LiveMarketSupervisor, LiveSimulationConfig, SimulationConflict, SimulationState,
 )
@@ -177,4 +179,132 @@ def test_rejected_reservation_is_counted_without_new_funds_or_loop_failure():
         assert result['state'] == 'STOPPED'
         assert result['orders_attempted'] == result['orders_rejected'] == 1
         assert not s.accepted
+    asyncio.run(run())
+
+
+def test_expired_slow_observation_cannot_admit_another_order():
+    async def run():
+        s,c,_ = setup()
+        original = s._observe_market
+        async def slow_observation(iid):
+            observation = await original(iid)
+            s.deadline = time.monotonic() - 1
+            return observation
+        s._observe_market = slow_observation
+        await s.start(LiveSimulationConfig((1,)))
+        await asyncio.wait_for(s.task, 2)
+        assert not c.submissions
+        assert s.state == SimulationState.STOPPED
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('condition', ['queue', 'redis', 'neo4j'])
+def test_pressure_throttles_and_reports_real_worker_state(condition):
+    async def run():
+        s,c,_ = setup()
+        if condition == 'queue':
+            for _ in range(50):
+                c.dispatcher.queue.put_nowait(object())
+        else:
+            c.derived[condition] = SimpleNamespace(failed='retry pending')
+        original_wait = s._wait
+        async def accelerated_wait(seconds):
+            await original_wait(0)  # exercise ten scheduling turns without wall-clock delay
+        s._wait = accelerated_wait
+        await s.start(LiveSimulationConfig((1,)))
+        await asyncio.wait_for(s.task, 2)
+        result = await s.status()
+        assert result['backpressure_events'] == 10 and not c.submissions
+        assert result['state'] == 'ERROR'
+        if condition != 'queue':
+            assert result['derived_workers'][condition] == 'retrying'
+    asyncio.run(run())
+
+
+def test_stop_never_reports_success_before_settlement_drain():
+    async def run():
+        s,c,_ = setup()
+        await s.start(LiveSimulationConfig((1,)))
+        await asyncio.wait_for(c.entered.wait(), 2)
+        entered, release = asyncio.Event(), asyncio.Event()
+        async def gated_drain():
+            entered.set()
+            await release.wait()
+        c.worker.drain = gated_drain
+        stopping = asyncio.create_task(s.stop())
+        await asyncio.wait_for(entered.wait(), 2)
+        assert not stopping.done()
+        assert (await s.status())['state'] == 'STOPPING'
+        release.set()
+        assert (await stopping)['state'] == 'STOPPED'
+    asyncio.run(run())
+
+
+def test_bad_identity_and_human_cancel_actions_are_rejected():
+    async def run():
+        s,c,_ = setup()
+        await s.start(LiveSimulationConfig((1,)))
+        await asyncio.wait_for(c.entered.wait(), 2)
+        with pytest.raises(ValueError,match='OWNER'):
+            await s._execute_action(s.agents[0], CancelOrderAction(999))
+        with pytest.raises(ValueError,match='IDENTITY'):
+            await s._execute_action(TestAgent('human',1,1), PlaceOrderAction(1,'BUY',100,1))
+        assert not c.cancelled
+        await s.stop()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('conflict', ['missing', 'role', 'margin', 'name', 'outstanding'])
+def test_unverified_or_unresolved_bot_accounts_refuse_start(conflict):
+    async def run():
+        s,c,db = setup()
+        original = db.query
+        def query(sql, params=()):
+            rows = original(sql,params)
+            if 'FROM user_account u' in sql:
+                if conflict == 'missing':
+                    return rows[:-1]
+                field = {'role':'role','margin':'margin_id','name':'full_name'}.get(conflict)
+                if field:
+                    rows[0][field] = None
+            if conflict == 'outstanding' and 'LIMIT 1' in sql and 'FROM public."order"' in sql:
+                return [dict(id=99)]
+            return rows
+        db.query = query
+        with pytest.raises((ValueError,SimulationConflict)):
+            await s.start(LiveSimulationConfig((1,)))
+        assert s.state == SimulationState.STOPPED and s.task is None
+    asyncio.run(run())
+
+
+def test_runtime_allowlist_import_does_not_load_admin_environment():
+    code = '''
+import dotenv
+def forbidden(*args, **kwargs):
+    raise AssertionError('Runtime allowlist imported administrative environment loading')
+dotenv.load_dotenv = forbidden
+from scripts.seed_live_bots import load_bot_specs
+assert len(load_bot_specs()) == 8
+'''
+    subprocess.run([sys.executable,'-c',code],check=True,capture_output=True,text=True)
+
+
+def test_decisions_do_not_recount_execution_history_on_every_tick():
+    async def run():
+        s,c,db = setup()
+        counts = []
+        original = db.query
+        def query(sql, params=()):
+            if 'count(*)' in sql and 'FROM execution' in sql:
+                counts.append(sql)
+            return original(sql,params)
+        db.query = query
+        await s.start(LiveSimulationConfig((1,)))
+        await asyncio.wait_for(c.entered.wait(), 2)
+        await s._reconcile()
+        await s._reconcile()
+        assert not counts
+        await s.status()
+        assert len(counts) == 1
+        await s.stop()
     asyncio.run(run())

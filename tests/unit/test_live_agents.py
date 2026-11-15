@@ -96,3 +96,9 @@ def test_pending_orders_bound_future_exposure_and_fees_are_budgeted():
     assert action.quantity == 10
     assert isinstance(agent.place(OBS, replace(ACCOUNT, cash_balance=50000), (), 'BUY', 1000), HoldAction)
     assert isinstance(agent.place(OBS, replace(ACCOUNT, cash_balance=50013), (), 'BUY', 1000), PlaceOrderAction)
+
+
+@pytest.mark.parametrize('book', [dict(best_bid_ticks=2000), dict(best_ask_ticks=1)])
+def test_maker_holds_when_external_book_prevents_a_bounded_passive_spread(book):
+    action = MarketMakerAgent('bot',1,1).decide(replace(OBS, **book), ACCOUNT, ())
+    assert isinstance(action, HoldAction)

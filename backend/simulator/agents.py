@@ -110,6 +110,8 @@ class MarketMakerAgent(TradingAgent):
             target = bid if order.side == 'BUY' else ask
             if abs(order.price_ticks - target) > half_spread * 2:
                 return CancelOrderAction(order.order_id)
+        if not 1 <= bid < ask <= MAX_PRICE or ask - bid > 2 * half_spread:
+            return HoldAction('No bounded passive spread around the reference')
         for side, price in (('BUY', bid), ('SELL', ask)):
             if not any(o.side == side for o in active_orders):
                 action = self.place(observation, account_state, active_orders, side, price, 2)

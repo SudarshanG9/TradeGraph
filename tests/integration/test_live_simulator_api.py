@@ -25,7 +25,12 @@ def test_simulator_rbac_validation_and_typed_contract(accounts):
         assert client.post('/admin/simulator/stop', headers=admin).json()['state'] == 'STOPPED'
         paths = client.get('/openapi.json').json()['paths']
         for path,method in [('start','post'), ('stop','post'), ('status','get')]:
-            assert '$ref' in paths['/admin/simulator/'+path][method]['responses']['200']['content']['application/json']['schema']
+            responses = paths['/admin/simulator/'+path][method]['responses']
+            assert '$ref' in responses['200']['content']['application/json']['schema']
+            for code in ('401','403'):
+                assert responses[code]['content']['application/json']['schema']['$ref'].endswith('/SimulatorError')
+        for code in ('409','422','503'):
+            assert paths['/admin/simulator/start']['post']['responses'][code]['content']['application/json']['schema']['$ref'].endswith('/SimulatorError')
 
 
 def test_admin_duplicate_start_shared_owner_and_graceful_shutdown(accounts):
