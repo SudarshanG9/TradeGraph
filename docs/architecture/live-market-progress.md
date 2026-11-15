@@ -145,3 +145,24 @@
   human crossing 5490, PostgreSQL execution **88457**, price **100**, quantity **1**.
   Fixture history survived safe stop/restart before owned cleanup.
 - Phase 6 commit follows; next and final phase is documentation only.
+- Phase 6 commit: `a4a155bbe3db54b7a1a70104c6a8325ac96e288a`.
+
+## Phase 7 — documentation and frontend readiness
+
+- Added `docs/architecture/live-market-simulator.md`: architecture, provisioning,
+  strategies, safe shutdown, actual API/request/status/error models, native-service
+  runbook, frontend contract, file manifest, phase evidence and limitations.
+- README receives only a short pointer. No runtime changes in this phase.
+- Includes exact measured native execution/account/Redis/Neo4j/regime/stop evidence
+  from the final 256-test run; distinguishes isolated proof cleanup from retained
+  persistent bot history. No claim of crash durability or production performance.
+- Final documentation and acceptance verification/commit recorded below.
+- Documentation verification: every implemented request/status field and all local
+  links/code fences validated. Targeted strategy/supervisor tests **45 passed**
+  (2.15s); native API/OpenAPI regressions **3 passed**, one existing warning (4.53s).
+  No implementation changed after the final full **256 passed** run.
+- All seven implementation phases complete. Eight persistent bots provisioned;
+  safe startup/shutdown and isolated human/bot trading verified. Controls support
+  4–8 bots, one owner/worker; process/session/event durability limitations remain.
+- Phase 7 commit is recorded immediately after creation; final ledger-only commit
+  records that SHA without rewriting implementation history. Changes stay local.

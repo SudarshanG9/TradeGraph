@@ -448,3 +448,10 @@ bounds. Frontend/UI recording and full course-interface compliance remain pendin
 
 Every phase was tested and, after the user's later Git authorization, committed
 and pushed separately. Further work requires review of the final Batch B report.
+
+### Administrator-controlled live synthetic market
+
+The backend supports bounded live sessions in the shared human/bot order book.
+Provision dedicated synthetic traders explicitly, then use the administrator-only
+start/stop/status APIs. See the [live market architecture, API and runbook](docs/architecture/live-market-simulator.md)
+and [phase verification ledger](docs/architecture/live-market-progress.md). Run one API worker.
