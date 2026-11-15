@@ -59,3 +59,6 @@ HealthCards, InvestigationTools and SimulatorControls committed individually. Ex
 
 ## Phase 8 — Surveillance
 CycleCandidates and CycleGraph committed independently, with bounded result selection and refresh. Browser verified selection of the five-trader candidate updates only the returned directed edges and counts; UUID disclosure exposes full canonical identities. Typecheck passes. evidence/08-surveillance.jpg compared with PDF 7; candidate labels are explicitly local numbering because API supplies no IDs. Empty/error/loading fixtures available through shared preview scenarios. No backend integration.
+
+## Phase 9 — Market Regimes
+RegimeSearch and RegimeResults committed; exactly six finite/nonzero custom features, exclusive query modes and bounded k. Browser verified explicit current-feature search returns sorted snapshots and all six values. Typecheck passes. evidence/09-regimes.jpg compared with PDF 8. No query runs on entry; an initial prompt replaces prepopulated results to avoid implying automatic current capture. Current feature values are explicitly demo fixtures rather than invented response fields. No backend integration.
