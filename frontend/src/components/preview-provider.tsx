@@ -17,6 +17,7 @@ import type {
 } from '@/lib/contracts';
 import { createMockServices, type Services } from '@/lib/services';
 import { catalog } from '@/lib/mock/fixtures';
+import { useRouter } from 'next/navigation';
 interface Preview {
   session: PreviewSession | null;
   ready: boolean;
@@ -28,7 +29,8 @@ interface Preview {
   setInstrument: (id: number) => void;
   api: Services;
   signIn: (s: PreviewSession) => void;
-  logout: () => void;
+  logout: (reason?: 'expired' | 'logout') => void;
+  sessionReason: 'expired' | 'logout';
   revision: number;
   invalidate: () => void;
 }
@@ -41,6 +43,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     [outcome, setOutcome] = useState<Outcome>('accepted'),
     [instrumentId, setInstrument] = useState(1),
     [revision, setRevision] = useState(0);
+  const [sessionReason, setSessionReason] = useState<'expired' | 'logout'>('expired');
   const refs = useRef({ session, fixture, outcome });
   refs.current = { session, fixture, outcome };
   const [api] = useState(() =>
@@ -56,6 +59,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const s = JSON.parse(raw) as PreviewSession;
         if (
+          s &&
           s.kind === 'mock-preview' &&
           ['TRADER', 'COMPLIANCE_ADMIN'].includes(s.role) &&
           Number.isFinite(s.expiresAt) &&
@@ -65,23 +69,35 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
         else sessionStorage.removeItem(key);
       }
     } catch {
-      sessionStorage.removeItem(key);
+      /* Storage may be unavailable; an in-memory preview still works. */
     }
     setReady(true);
   }, []);
   const signIn = useCallback((s: PreviewSession) => {
     setSession(s);
-    sessionStorage.setItem(key, JSON.stringify(s));
+    try {
+      sessionStorage.setItem(key, JSON.stringify(s));
+    } catch {
+      /* Memory-only preview. */
+    }
     setFixture('populated');
   }, []);
-  const logout = useCallback(() => {
+  const logout = useCallback((reason: 'expired' | 'logout' = 'logout') => {
+    setSessionReason(reason);
     setSession(null);
-    sessionStorage.removeItem(key);
+    try {
+      sessionStorage.removeItem(key);
+    } catch {
+      /* No credentials are stored. */
+    }
     setFixture('populated');
   }, []);
   useEffect(() => {
     if (!session) return;
-    const timeout = setTimeout(logout, Math.max(0, session.expiresAt - Date.now()));
+    const timeout = setTimeout(
+      () => logout('expired'),
+      Math.max(0, session.expiresAt - Date.now()),
+    );
     return () => clearTimeout(timeout);
   }, [session, logout]);
   return (
@@ -98,6 +114,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
         api,
         signIn,
         logout,
+        sessionReason,
         revision,
         invalidate: () => setRevision((r) => r + 1),
       }}
@@ -166,10 +183,12 @@ export function InstrumentSelector() {
   );
 }
 export function RoleGuard({ role, children }: { role: AccountRole; children: ReactNode }) {
-  const { session, ready } = usePreview();
+  const { session, ready, sessionReason } = usePreview();
+  const router = useRouter();
   useEffect(() => {
-    if (ready && !session) window.location.replace('/auth?reason=expired');
-  }, [ready, session]);
+    if (ready && !session)
+      router.replace(sessionReason === 'expired' ? '/auth?reason=expired' : '/auth');
+  }, [ready, session, sessionReason, router]);
   if (!ready || !session)
     return (
       <div className="loading-route" role="status">

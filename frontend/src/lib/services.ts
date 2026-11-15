@@ -292,11 +292,19 @@ export function createMockServices(
             ];
             p['Execution Time'] = 0.04;
           }
-        } else
-          for (const p of Object.values(r.plans))
-            if (p.Plan.Plans?.[0]) {
-              p.Plan.Plans[0].Filter = `instrument_id = ${id} AND price_ticks BETWEEN ${lower} AND ${upper}`;
+        } else {
+          const update = (node: C.PlanNode) => {
+            for (const field of ['Filter', 'Recheck Cond', 'Index Cond'] as const) {
+              if (node[field])
+                node[field] =
+                  field === 'Index Cond'
+                    ? `price_ticks BETWEEN ${lower} AND ${upper}`
+                    : `instrument_id = ${id} AND price_ticks BETWEEN ${lower} AND ${upper}`;
             }
+            node.Plans?.forEach(update);
+          };
+          for (const p of Object.values(r.plans)) update(p.Plan);
+        }
         return r;
       },
     },

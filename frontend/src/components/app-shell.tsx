@@ -134,7 +134,7 @@ export function AppShell({ role, children }: { role: AccountRole; children: Reac
             </label>
             <button
               onClick={() => {
-                logout();
+                logout('expired');
                 router.replace('/auth?reason=expired');
               }}
             >

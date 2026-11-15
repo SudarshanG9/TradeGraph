@@ -99,10 +99,7 @@ export function PriceChart({ trades }: { trades: Trade[] }) {
             onBlur={() => setHover(null)}
             onMouseEnter={() => setHover(i)}
           >
-            <title>
-              {time(series[i].executed_at)} UTC · {series[i].price_ticks} ticks ·{' '}
-              {series[i].quantity} units
-            </title>
+            <title>{`${time(series[i].executed_at)} UTC · ${series[i].price_ticks} ticks · ${series[i].quantity} units`}</title>
           </circle>
         ))}
         <circle cx={points.at(-1)!.x} cy={points.at(-1)!.y} r="3" fill="#3b82f6" />

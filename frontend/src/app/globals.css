@@ -306,7 +306,7 @@ tbody tr:hover {
   white-space: normal;
   min-width: 160px;
 }
-label.field {
+.field {
   display: flex;
   flex-direction: column;
   gap: 6px;

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Int } from '@/lib/contracts';
 import { InstrumentSelector, usePreview, useResource } from '@/components/preview-provider';
 import { DataState, Heading, Pagination } from '@/components/ui';
@@ -8,6 +8,9 @@ import { ExecutionsTable } from '@/components/trader/executions-table';
 export default function Analytics() {
   const { api, instrument } = usePreview();
   const [cursors, setCursors] = useState<(Int | undefined)[]>([undefined]);
+  useEffect(() => {
+    setCursors([undefined]);
+  }, [instrument.id]);
   const cursor = cursors.at(-1);
   const r = useResource(async () => {
     const [analytics, trades] = await Promise.all([

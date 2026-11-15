@@ -148,7 +148,7 @@ export function DataState({
   return (
     <div aria-busy={loading}>
       {loading && <Skeleton />}
-      {error ? (
+      {error && (
         <Notice tone="error">
           {error}{' '}
           {retry && (
@@ -157,9 +157,8 @@ export function DataState({
             </button>
           )}
         </Notice>
-      ) : (
-        children
       )}
+      <div hidden={loading || !!error}>{children}</div>
     </div>
   );
 }

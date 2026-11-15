@@ -8,23 +8,26 @@ export function PasswordField({
   label,
   name,
   minLength = 1,
+  autoComplete = 'current-password',
 }: {
   label: string;
   name: string;
   minLength?: number;
+  autoComplete?: 'current-password' | 'new-password';
 }) {
   const [visible, setVisible] = useState(false);
   return (
-    <label className="field">
-      {label}
+    <div className="field">
+      <label htmlFor={`auth-${name}`}>{label}</label>
       <div className="password-field">
         <input
           name={name}
+          id={`auth-${name}`}
           type={visible ? 'text' : 'password'}
           required
           minLength={minLength}
           maxLength={72}
-          autoComplete={name === 'password' ? 'current-password' : 'new-password'}
+          autoComplete={autoComplete}
         />
         <button
           type="button"
@@ -35,7 +38,7 @@ export function PasswordField({
           {visible ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       </div>
-    </label>
+    </div>
   );
 }
 export function SignInForm({
@@ -124,8 +127,13 @@ export function SignUpForm({ role, onReturn }: { role: AccountRole; onReturn: ()
         Email address
         <input name="email" autoComplete="email" type="email" required maxLength={255} />
       </label>
-      <PasswordField name="password" label="Password" minLength={8} />
-      <PasswordField name="confirm" label="Confirm password" minLength={8} />
+      <PasswordField name="password" label="Password" minLength={8} autoComplete="new-password" />
+      <PasswordField
+        name="confirm"
+        label="Confirm password"
+        minLength={8}
+        autoComplete="new-password"
+      />
       <p className="auth-hint">
         Account type: {role === 'TRADER' ? 'Trader' : 'Administrator'}.{' '}
         {role === 'COMPLIANCE_ADMIN'
