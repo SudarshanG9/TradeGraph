@@ -198,3 +198,25 @@ def test_admin_query_role_gates_and_actual_plan(accounts):
         plan=client.get('/admin/optimizer/compare',headers=admin_headers).json()
         assert 'Actual Rows' in plan['plans']['automatic']['Plan']
         assert client.get('/admin/optimizer/compare?scenario=SELECT%201',headers=admin_headers).status_code==422
+
+
+def test_request_key_replay_is_process_scoped_and_precedes_reservation(accounts):
+    users,instrument=accounts
+    with TestClient(create_app()) as client:
+        headers=login(client,users[0])|{'Idempotency-Key':'same-request'}
+        first=client.post('/orders',headers=headers,json=order(instrument))
+        assert first.status_code==201
+        repeated=client.post('/orders',headers=headers,json=order(instrument))
+        assert repeated.status_code==409 and repeated.json()['error']['code']=='DUPLICATE_REQUEST'
+        assert len(client.get('/orders/me',headers=headers).json()['items'])==1
+        assert client.post('/orders/'+str(first.json()['order_id'])+'/cancel',headers=headers).status_code==200
+
+
+def test_complete_native_simulation_and_existing_data_preservation():
+    from backend.simulator.market_simulator import run
+    report=run(20261115)
+    assert report['executions']==18
+    assert report['race_accepted']==3 and report['race_rejected']==5
+    assert report['existing_data_preserved']
+    assert report['clean_restart_analytics']=='rehydrated from committed executions'
+    assert report['scoped_cleanup']=='complete'

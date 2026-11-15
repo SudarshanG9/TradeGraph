@@ -18,6 +18,7 @@ from backend.stores.neo4j_graph import Neo4jGraph
 from backend.workers.graph_worker import GraphWorker
 from backend.stores.regimes import Regimes
 from backend.workers.regime_worker import RegimeWorker
+from backend.events.trade_event import TradeEvent
 
 
 class HealthResponse(BaseModel):
@@ -33,6 +34,11 @@ def create_app(settings=None, *, settlement=True):
         app.state.database = Database(app.state.settings)
         app.state.service = Coordinator(app.state.database, app.state.settings)
         try:
+            # Only settled history is rehydrated. Active orders already triggered
+            # a fail-closed reconciliation stop in acquire_owner().
+            for row in await asyncio.to_thread(app.state.database.query,'SELECT * FROM execution ORDER BY id'):
+                app.state.service.engine.apply_settled(TradeEvent(row['id'],row['instrument_id'],row['buy_order_id'],row['sell_order_id'],
+                    row['buy_trader_id'],row['sell_trader_id'],row['price_ticks'],row['quantity'],max(row['buy_order_id'],row['sell_order_id']),row['executed_at']))
             if settlement:
                 app.state.depth=RedisDepth(app.state.settings.redis_url,app.state.settings.health_timeout_seconds)
                 cache=CacheWorker(app.state.database,app.state.depth,app.state.service.dispatcher)

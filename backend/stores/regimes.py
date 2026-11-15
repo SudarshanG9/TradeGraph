@@ -88,4 +88,3 @@ class Regimes:
 
     def search(self,text,limit=20):
         return self.database.named('fts',{'q':text,'limit':limit})
-

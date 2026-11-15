@@ -15,6 +15,7 @@ class Engine:
         self.volume = defaultdict(PriceVolumeIndex)
         self.vwap = defaultdict(lambda: RollingVWAP(window))
         self.settled = {}
+        self.latest_time = {}
 
     def _check_owner(self):
         if get_ident() != self.owner:
@@ -37,4 +38,6 @@ class Engine:
         self.volume[event.instrument_id].add(event.price_ticks, event.quantity)
         self.vwap[event.instrument_id].add(event.price_ticks, event.quantity)
         self.settled[event.event_id] = event
+        previous=self.latest_time.get(event.instrument_id)
+        self.latest_time[event.instrument_id]=max(previous,event.occurred_at) if previous else event.occurred_at
         return True

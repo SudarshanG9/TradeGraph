@@ -39,4 +39,4 @@ async def analytics(symbol: str,request: Request,lower_ticks: int=Query(1,ge=0),
     return {'vwap_ticks':str(value) if value is not None else None,
             'window_fills':min(engine.window,engine.vwap[row['id']].count),
             'band_volume':engine.volume[row['id']].range_sum(lower_ticks,upper_ticks),
-            'as_of':None if not engine.settled else max(e.occurred_at for e in engine.settled.values() if e.instrument_id==row['id']) if any(e.instrument_id==row['id'] for e in engine.settled.values()) else None}
+            'as_of':engine.latest_time.get(row['id'])}

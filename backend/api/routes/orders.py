@@ -2,9 +2,10 @@ import asyncio
 from datetime import datetime
 from uuid import UUID
 from typing import Literal
-from fastapi import APIRouter, Depends, Request, HTTPException, Query
+from fastapi import APIRouter, Depends, Request, HTTPException, Query, Header
 from pydantic import BaseModel, ConfigDict, Field
 from backend.api.dependencies import trader
+from backend.risk.order_reservation import DuplicateRequest
 
 router = APIRouter()
 
@@ -57,9 +58,12 @@ class Account(BaseModel):
 
 
 @router.post('/orders', status_code=201, response_model=AcceptedOrder)
-async def submit(body: NewOrder, request: Request, identity=Depends(trader)):
+async def submit(body: NewOrder, request: Request, identity=Depends(trader),
+                 idempotency_key: str | None=Header(None,min_length=1,max_length=128,pattern=r'^[A-Za-z0-9._-]+$')):
     try:
-        row = await request.app.state.service.admit(identity['trader_id'], body)
+        row = await request.app.state.service.admit(identity['trader_id'], body,idempotency_key)
+    except DuplicateRequest:
+        raise HTTPException(409,detail='DUPLICATE_REQUEST') from None
     except ValueError:
         raise HTTPException(422, detail='INVALID_ORDER') from None
     except RuntimeError:

@@ -9,6 +9,10 @@ from backend.matching.engine import Engine
 from backend.matching.order_book import Order
 
 
+class DuplicateRequest(Exception):
+    pass
+
+
 class Coordinator:
     def __init__(self, database, settings):
         self.database = database
@@ -23,6 +27,7 @@ class Coordinator:
         self.book_observers = []
         self.derived = {}
         self.epoch = str(uuid4())
+        self.request_keys = set()
 
     def book_snapshot(self, instrument):
         return {'instrument_id':instrument,'version':self.version,'epoch':self.epoch,
@@ -35,8 +40,13 @@ class Coordinator:
         for observer in self.book_observers:
             observer(snapshot)
 
-    async def admit(self, trader_id, request):
+    async def admit(self, trader_id, request, request_key=None):
         async with self.lock:
+            key=(str(trader_id),request_key) if request_key is not None else None
+            if key in self.request_keys:
+                raise DuplicateRequest('Duplicate request key in this process')
+            if key is not None and len(self.request_keys)>=100000:
+                raise RuntimeError('Request key capacity exhausted')
             try:
                 await asyncio.to_thread(self.lease.execute, 'SELECT 1')
             except Exception:
@@ -49,6 +59,7 @@ class Coordinator:
                 raise ValueError('Price exceeds exact Redis demo range')
             try:
                 row = await asyncio.to_thread(self.database.reserve, trader_id, request)
+                if key is not None: self.request_keys.add(key)
             except psycopg.Error as exc:
                 if exc.sqlstate not in ('P0001','22023','22003','23514','23503'):
                     self.dispatcher.failure = 'Reservation outcome uncertain; operator reconciliation required'

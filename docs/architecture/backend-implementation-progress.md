@@ -634,3 +634,58 @@ No index acceleration assumed for tiny vector fixtures. Native services real;
 ?? docs/architecture/normalization-proof.md
 ?? docs/architecture/polyglot-data-models.md
 ```
+
+## Phase 9 — PASS (15 November 2026)
+
+Source Day 8 backend integration. Phase 8 committed/pushed 068fecb. Implemented
+deterministic native-store simulator/CLI with synthetic users, hashed random
+passwords, four isolated instruments (three active plus one negative fixture),
+API role logins, multi-price/multi-instrument fills, prior legitimate fill then
+STP residual cancel, partial cancel, inactive/lot/fund/overflow failures, eight
+concurrent admissions, settled graph ring, vector/FTS/admin SQL, financial and
+gross-PnL independent Fraction checks, terminal archival and replay after archive.
+Cleanup touches only generated IDs and verifies all counterparties are owned;
+original user/reference-row fingerprints are compared before/after.
+
+Added optional nonbreaking Idempotency-Key header: per-trader process-scoped
+request keys reject duplicates before reservation; existing bodies/responses and
+keyless repeated orders retain their contracts. Keys are distinct from execution
+IDs, bounded at 100,000 and not durable across restart. This is a demo negative
+request/retry guard, not persistent API exactly-once delivery.
+Clean startup now rehydrates Fenwick/last-N VWAP only from settled SQL history;
+active orders still require operator reconciliation and are never auto-rematched.
+Analytic freshness is tracked per instrument in O(1). Phase 8's trailing blank
+line (flagged by diff --check) was removed; subsequent commit scripts use set -e.
+
+CLI: `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python scripts/run_simulation.py --report /private/tmp/tradegraph-phase9-simulation.json`
+-> exit 0, 18 settled executions, 39 archived orders, race 3 accepted/5 rejected,
+67 assessed fee minor units, 1 observed surveillance candidate, 3 regime matches,
+request replay 409, identical execution replay no-op, conflicting replay rejected,
+cold-restart analytics exact, scoped cleanup complete, existing_data_preserved=true.
+Transport is in-process ASGI HTTP, with actual native services, not mocked stores.
+
+Final regression `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/unit tests/concurrency tests/integration -q`
+-> 186 passed in 56.03s, one upstream httpx warning; zero skips/failures.
+Schema and frontend preserved. No production crash durability claimed. NEXT: Phase 10.
+
+```text
+ backend/api/main.py                      |   6 +
+ backend/api/routes/market.py             |   2 +-
+ backend/api/routes/orders.py             |  10 +-
+ backend/matching/engine.py               |   3 +
+ backend/risk/order_reservation.py        |  13 +-
+ backend/simulator/market_simulator.py    | 267 +++++++++++++++++++++++++++++++
+ backend/stores/regimes.py                |   1 -
+ scripts/run_simulation.py                |  22 +++
+ tests/integration/test_order_pipeline.py |  22 +++
+ 9 files changed, 340 insertions(+), 6 deletions(-)
+ M backend/api/main.py
+ M backend/api/routes/market.py
+ M backend/api/routes/orders.py
+ M backend/matching/engine.py
+ M backend/risk/order_reservation.py
+ M backend/simulator/market_simulator.py
+ M backend/stores/regimes.py
+ M scripts/run_simulation.py
+ M tests/integration/test_order_pipeline.py
+```
