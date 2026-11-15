@@ -50,3 +50,6 @@ OrderHistory/OrderDetails and CancelDialog completed with local status filtering
 
 ## Phase 5 — Market Analytics
 VwapPanel and PriceBandPanel committed; reused InstrumentSelector, ExecutionsTable and cursor controls. Exact inclusive price-band calculation verified in browser (95–105: 140 fixture units) and service tests; result bounds remain tied to submitted inputs. Typecheck passes. evidence/05-analytics.jpg compared with PDF 5. Uses the actual 100-fill window and only selected-instrument executions; on-demand mock calculation only. No backend integration.
+
+## Phase 6 — Account & Positions
+Reused AccountSummary and PositionsTable; added AccountExplanation in its own commit. Exact balances match Dashboard; position selection shows returned instrument, signed quantity and gross PnL basis. Typecheck and browser interaction/visual check passed; evidence/06-account.jpg. No distinct mockup exists, so the page reuses PDF 2's cards and table without a new design claim. No backend integration.
