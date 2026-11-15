@@ -44,3 +44,6 @@ AccountSummary, PositionsTable, RecentOrders and ExecutionsTable completed in se
 
 ## Phase 3 — Trading Terminal
 OrderBook, PriceChart, MarketMetrics and OrderForm committed individually and assembled at src/app/trader/terminal/page.tsx. Instrument switching, exact notional/lot checks, BUY/SELL, mock submission and persistent feedback verified. Line chart uses only fixed chronological execution observations with grid, UTC axes, hover/focus tooltip and last-price marker. Typecheck passes; shared contract tests passed. Screenshot evidence/03-terminal.jpg compared with PDF 3; chart has the requested detailed line treatment, units/window corrected to contracts. No simulator controls and no backend integration.
+
+## Phase 4 — My Orders
+OrderHistory/OrderDetails and CancelDialog completed with local status filtering, selection, exact original/filled/unfilled quantities, terminal rules, archived indicators and cursor stack. Browser verified confirmation and CANCELLED result, including the explanation that its residual is no longer resting/reserved; Next advances to a smaller-ID cursor. Typecheck passes; cancellation/cursor behavior covered by passing service tests. evidence/04-orders.jpg compares to PDF 4. Filters apply to loaded cursor pages and are labeled accordingly in empty feedback. No backend integration.
