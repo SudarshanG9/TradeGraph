@@ -53,3 +53,6 @@ VwapPanel and PriceBandPanel committed; reused InstrumentSelector, ExecutionsTab
 
 ## Phase 6 — Account & Positions
 Reused AccountSummary and PositionsTable; added AccountExplanation in its own commit. Exact balances match Dashboard; position selection shows returned instrument, signed quantity and gross PnL basis. Typecheck and browser interaction/visual check passed; evidence/06-account.jpg. No distinct mockup exists, so the page reuses PDF 2's cards and table without a new design claim. No backend integration.
+
+## Phase 7 — Compliance Overview
+HealthCards, InvestigationTools and SimulatorControls committed individually. Exact simulator config bounds, multiple instrument selection, seed precision, active-bot/state display and all returned counters/workers implemented. Browser verified RUNNING → STOPPING → STOPPED with controls disabled appropriately; service test covers ERROR and restart conflict. Typecheck passes. evidence/07-overview.jpg compared with PDF 6, preserving health/tool positions and adding the authorized compact simulator below. No invented latency and no backend calls/bot processes.
