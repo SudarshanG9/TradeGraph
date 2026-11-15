@@ -1,13 +1,19 @@
 'use client';
-import { InstrumentSelector, usePreview, useResource } from '@/components/preview-provider';
+import {
+  InstrumentSelector,
+  MissingInstrument,
+  usePreview,
+  useResource,
+} from '@/components/preview-provider';
+import type { InstrumentInfo } from '@/lib/contracts';
 import { Badge, DataState, Notice, Refresh } from '@/components/ui';
 import { OrderBook } from '@/components/trader/order-book';
 import { PriceChart } from '@/components/trader/price-chart';
 import { OrderForm } from '@/components/trader/order-form';
 import { MarketMetrics } from '@/components/trader/market-metrics';
 import { ExecutionsTable } from '@/components/trader/executions-table';
-export default function Terminal() {
-  const { api, instrument } = usePreview();
+function TerminalContent({ instrument }: { instrument: InstrumentInfo }) {
+  const { api } = usePreview();
   const r = useResource(async () => {
     const [book, trades, analytics] = await Promise.all([
       api.market.book(instrument.symbol),
@@ -52,6 +58,18 @@ export default function Terminal() {
           </>
         )}
       </DataState>
+    </>
+  );
+}
+
+export default function Terminal() {
+  const { instrument } = usePreview();
+  return instrument ? (
+    <TerminalContent key={instrument.id} instrument={instrument} />
+  ) : (
+    <>
+      <h1>Trading Terminal</h1>
+      <MissingInstrument />
     </>
   );
 }

@@ -16,8 +16,8 @@ import type {
   InstrumentInfo,
 } from '@/lib/contracts';
 import { createMockServices, type Services } from '@/lib/services';
-import { catalog } from '@/lib/mock/fixtures';
 import { useRouter } from 'next/navigation';
+import { Empty, Notice, Skeleton } from './ui';
 interface Preview {
   session: PreviewSession | null;
   ready: boolean;
@@ -25,7 +25,10 @@ interface Preview {
   setFixture: (s: FixtureState) => void;
   outcome: Outcome;
   setOutcome: (s: Outcome) => void;
-  instrument: InstrumentInfo;
+  instrument: InstrumentInfo | null;
+  instruments: InstrumentInfo[];
+  catalogLoading: boolean;
+  catalogError: string;
   setInstrument: (id: number) => void;
   api: Services;
   signIn: (s: PreviewSession) => void;
@@ -44,6 +47,9 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     [instrumentId, setInstrument] = useState(1),
     [revision, setRevision] = useState(0);
   const [sessionReason, setSessionReason] = useState<'expired' | 'logout'>('expired');
+  const [instruments, setInstruments] = useState<InstrumentInfo[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
   const refs = useRef({ session, fixture, outcome });
   refs.current = { session, fixture, outcome };
   const [api] = useState(() =>
@@ -53,6 +59,32 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
       () => refs.current.outcome,
     ),
   );
+  useEffect(() => {
+    let active = true;
+    if (!session) {
+      setInstruments([]);
+      return;
+    }
+    setCatalogLoading(true);
+    setCatalogError('');
+    api.instruments
+      .list()
+      .then((catalog) => {
+        if (active) setInstruments(catalog.items);
+      })
+      .catch((e) => {
+        if (active) {
+          setInstruments([]);
+          setCatalogError((e as Error).message);
+        }
+      })
+      .finally(() => {
+        if (active) setCatalogLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, session, fixture]);
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(key);
@@ -109,7 +141,10 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
         setFixture,
         outcome,
         setOutcome,
-        instrument: catalog.items.find((x) => x.id === instrumentId)!,
+        instrument: instruments.find((x) => x.id === instrumentId) ?? instruments[0] ?? null,
+        instruments,
+        catalogLoading,
+        catalogError,
         setInstrument,
         api,
         signIn,
@@ -164,22 +199,32 @@ export function useResource<T>(load: () => Promise<T>, deps: unknown[] = []) {
   return { data, loading, error, reload: () => setNonce((x) => x + 1) };
 }
 export function InstrumentSelector() {
-  const { instrument, setInstrument } = usePreview();
+  const { instrument, setInstrument, instruments, catalogLoading } = usePreview();
   return (
     <label className="instrument-select">
       <span className="sr-only">Instrument</span>
       <select
         aria-label="Selected instrument"
-        value={instrument.id}
+        value={instrument?.id ?? ''}
+        disabled={!instruments.length || catalogLoading}
         onChange={(e) => setInstrument(Number(e.target.value))}
       >
-        {catalog.items.map((i) => (
+        {!instruments.length && <option value="">No active instruments</option>}
+        {instruments.map((i) => (
           <option key={i.id} value={i.id}>
             {i.symbol}
           </option>
         ))}
       </select>
     </label>
+  );
+}
+export function MissingInstrument() {
+  const { catalogLoading, catalogError } = usePreview();
+  if (catalogLoading) return <Skeleton />;
+  if (catalogError) return <Notice tone="error">{catalogError}</Notice>;
+  return (
+    <Empty message="No active instruments are available. Trading and market queries are disabled." />
   );
 }
 export function RoleGuard({ role, children }: { role: AccountRole; children: ReactNode }) {

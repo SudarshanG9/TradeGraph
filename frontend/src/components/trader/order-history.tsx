@@ -2,7 +2,7 @@
 import type { OrderSummary } from '@/lib/contracts';
 import { fmt, time } from '@/lib/exact';
 import { Card, Empty, OrderStatus, Table } from '../ui';
-import { symbolFor } from './positions-table';
+import { useSymbolFor } from './positions-table';
 export function OrderHistory({
   orders,
   selected,
@@ -16,6 +16,7 @@ export function OrderHistory({
   onCancel: (o: OrderSummary) => void;
   children: React.ReactNode;
 }) {
+  const symbolFor = useSymbolFor();
   return (
     <Card className="history-card">
       <Table
@@ -83,6 +84,7 @@ export function OrderDetails({
   order: OrderSummary | null;
   onCancel: (o: OrderSummary) => void;
 }) {
+  const symbolFor = useSymbolFor();
   if (!order)
     return (
       <Card title="Order Details">

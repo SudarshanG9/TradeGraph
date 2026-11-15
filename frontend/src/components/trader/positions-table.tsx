@@ -2,10 +2,12 @@
 import { useState } from 'react';
 import type { Position } from '@/lib/contracts';
 import { fmt } from '@/lib/exact';
-import { catalog } from '@/lib/mock/fixtures';
+import { usePreview } from '../preview-provider';
 import { Card, Empty, Table } from '../ui';
-export const symbolFor = (id: number) =>
-  catalog.items.find((i) => i.id === id)?.symbol ?? `Instrument ${id}`;
+export function useSymbolFor() {
+  const { instruments } = usePreview();
+  return (id: number) => instruments.find((i) => i.id === id)?.symbol ?? `Instrument ${id}`;
+}
 export function PositionsTable({
   positions,
   details = false,
@@ -13,6 +15,7 @@ export function PositionsTable({
   positions: Position[];
   details?: boolean;
 }) {
+  const symbolFor = useSymbolFor();
   const [selected, setSelected] = useState<Position | null>(null);
   return (
     <Card title="My Positions">

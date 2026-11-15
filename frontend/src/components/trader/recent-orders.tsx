@@ -2,8 +2,9 @@
 import type { OrderSummary } from '@/lib/contracts';
 import { fmt, time } from '@/lib/exact';
 import { Card, Empty, OrderStatus, Table } from '../ui';
-import { symbolFor } from './positions-table';
+import { useSymbolFor } from './positions-table';
 export function RecentOrders({ orders }: { orders: OrderSummary[] }) {
+  const symbolFor = useSymbolFor();
   return (
     <Card title="Recent Orders">
       <Table

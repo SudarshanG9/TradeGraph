@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Features, Similar } from '@/lib/contracts';
 import { currentFeatures } from '@/lib/mock/fixtures';
 import { InstrumentSelector, usePreview } from '../preview-provider';
@@ -17,10 +17,14 @@ export function RegimeSearch({
     [k, setK] = useState('10'),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const requestSequence = useRef(0);
   useEffect(() => {
+    requestSequence.current++;
+    setBusy(false);
+    onBusy(false);
     onResult(null);
     setError('');
-  }, [instrument.id, fixture, mode]);
+  }, [instrument?.id, fixture, mode]);
   const labels = [
     'Bid–ask spread',
     'Order-book imbalance',
@@ -35,10 +39,12 @@ export function RegimeSearch({
         className="stack"
         onSubmit={async (e) => {
           e.preventDefault();
+          const request = ++requestSequence.current;
           setError('');
           setBusy(true);
           onBusy(true);
           try {
+            if (!instrument) throw new Error('Select an active instrument.');
             const count = Number(k);
             if (!Number.isInteger(count) || count < 1 || count > 100)
               throw new Error('Result limit must be 1–100.');
@@ -56,13 +62,16 @@ export function RegimeSearch({
                 ? { instrument_id: instrument.id, current: true, k: count }
                 : { instrument_id: instrument.id, features, k: count },
             );
-            onResult(r);
+            if (request === requestSequence.current) onResult(r);
           } catch (e) {
+            if (request !== requestSequence.current) return;
             onResult(null);
             setError((e as Error).message);
           } finally {
-            setBusy(false);
-            onBusy(false);
+            if (request === requestSequence.current) {
+              setBusy(false);
+              onBusy(false);
+            }
           }
         }}
       >
@@ -84,7 +93,11 @@ export function RegimeSearch({
               Results
               <input value={k} onChange={(e) => setK(e.target.value)} inputMode="numeric" />
             </label>
-            <Button variant="primary" disabled={busy || fixture === 'loading'} type="submit">
+            <Button
+              variant="primary"
+              disabled={busy || fixture === 'loading' || !instrument}
+              type="submit"
+            >
               {busy ? 'Searching…' : 'Find Similar Regimes'}
             </Button>
           </div>

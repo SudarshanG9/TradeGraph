@@ -1,8 +1,10 @@
+'use client';
 import type { Search } from '@/lib/contracts';
 import { date } from '@/lib/exact';
-import { symbolFor } from '../trader/positions-table';
+import { useSymbolFor } from '../trader/positions-table';
 import { Card, Empty, Table } from '../ui';
 export function DisclosureResults({ results }: { results: Search | null }) {
+  const symbolFor = useSymbolFor();
   return (
     <Card>
       <Table

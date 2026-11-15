@@ -87,3 +87,27 @@ test('simulator validates bounds, STOPPING is not success, and ERROR blocks rest
   assert.equal((await s.api.simulator.stop()).state, 'ERROR');
   await assert.rejects(s.api.simulator.start(cfg), /conflict/);
 });
+
+test('an empty active catalog never creates a fallback trading instrument', async () => {
+  const s = setup();
+  s.fixture('no-instruments');
+  assert.deepEqual(await s.api.instruments.list(), { items: [] });
+  await assert.rejects(s.api.market.book('ACME'), /NOT_FOUND/);
+  await assert.rejects(
+    s.api.orders.submit({ instrument_id: 1, side: 'BUY', price_ticks: '100', quantity: '1' }),
+    /NOT_FOUND/,
+  );
+});
+test('optimizer keeps all nested conditions aligned with submitted bounds', async () => {
+  const s = setup();
+  s.setRole('COMPLIANCE_ADMIN');
+  const result = await s.api.optimizer.compare('price_band', 2, '200', '230');
+  const html = JSON.stringify(result.plans);
+  assert.match(html, /BETWEEN 200 AND 230/);
+  assert.doesNotMatch(html, /BETWEEN 95 AND 105/);
+  const recent = await s.api.optimizer.compare('recent_executions', 1, '95', '105');
+  assert.equal(
+    recent.plans.automatic['Execution Time'],
+    recent.plans.forced_sequential['Execution Time'],
+  );
+});

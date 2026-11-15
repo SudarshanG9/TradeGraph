@@ -192,7 +192,8 @@ export interface SimulationStatus {
   last_error: string | null;
   derived_workers: Record<string, 'ready' | 'retrying' | 'initializing'>;
 }
-export type FixtureState = 'populated' | 'empty' | 'loading' | 'stale' | 'error' | 'large';
+export type FixtureState =
+  'populated' | 'empty' | 'loading' | 'stale' | 'error' | 'large' | 'no-instruments';
 export type Outcome = 'accepted' | 'partial' | 'filled' | 'rejected' | 'unknown';
 export interface PreviewSession {
   role: AccountRole;

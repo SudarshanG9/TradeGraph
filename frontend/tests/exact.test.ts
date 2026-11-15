@@ -23,3 +23,16 @@ test('outgoing request preserves numeric tokens and exact multiplication', () =>
   assert.throws(() => validateOrder({ ...o, quantity: '11' }, catalog.items[1]));
   assert.throws(() => validateOrder({ ...o, price_ticks: '9007199254740992' }, catalog.items[0]));
 });
+
+test('simulation seed serialization preserves the full signed BIGINT range', async () => {
+  const { serializeSimulationStart } = await import('../src/lib/exact');
+  const text = serializeSimulationStart({
+    instrument_ids: [1],
+    bot_count: 8,
+    orders_per_second: 2,
+    volatility: 'medium',
+    seed: '9223372036854775807',
+    max_duration_seconds: 300,
+  });
+  assert.match(text, /"seed":9223372036854775807/);
+});

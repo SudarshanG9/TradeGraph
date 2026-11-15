@@ -36,7 +36,7 @@ export function PriceBandPanel() {
   useEffect(() => {
     setResult(null);
     setError('');
-  }, [instrument.id, fixture]);
+  }, [instrument?.id, fixture]);
   return (
     <Card title="Price-Band Executed Volume" className="padded">
       <form
@@ -46,6 +46,7 @@ export function PriceBandPanel() {
           setError('');
           setBusy(true);
           try {
+            if (!instrument) throw new Error('Select an active instrument.');
             if (integer(lower, 0n) > integer(upper, 0n))
               throw new Error('Lower bound must not exceed upper bound.');
             const r = await api.market.analytics(instrument.symbol, lower as Int, upper as Int);

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search as SearchIcon } from 'lucide-react';
 import type { Search } from '@/lib/contracts';
 import { usePreview } from '../preview-provider';
@@ -15,7 +15,11 @@ export function DisclosureSearch({
   const [query, setQuery] = useState('market volatility'),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const requestSequence = useRef(0);
   useEffect(() => {
+    requestSequence.current++;
+    setBusy(false);
+    onBusy(false);
     onResult(null);
     setError('');
   }, [fixture]);
@@ -24,17 +28,22 @@ export function DisclosureSearch({
       className="stack"
       onSubmit={async (e) => {
         e.preventDefault();
+        const request = ++requestSequence.current;
         setError('');
         setBusy(true);
         onBusy(true);
         try {
-          onResult(await api.disclosures.search(query));
+          const result = await api.disclosures.search(query);
+          if (request === requestSequence.current) onResult(result);
         } catch (e) {
+          if (request !== requestSequence.current) return;
           setError((e as Error).message);
           onResult(null);
         } finally {
-          setBusy(false);
-          onBusy(false);
+          if (request === requestSequence.current) {
+            setBusy(false);
+            onBusy(false);
+          }
         }
       }}
     >

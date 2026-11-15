@@ -1,8 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Int, Optimizer, Scenario } from '@/lib/contracts';
 import { integer } from '@/lib/exact';
-import { catalog } from '@/lib/mock/fixtures';
 import { usePreview } from '../preview-provider';
 import { Button, Card, Notice, Segmented } from '../ui';
 export function OptimizerControls({
@@ -12,14 +11,21 @@ export function OptimizerControls({
   onResult: (r: Optimizer | null) => void;
   onBusy: (b: boolean) => void;
 }) {
-  const { api, fixture } = usePreview();
+  const { api, fixture, instruments } = usePreview();
   const [scenario, setScenario] = useState<Scenario>('price_band'),
-    [id, setId] = useState(1),
+    [id, setId] = useState(0),
     [lower, setLower] = useState('95'),
     [upper, setUpper] = useState('105'),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   useEffect(() => {
+    setId((old) => (instruments.some((i) => i.id === old) ? old : (instruments[0]?.id ?? 0)));
+  }, [instruments]);
+  const requestSequence = useRef(0);
+  useEffect(() => {
+    requestSequence.current++;
+    setBusy(false);
+    onBusy(false);
     onResult(null);
     setError('');
   }, [fixture, scenario]);
@@ -29,19 +35,24 @@ export function OptimizerControls({
         className="stack"
         onSubmit={async (e) => {
           e.preventDefault();
+          const request = ++requestSequence.current;
           setBusy(true);
           onBusy(true);
           setError('');
           try {
             if (scenario === 'price_band' && integer(lower) > integer(upper))
               throw new Error('Lower bound must not exceed upper bound.');
-            onResult(await api.optimizer.compare(scenario, id, lower as Int, upper as Int));
+            const result = await api.optimizer.compare(scenario, id, lower as Int, upper as Int);
+            if (request === requestSequence.current) onResult(result);
           } catch (e) {
+            if (request !== requestSequence.current) return;
             setError((e as Error).message);
             onResult(null);
           } finally {
-            setBusy(false);
-            onBusy(false);
+            if (request === requestSequence.current) {
+              setBusy(false);
+              onBusy(false);
+            }
           }
         }}
       >
@@ -63,7 +74,7 @@ export function OptimizerControls({
                 value={id}
                 onChange={(e) => setId(Number(e.target.value))}
               >
-                {catalog.items.map((i) => (
+                {instruments.map((i) => (
                   <option value={i.id} key={i.id}>
                     {i.id} · {i.symbol}
                   </option>
@@ -89,7 +100,13 @@ export function OptimizerControls({
               />
             </label>
           </div>
-          <Button variant="primary" type="submit" disabled={busy || fixture === 'loading'}>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={
+              busy || fixture === 'loading' || (scenario === 'price_band' && !instruments.length)
+            }
+          >
             {busy ? 'Comparing…' : 'Compare Plans'}
           </Button>
         </div>

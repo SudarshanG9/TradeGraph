@@ -8,10 +8,11 @@ export function OrderForm() {
   const { instrument, api, invalidate, outcome } = usePreview();
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY'),
     [price, setPrice] = useState('100'),
-    [quantity, setQuantity] = useState(instrument.lot_size),
+    [quantity, setQuantity] = useState(instrument?.lot_size ?? ''),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [error, setError] = useState('');
+  if (!instrument) return null;
   const order: NewOrder = {
     instrument_id: instrument.id,
     side,

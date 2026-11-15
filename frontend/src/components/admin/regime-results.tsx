@@ -1,8 +1,10 @@
+'use client';
 import type { Similar } from '@/lib/contracts';
 import { time } from '@/lib/exact';
-import { symbolFor } from '../trader/positions-table';
+import { useSymbolFor } from '../trader/positions-table';
 import { Card, Empty, Table } from '../ui';
 export function RegimeResults({ results }: { results: Similar | null }) {
+  const symbolFor = useSymbolFor();
   return (
     <Card title="Nearest historical snapshots">
       <Table

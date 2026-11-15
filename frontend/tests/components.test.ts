@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup as render } from 'react-dom/server';
+import { PreviewProvider } from '../src/components/preview-provider';
 import { AccountSummary } from '../src/components/trader/account-summary';
 import { OrderDetails } from '../src/components/trader/order-history';
 import { PriceChart } from '../src/components/trader/price-chart';
@@ -25,7 +26,9 @@ test('financial cards render exact totals and gross signed PnL without implied c
 });
 test('cancelled quantities remain unfilled but are not presented as resting orders', () => {
   const o = { ...orders[0], status: 'CANCELLED' as const };
-  const html = render(h(OrderDetails, { order: o, onCancel: () => {} }));
+  const html = render(
+    h(PreviewProvider, { children: h(OrderDetails, { order: o, onCancel: () => {} }) }),
+  );
   assert.match(html, /Unfilled Qty/);
   assert.match(html, /no longer resting or reserved/);
   assert.doesNotMatch(html, /Cancel remaining/);

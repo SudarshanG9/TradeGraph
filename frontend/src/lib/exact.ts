@@ -1,5 +1,5 @@
 import { parse, stringify } from 'lossless-json';
-import type { Int, InstrumentInfo, NewOrder } from './contracts';
+import type { Int, InstrumentInfo, NewOrder, SimulationStart } from './contracts';
 
 export const MAX_INT = 9223372036854775807n;
 export const MAX_PRICE = 9007199254740991n;
@@ -80,4 +80,8 @@ export function assertRole(
   if (!session || session.kind !== 'mock-preview' || session.expiresAt <= Date.now())
     throw new Error('SESSION_EXPIRED');
   if (session.role !== role) throw new Error('ROLE_MISMATCH');
+}
+
+export function serializeSimulationStart(config: SimulationStart): string {
+  return stringify({ ...config, seed: integer(config.seed, 0n) })!;
 }

@@ -2,7 +2,7 @@
 import type { Trade } from '@/lib/contracts';
 import { fmt, time } from '@/lib/exact';
 import { Card, Empty, Table } from '../ui';
-import { symbolFor } from './positions-table';
+import { useSymbolFor } from './positions-table';
 import type { ReactNode } from 'react';
 export function ExecutionsTable({
   trades,
@@ -15,6 +15,7 @@ export function ExecutionsTable({
   action?: ReactNode;
   children?: ReactNode;
 }) {
+  const symbolFor = useSymbolFor();
   return (
     <Card title="Recent Executions" action={action}>
       <Table

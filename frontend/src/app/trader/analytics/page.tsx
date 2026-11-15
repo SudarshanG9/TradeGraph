@@ -1,12 +1,17 @@
 'use client';
 import { useEffect, useState } from 'react';
-import type { Int } from '@/lib/contracts';
-import { InstrumentSelector, usePreview, useResource } from '@/components/preview-provider';
+import type { Int, InstrumentInfo } from '@/lib/contracts';
+import {
+  InstrumentSelector,
+  MissingInstrument,
+  usePreview,
+  useResource,
+} from '@/components/preview-provider';
 import { DataState, Heading, Pagination } from '@/components/ui';
 import { VwapPanel, PriceBandPanel } from '@/components/trader/analytics-panels';
 import { ExecutionsTable } from '@/components/trader/executions-table';
-export default function Analytics() {
-  const { api, instrument } = usePreview();
+function AnalyticsContent({ instrument }: { instrument: InstrumentInfo }) {
+  const { api } = usePreview();
   const [cursors, setCursors] = useState<(Int | undefined)[]>([undefined]);
   useEffect(() => {
     setCursors([undefined]);
@@ -51,6 +56,18 @@ export default function Analytics() {
           )}
         </DataState>
       </div>
+    </>
+  );
+}
+
+export default function Analytics() {
+  const { instrument } = usePreview();
+  return instrument ? (
+    <AnalyticsContent key={instrument.id} instrument={instrument} />
+  ) : (
+    <>
+      <h1>Market Analytics</h1>
+      <MissingInstrument />
     </>
   );
 }

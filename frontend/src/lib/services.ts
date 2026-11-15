@@ -46,6 +46,10 @@ export interface Services {
 }
 const wait = () => new Promise<void>((resolve) => setTimeout(resolve, 220));
 const copy = <T>(value: T): T => structuredClone(value);
+/** Future server-side FastAPI authentication boundary; preview identities are separate. */
+export interface AuthService {
+  login(request: C.LoginRequest): Promise<C.LoginResponse>;
+}
 export function createMockServices(
   session: () => C.PreviewSession | null,
   fixture: () => C.FixtureState,
@@ -65,8 +69,9 @@ export function createMockServices(
     if (fixture() === 'error')
       throw new Error('Demo service unavailable. Switch the fixture to Populated and retry.');
   };
+  const activeCatalog = () => (fixture() === 'no-instruments' ? [] : F.catalog.items);
   const instrument = (symbol: string) => {
-    const item = F.catalog.items.find((i) => i.symbol === symbol);
+    const item = activeCatalog().find((i) => i.symbol === symbol);
     if (!item) throw new Error('INSTRUMENT_NOT_FOUND');
     return item;
   };
@@ -106,7 +111,7 @@ export function createMockServices(
     instruments: {
       list: async () => {
         await guard();
-        return copy(F.catalog);
+        return { items: copy(activeCatalog()) };
       },
     },
     account: {
@@ -265,7 +270,7 @@ export function createMockServices(
       compare: async (scenario, id, lower, upper) => {
         await guard('COMPLIANCE_ADMIN');
         if (scenario === 'price_band') {
-          if (!F.catalog.items.some((i) => i.id === id))
+          if (!activeCatalog().some((i) => i.id === id))
             throw new Error('Select a valid instrument.');
           if (integer(lower) > integer(upper))
             throw new Error('Lower bound must not exceed upper bound.');
@@ -327,7 +332,7 @@ export function createMockServices(
           config.instrument_ids.length < 1 ||
           config.instrument_ids.length > 3 ||
           new Set(config.instrument_ids).size !== config.instrument_ids.length ||
-          config.instrument_ids.some((id) => !F.catalog.items.some((i) => i.id === id))
+          config.instrument_ids.some((id) => !activeCatalog().some((i) => i.id === id))
         )
           throw new Error('Select 1–3 distinct active instruments.');
         for (const [value, min, max] of [

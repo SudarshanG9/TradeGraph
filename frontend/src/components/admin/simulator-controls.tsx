@@ -1,14 +1,13 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Int, SimulationStart, SimulationStatus } from '@/lib/contracts';
-import { catalog } from '@/lib/mock/fixtures';
 import { fmt, integer, time } from '@/lib/exact';
 import { usePreview, useResource } from '../preview-provider';
 import { Badge, Button, Card, DataState, Notice, OrderStatus } from '../ui';
 export function SimulatorControls() {
-  const { api } = usePreview();
+  const { api, instruments } = usePreview();
   const resource = useResource(() => api.simulator.status());
-  const [ids, setIds] = useState([1]),
+  const [ids, setIds] = useState<number[]>([]),
     [bots, setBots] = useState('8'),
     [rate, setRate] = useState('2'),
     [duration, setDuration] = useState('300'),
@@ -18,6 +17,12 @@ export function SimulatorControls() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [message, setMessage] = useState('');
+  useEffect(() => {
+    setIds((previous) => {
+      const valid = previous.filter((id) => instruments.some((i) => i.id === id));
+      return valid.length ? valid : instruments.length ? [instruments[0].id] : [];
+    });
+  }, [instruments]);
   const status = local ?? resource.data;
   const locked = busy || status?.state !== 'STOPPED';
   const start = async () => {
@@ -79,7 +84,7 @@ export function SimulatorControls() {
           <div className="stack">
             <fieldset className="sim-instruments" disabled={locked}>
               <legend>Instruments (select 1–3)</legend>
-              {catalog.items.map((i) => (
+              {instruments.map((i) => (
                 <label key={i.id}>
                   <input
                     type="checkbox"
@@ -137,7 +142,7 @@ export function SimulatorControls() {
                   <span className="caption">Active bots: {status.active_bots}</span>
                 </div>
                 <div className="toolbar">
-                  <Button variant="primary" type="submit" disabled={locked}>
+                  <Button variant="primary" type="submit" disabled={locked || !ids.length}>
                     Start Simulation
                   </Button>
                   <Button

@@ -112,19 +112,35 @@ export function AppShell({ role, children }: { role: AccountRole; children: Reac
             <summary>Preview scenarios</summary>
             <label className="field">
               Data fixture
-              <select value={fixture} onChange={(e) => setFixture(e.target.value as FixtureState)}>
-                {(['populated', 'empty', 'loading', 'stale', 'error', 'large'] as const).map(
-                  (x) => (
-                    <option key={x} value={x}>
-                      {x[0].toUpperCase() + x.slice(1)}
-                    </option>
-                  ),
-                )}
+              <select
+                aria-label="Data fixture"
+                value={fixture}
+                onChange={(e) => setFixture(e.target.value as FixtureState)}
+              >
+                {(
+                  [
+                    'populated',
+                    'empty',
+                    'loading',
+                    'stale',
+                    'error',
+                    'large',
+                    'no-instruments',
+                  ] as const
+                ).map((x) => (
+                  <option key={x} value={x}>
+                    {x[0].toUpperCase() + x.slice(1)}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="field">
               Action outcome
-              <select value={outcome} onChange={(e) => setOutcome(e.target.value as Outcome)}>
+              <select
+                aria-label="Action outcome"
+                value={outcome}
+                onChange={(e) => setOutcome(e.target.value as Outcome)}
+              >
                 {(['accepted', 'partial', 'filled', 'rejected', 'unknown'] as const).map((x) => (
                   <option key={x} value={x}>
                     {x}
