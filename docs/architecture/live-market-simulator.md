@@ -381,7 +381,7 @@ local Git history; no remote push was performed.
 | 4 API/lifecycle | 14 native API/pipeline + 142 unit tests | 0041281 |
 | 5 human/bot integration | 12 native proof/polyglot tests | fd60eee |
 | 6 safety/regression | 256 full-suite tests + standalone deterministic CLI, native checks | a4a155b |
-| 7 documentation | Manifest/schema/runbook checked against implementation; acceptance checks below | Recorded in phase ledger after commit |
+| 7 documentation | 45 strategy/supervisor + 3 native API tests; schema/runbook/link checks | 87d7568 |
 
 Every phase has its required focused local commit. The phase 1 follow-up corrects a
 test transaction boundary without rewriting history. The original audit's sandbox-only

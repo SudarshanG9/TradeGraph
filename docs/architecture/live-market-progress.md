@@ -166,3 +166,21 @@
   4–8 bots, one owner/worker; process/session/event durability limitations remain.
 - Phase 7 commit is recorded immediately after creation; final ledger-only commit
   records that SHA without rewriting implementation history. Changes stay local.
+- Phase 7 commit: `87d7568f0b33b7c5e5bde5b1621c123e96f2cb90`.
+
+## Completed phase commit ledger
+
+| Phase | Commit SHA | Message |
+|---|---|---|
+| 1 | fb55e1b837f780127b7d75ace119391f9f44f006 | Live sim phase 1: provision persistent synthetic traders |
+| 1 follow-up | 3a23a23b2d381cc5f9d836c75224d33554ed19b1 | Live sim phase 1: isolate provisioning test transactions |
+| 2 | dae7a49d95128017bb473f00771fcc512aba2228 | Live sim phase 2: implement market model and trading agents |
+| 3 | 0f835b7dac403afe5f85a88d54740dde93972c50 | Live sim phase 3: implement live market supervisor |
+| 4 | 0041281e842e0b00b8385786d11eed0b436a9d63 | Live sim phase 4: add admin simulator API and lifecycle integration |
+| 5 | fd60eee2a90bbdd9f32f04f5f26d7a60511851ba | Live sim phase 5: prove human and bot trading integration |
+| 6 | a4a155bbe3db54b7a1a70104c6a8325ac96e288a | Live sim phase 6: verify safety and preserve backend regressions |
+| 7 | 87d7568f0b33b7c5e5bde5b1621c123e96f2cb90 | Live sim phase 7: document live simulator and final acceptance |
+
+A final documentation-only commit records the phase 7 SHA/table above. Its own final
+HEAD identifier is reported in the agent's final response and available from `git
+rev-parse HEAD`; no implementation commit was amended. No push was performed.
