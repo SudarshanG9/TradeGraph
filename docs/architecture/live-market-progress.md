@@ -51,3 +51,19 @@
   orders, five lots/order and 1,000,000 minor units/order maximum notional.
 - `.venv/bin/python -m pytest -q tests/unit`: **128 passed** (0.68s), including
   all 111 original unit tests and 17 new strategy tests. Next: shared supervisor.
+- Phase 1 isolation commit: `3a23a23b2d381cc5f9d836c75224d33554ed19b1`.
+- Phase 2 commit: `dae7a49d95128017bb473f00771fcc512aba2228`.
+
+## Phase 3 — bounded live supervisor
+
+- Added `backend/simulator/live_supervisor.py` and lifecycle unit tests in
+  `tests/unit/test_live_supervisor.py`. Reuses the supplied coordinator exclusively.
+- Config validates active instruments, eight allowlisted accounts, and 4–8 bots.
+  One task, monotonic pacing, no catch-up bursts, finite duration and order ledger.
+- Stop is shielded from a disconnected caller, waits for in-flight admissions,
+  drains settlement, cancels only exact owned run orders, reconciles PostgreSQL,
+  then reports STOPPED or ERROR. ERROR requires operator reconciliation/restart.
+- Status counts exact execution rows involving run order IDs, never sequence gaps.
+- Unit regressions: **142 passed**. Existing native order pipeline and concurrency
+  regressions: **44 passed**, one existing warning (28.84s).
+- Next: administrative API and lifecycle wiring, without changing old contracts.
