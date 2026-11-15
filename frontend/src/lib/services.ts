@@ -77,7 +77,8 @@ export function createMockServices(
   };
   const page = <T extends { id: C.Int }>(items: T[], q: PageQuery = {}) => {
     const limit = q.limit ?? 5;
-    if (limit < 1 || limit > 100) throw new Error('Invalid limit');
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Invalid limit');
+    if (q.before_id !== undefined) integer(q.before_id);
     const filtered = items
       .filter((x) => BigInt(x.id) < BigInt(q.before_id ?? String(MAX_INT)))
       .sort((a, b) => (BigInt(a.id) > BigInt(b.id) ? -1 : 1));
@@ -230,6 +231,10 @@ export function createMockServices(
     regimes: {
       similar: async (q) => {
         await guard('COMPLIANCE_ADMIN');
+        if (!activeCatalog().some((i) => i.id === q.instrument_id))
+          throw new Error('INSTRUMENT_NOT_FOUND');
+        if (!Number.isInteger(q.k) || q.k < 1 || q.k > 100)
+          throw new Error('Result limit must be 1–100.');
         if (empty()) {
           if (q.current) throw new Error('NO_MARKET_OBSERVATIONS');
           return { matches: [] };

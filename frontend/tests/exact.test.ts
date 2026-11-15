@@ -20,7 +20,10 @@ test('outgoing request preserves numeric tokens and exact multiplication', () =>
   };
   assert.match(serializeOrder(o), /"quantity":9007199254740993/);
   assert.equal(validateOrder(o, catalog.items[0]), 9007199254740993n);
-  assert.throws(() => validateOrder({ ...o, quantity: '11' }, catalog.items[1]));
+  assert.throws(
+    () => validateOrder({ ...o, instrument_id: 2, quantity: '11' }, catalog.items[1]),
+    /multiple of 10/,
+  );
   assert.throws(() => validateOrder({ ...o, price_ticks: '9007199254740992' }, catalog.items[0]));
 });
 

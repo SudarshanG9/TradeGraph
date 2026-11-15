@@ -111,3 +111,47 @@ test('optimizer keeps all nested conditions aligned with submitted bounds', asyn
     recent.plans.forced_sequential['Execution Time'],
   );
 });
+
+test('administrative search validates vectors, missing observations and bounded queries', async () => {
+  const s = setup();
+  s.setRole('COMPLIANCE_ADMIN');
+  await assert.rejects(
+    s.api.regimes.similar({ instrument_id: 1, k: 10, features: [0, 0, 0, 0, 0, 0] }),
+    /nonzero/,
+  );
+  await assert.rejects(s.api.regimes.similar({ instrument_id: 1, k: 0, current: true }), /limit/);
+  s.fixture('empty');
+  await assert.rejects(
+    s.api.regimes.similar({ instrument_id: 1, k: 10, current: true }),
+    /NO_MARKET_OBSERVATIONS/,
+  );
+  assert.deepEqual(
+    await s.api.regimes.similar({ instrument_id: 1, k: 10, features: [1, 0, 0, 0, 0, 0] }),
+    { matches: [] },
+  );
+  await assert.rejects(s.api.disclosures.search(''), /query/);
+});
+test('mock order outcomes distinguish accepted, partial, filled, rejected and unknown', async () => {
+  const s = setup();
+  const order = {
+    instrument_id: 1,
+    side: 'BUY' as const,
+    price_ticks: '100' as const,
+    quantity: '10' as const,
+  };
+  for (const [outcome, status] of [
+    ['accepted', 'OPEN'],
+    ['partial', 'PARTIAL'],
+    ['filled', 'FILLED'],
+  ] as const) {
+    s.outcome(outcome);
+    const result = await s.api.orders.submit(order);
+    assert.equal(result.status, 'OPEN');
+    const row = (await s.api.orders.list()).items.find((o) => o.id === result.order_id)!;
+    assert.equal(row.status, status);
+  }
+  s.outcome('rejected');
+  await assert.rejects(s.api.orders.submit(order), /rejected/);
+  s.outcome('unknown');
+  await assert.rejects(s.api.orders.submit(order), /Unknown mock outcome/);
+});
