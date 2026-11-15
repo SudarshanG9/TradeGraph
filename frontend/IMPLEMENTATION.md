@@ -62,3 +62,6 @@ CycleCandidates and CycleGraph committed independently, with bounded result sele
 
 ## Phase 9 — Market Regimes
 RegimeSearch and RegimeResults committed; exactly six finite/nonzero custom features, exclusive query modes and bounded k. Browser verified explicit current-feature search returns sorted snapshots and all six values. Typecheck passes. evidence/09-regimes.jpg compared with PDF 8. No query runs on entry; an initial prompt replaces prepopulated results to avoid implying automatic current capture. Current feature values are explicitly demo fixtures rather than invented response fields. No backend integration.
+
+## Phase 10 — Disclosure Search
+DisclosureSearch and DisclosureResults committed independently. Bounded on-demand query, loading/validation/no-result/service errors, rank bars, IDs, nullable instrument and publication dates implemented. Browser verified the default query and metadata rows. Typecheck passes; evidence/10-disclosures.jpg compared with PDF 9. Full text body viewing is deliberately absent; local title matching is labeled as demo behavior. No backend integration.
