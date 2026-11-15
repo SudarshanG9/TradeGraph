@@ -47,3 +47,6 @@ OrderBook, PriceChart, MarketMetrics and OrderForm committed individually and as
 
 ## Phase 4 — My Orders
 OrderHistory/OrderDetails and CancelDialog completed with local status filtering, selection, exact original/filled/unfilled quantities, terminal rules, archived indicators and cursor stack. Browser verified confirmation and CANCELLED result, including the explanation that its residual is no longer resting/reserved; Next advances to a smaller-ID cursor. Typecheck passes; cancellation/cursor behavior covered by passing service tests. evidence/04-orders.jpg compares to PDF 4. Filters apply to loaded cursor pages and are labeled accordingly in empty feedback. No backend integration.
+
+## Phase 5 — Market Analytics
+VwapPanel and PriceBandPanel committed; reused InstrumentSelector, ExecutionsTable and cursor controls. Exact inclusive price-band calculation verified in browser (95–105: 140 fixture units) and service tests; result bounds remain tied to submitted inputs. Typecheck passes. evidence/05-analytics.jpg compared with PDF 5. Uses the actual 100-fill window and only selected-instrument executions; on-demand mock calculation only. No backend integration.
