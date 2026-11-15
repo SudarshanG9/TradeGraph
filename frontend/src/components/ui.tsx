@@ -1,18 +1,285 @@
 'use client';
 import { useEffect, useRef, type ReactNode, type ButtonHTMLAttributes } from 'react';
 import { AlertTriangle, Info, RefreshCw, X } from 'lucide-react';
-export function Button({children,className='',variant='default',...props}:ButtonHTMLAttributes<HTMLButtonElement>&{variant?:'default'|'primary'|'buy'|'sell'}){return <button className={`button ${variant} ${className}`} {...props}>{children}</button>;}
-export function Card({title,action,children,className=''}:{title?:ReactNode;action?:ReactNode;children:ReactNode;className?:string}){return <section className={`card ${className}`}>{title&&<div className="card-heading"><h2>{title}</h2>{action}</div>}{children}</section>;}
-export function Heading({title,description,children}:{title:string;description:string;children?:ReactNode}){return <div className="page-heading"><div><h1>{title}</h1><p>{description}</p></div><div className="toolbar">{children}</div></div>;}
-export function Badge({children,tone='muted'}:{children:ReactNode;tone?:string}){return <span className={`badge ${tone}`}>{children}</span>;}
-export function OrderStatus({status}:{status:string}){return <Badge tone={status==='PARTIAL'?'amber':status==='FILLED'||status==='BUY'?'green':status==='SELL'||status==='ERROR'?'red':status==='OPEN'||status==='RUNNING'?'blue':'muted'}>{status}</Badge>;}
-export function Notice({children,tone='info'}:{children:ReactNode;tone?:'info'|'warning'|'error'|'success'}){const Icon=tone==='warning'||tone==='error'?AlertTriangle:Info;return <div className={`notice ${tone}`} role={tone==='error'?'alert':'status'}><Icon size={16}/><div>{children}</div></div>;}
-export function Table({headers,children,label}:{headers:string[];children:ReactNode;label:string}){return <div className="table-scroll"><table aria-label={label}><thead><tr>{headers.map((h,i)=><th key={`${h}-${i}`} scope="col">{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div>;}
-export function Empty({message='No records to display.'}:{message?:string}){return <div className="empty" role="status">{message}</div>;}
-export function Skeleton(){return <div className="skeleton" role="status" aria-label="Loading demo data"><span/><span/><span/></div>;}
-export function DataState({loading,error,children,retry}:{loading:boolean;error:string;children:ReactNode;retry?:()=>void}){return <div aria-busy={loading}>{loading&&<Skeleton/>}{error?<Notice tone="error">{error} {retry&&<button className="link" onClick={retry}>Retry</button>}</Notice>:children}</div>;}
-export function Refresh({onClick,loading}:{onClick:()=>void;loading?:boolean}){return <Button onClick={onClick} disabled={loading}><RefreshCw size={14} className={loading?'spin':''}/>{loading?'Refreshing…':'Refresh'}</Button>;}
-export function Pagination({canPrevious,canNext,previous,next,loading}:{canPrevious:boolean;canNext:boolean;previous:()=>void;next:()=>void;loading?:boolean}){return <div className="pagination"><span>Cursor-based history</span><div className="toolbar"><Button disabled={!canPrevious||loading} onClick={previous}>Prev</Button><Button disabled={!canNext||loading} onClick={next}>Next</Button></div></div>;}
-export function Segmented<T extends string>({value,onChange,options,label}:{value:T;onChange:(v:T)=>void;options:{value:T;label:string}[];label:string}){return <div className="segmented" role="group" aria-label={label}>{options.map(o=><button type="button" key={o.value} aria-pressed={value===o.value} className={value===o.value?'active':''} onClick={()=>onChange(o.value)}>{o.label}</button>)}</div>;}
-export function Modal({title,children,onClose}:{title:string;children:ReactNode;onClose:()=>void}){const ref=useRef<HTMLDialogElement>(null);useEffect(()=>{const d=ref.current;d?.showModal();return()=>d?.close();},[]);return <dialog ref={ref} className="modal" aria-labelledby="dialog-title" onCancel={onClose} onClick={e=>{if(e.target===e.currentTarget)onClose();}}><div className="card-heading"><h2 id="dialog-title">{title}</h2><button aria-label="Close dialog" onClick={onClose}><X size={18}/></button></div>{children}</dialog>;}
-export function Metric({label,value,detail,positive}:{label:string;value:string;detail:string;positive?:boolean}){return <Card className="metric"><p className="eyebrow">{label}</p><strong className={`mono ${positive===true?'positive':positive===false?'negative':''}`}>{value}</strong><p className="caption">{detail}</p></Card>;}
+export function Button({
+  children,
+  className = '',
+  variant = 'default',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'default' | 'primary' | 'buy' | 'sell' }) {
+  return (
+    <button className={`button ${variant} ${className}`} {...props}>
+      {children}
+    </button>
+  );
+}
+export function Card({
+  title,
+  action,
+  children,
+  className = '',
+}: {
+  title?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`card ${className}`}>
+      {title && (
+        <div className="card-heading">
+          <h2>{title}</h2>
+          {action}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+export function Heading({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="page-heading">
+      <div>
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
+      <div className="toolbar">{children}</div>
+    </div>
+  );
+}
+export function Badge({ children, tone = 'muted' }: { children: ReactNode; tone?: string }) {
+  return <span className={`badge ${tone}`}>{children}</span>;
+}
+export function OrderStatus({ status }: { status: string }) {
+  return (
+    <Badge
+      tone={
+        status === 'PARTIAL'
+          ? 'amber'
+          : status === 'FILLED' || status === 'BUY'
+            ? 'green'
+            : status === 'SELL' || status === 'ERROR'
+              ? 'red'
+              : status === 'OPEN' || status === 'RUNNING'
+                ? 'blue'
+                : 'muted'
+      }
+    >
+      {status}
+    </Badge>
+  );
+}
+export function Notice({
+  children,
+  tone = 'info',
+}: {
+  children: ReactNode;
+  tone?: 'info' | 'warning' | 'error' | 'success';
+}) {
+  const Icon = tone === 'warning' || tone === 'error' ? AlertTriangle : Info;
+  return (
+    <div className={`notice ${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
+      <Icon size={16} />
+      <div>{children}</div>
+    </div>
+  );
+}
+export function Table({
+  headers,
+  children,
+  label,
+}: {
+  headers: string[];
+  children: ReactNode;
+  label: string;
+}) {
+  return (
+    <div className="table-scroll">
+      <table aria-label={label}>
+        <thead>
+          <tr>
+            {headers.map((h, i) => (
+              <th key={`${h}-${i}`} scope="col">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
+export function Empty({ message = 'No records to display.' }: { message?: string }) {
+  return (
+    <div className="empty" role="status">
+      {message}
+    </div>
+  );
+}
+export function Skeleton() {
+  return (
+    <div className="skeleton" role="status" aria-label="Loading demo data">
+      <span />
+      <span />
+      <span />
+    </div>
+  );
+}
+export function DataState({
+  loading,
+  error,
+  children,
+  retry,
+}: {
+  loading: boolean;
+  error: string;
+  children: ReactNode;
+  retry?: () => void;
+}) {
+  return (
+    <div aria-busy={loading}>
+      {loading && <Skeleton />}
+      {error ? (
+        <Notice tone="error">
+          {error}{' '}
+          {retry && (
+            <button className="link" onClick={retry}>
+              Retry
+            </button>
+          )}
+        </Notice>
+      ) : (
+        children
+      )}
+    </div>
+  );
+}
+export function Refresh({ onClick, loading }: { onClick: () => void; loading?: boolean }) {
+  return (
+    <Button onClick={onClick} disabled={loading}>
+      <RefreshCw size={14} className={loading ? 'spin' : ''} />
+      {loading ? 'Refreshing…' : 'Refresh'}
+    </Button>
+  );
+}
+export function Pagination({
+  canPrevious,
+  canNext,
+  previous,
+  next,
+  loading,
+}: {
+  canPrevious: boolean;
+  canNext: boolean;
+  previous: () => void;
+  next: () => void;
+  loading?: boolean;
+}) {
+  return (
+    <div className="pagination">
+      <span>Cursor-based history</span>
+      <div className="toolbar">
+        <Button disabled={!canPrevious || loading} onClick={previous}>
+          Prev
+        </Button>
+        <Button disabled={!canNext || loading} onClick={next}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+export function Segmented<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+  label: string;
+}) {
+  return (
+    <div className="segmented" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          type="button"
+          key={o.value}
+          aria-pressed={value === o.value}
+          className={value === o.value ? 'active' : ''}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+export function Modal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    d?.showModal();
+    return () => d?.close();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className="modal"
+      aria-labelledby="dialog-title"
+      onCancel={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="card-heading">
+        <h2 id="dialog-title">{title}</h2>
+        <button aria-label="Close dialog" onClick={onClose}>
+          <X size={18} />
+        </button>
+      </div>
+      {children}
+    </dialog>
+  );
+}
+export function Metric({
+  label,
+  value,
+  detail,
+  positive,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  positive?: boolean;
+}) {
+  return (
+    <Card className="metric">
+      <p className="eyebrow">{label}</p>
+      <strong
+        className={`mono ${positive === true ? 'positive' : positive === false ? 'negative' : ''}`}
+      >
+        {value}
+      </strong>
+      <p className="caption">{detail}</p>
+    </Card>
+  );
+}

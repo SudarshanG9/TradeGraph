@@ -1,7 +1,56 @@
 'use client';
-import {useState} from 'react';
-import {usePreview,useResource} from '@/components/preview-provider';
-import {DataState,Heading,Notice,Refresh} from '@/components/ui';
-import {CycleCandidates} from '@/components/admin/cycle-candidates';
-import {CycleGraph} from '@/components/admin/cycle-graph';
-export default function Surveillance(){const {api}=usePreview();const [limit,setLimit]=useState(10),[selected,setSelected]=useState(0);const r=useResource(()=>api.surveillance.cycles(limit),[limit]);return <><Heading title="Market Surveillance" description="Cyclic counterparty relationships of length 3–5, detected with a directed Cypher path query."><label className="field"><span className="sr-only">Maximum candidates</span><select aria-label="Maximum candidates" value={limit} onChange={e=>{setLimit(Number(e.target.value));setSelected(0);}}>{[1,10,25,50,100].map(n=><option key={n} value={n}>Show: {n} candidates</option>)}</select></label><Refresh loading={r.loading} onClick={r.reload}/></Heading><div className="stack"><Notice tone="warning">A detected cycle is an investigation candidate and is not proof of market manipulation.</Notice><DataState {...r} retry={r.reload}>{r.data&&<div className="grid-2 surveillance-panels"><CycleCandidates candidates={r.data.candidates} selected={selected} onSelect={setSelected}/><CycleGraph cycle={r.data.candidates[selected]??null} index={selected}/></div>}</DataState></div></>;}
+import { useState } from 'react';
+import { usePreview, useResource } from '@/components/preview-provider';
+import { DataState, Heading, Notice, Refresh } from '@/components/ui';
+import { CycleCandidates } from '@/components/admin/cycle-candidates';
+import { CycleGraph } from '@/components/admin/cycle-graph';
+export default function Surveillance() {
+  const { api } = usePreview();
+  const [limit, setLimit] = useState(10),
+    [selected, setSelected] = useState(0);
+  const r = useResource(() => api.surveillance.cycles(limit), [limit]);
+  return (
+    <>
+      <Heading
+        title="Market Surveillance"
+        description="Cyclic counterparty relationships of length 3–5, detected with a directed Cypher path query."
+      >
+        <label className="field">
+          <span className="sr-only">Maximum candidates</span>
+          <select
+            aria-label="Maximum candidates"
+            value={limit}
+            onChange={(e) => {
+              setLimit(Number(e.target.value));
+              setSelected(0);
+            }}
+          >
+            {[1, 10, 25, 50, 100].map((n) => (
+              <option key={n} value={n}>
+                Show: {n} candidates
+              </option>
+            ))}
+          </select>
+        </label>
+        <Refresh loading={r.loading} onClick={r.reload} />
+      </Heading>
+      <div className="stack">
+        <Notice tone="warning">
+          A detected cycle is an investigation candidate and is not proof of market manipulation.
+        </Notice>
+        <DataState {...r} retry={r.reload}>
+          {r.data && (
+            <div className="grid-2 surveillance-panels">
+              <CycleCandidates
+                candidates={r.data.candidates}
+                selected={selected}
+                onSelect={setSelected}
+              />
+              <CycleGraph cycle={r.data.candidates[selected] ?? null} index={selected} />
+            </div>
+          )}
+        </DataState>
+      </div>
+    </>
+  );
+}

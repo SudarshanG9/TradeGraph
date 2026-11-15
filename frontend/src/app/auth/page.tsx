@@ -1,2 +1,2 @@
-import {AuthPage} from '@/components/auth/auth-page';
+import { AuthPage } from '@/components/auth/auth-page';
 export default AuthPage;

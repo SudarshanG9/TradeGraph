@@ -6,7 +6,7 @@ export const MAX_PRICE = 9007199254740991n;
 /** All integer tokens become bigint; fractional JSON numbers remain LosslessNumber.
  * A future adapter must explicitly normalize each response, never cast this to a model. */
 export function parseWire(text: string): unknown {
-  return parse(text, undefined, value => /^-?\d+$/.test(value) ? BigInt(value) : parse(value));
+  return parse(text, undefined, (value) => (/^-?\d+$/.test(value) ? BigInt(value) : parse(value)));
 }
 export function normalizeInteger(value: unknown): Int {
   if (typeof value === 'bigint') return value.toString() as Int;
@@ -26,30 +26,58 @@ export function integer(text: string, min = 1n, max = MAX_INT): bigint {
   return n;
 }
 export function validateOrder(order: NewOrder, instrument: InstrumentInfo): bigint {
-  if (!instrument.is_active || order.instrument_id !== instrument.id) throw new Error('Select an active instrument.');
-  const p = integer(order.price_ticks, 1n, MAX_PRICE), q = integer(order.quantity);
-  if (q % BigInt(instrument.lot_size)) throw new Error(`Quantity must be a multiple of ${instrument.lot_size}.`);
+  if (!instrument.is_active || order.instrument_id !== instrument.id)
+    throw new Error('Select an active instrument.');
+  const p = integer(order.price_ticks, 1n, MAX_PRICE),
+    q = integer(order.quantity);
+  if (q % BigInt(instrument.lot_size))
+    throw new Error(`Quantity must be a multiple of ${instrument.lot_size}.`);
   const total = p * q * BigInt(instrument.tick_size);
   if (total > MAX_INT) throw new Error('Estimated notional exceeds the supported BIGINT range.');
   return total;
 }
 /** Serialize exact outgoing values as numeric JSON tokens, not quoted numbers. */
 export function serializeOrder(order: NewOrder): string {
-  return stringify({ ...order, price_ticks: BigInt(order.price_ticks), quantity: BigInt(order.quantity) })!;
+  return stringify({
+    ...order,
+    price_ticks: BigInt(order.price_ticks),
+    quantity: BigInt(order.quantity),
+  })!;
 }
-export function fmt(value: string|bigint, signed = false): string {
-  const n = BigInt(value), text = (n < 0n ? -n : n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+export function fmt(value: string | bigint, signed = false): string {
+  const n = BigInt(value),
+    text = (n < 0n ? -n : n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `${n < 0n ? '−' : signed && n > 0n ? '+' : ''}${text}`;
 }
-export function decimal(value: string|null): string { return value === null ? '—' : value; }
-export function time(value: string|null, full = false): string {
+export function decimal(value: string | null): string {
+  return value === null ? '—' : value;
+}
+export function time(value: string | null, full = false): string {
   if (!value) return 'No observation';
   const date = new Date(value);
-  return new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', ...(full ? {month:'short',day:'2-digit'} as const : {}), hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(date);
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    ...(full ? ({ month: 'short', day: '2-digit' } as const) : {}),
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date);
 }
-export const date = (value: string) => new Intl.DateTimeFormat('en-GB', { timeZone:'UTC',day:'2-digit',month:'short',year:'numeric' }).format(new Date(value));
-export const homeFor = (role: import('./contracts').AccountRole) => role === 'TRADER' ? '/trader/dashboard' : '/admin/overview';
-export function assertRole(session: import('./contracts').PreviewSession|null, role: import('./contracts').AccountRole): void {
-  if (!session || session.kind !== 'mock-preview' || session.expiresAt <= Date.now()) throw new Error('SESSION_EXPIRED');
+export const date = (value: string) =>
+  new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value));
+export const homeFor = (role: import('./contracts').AccountRole) =>
+  role === 'TRADER' ? '/trader/dashboard' : '/admin/overview';
+export function assertRole(
+  session: import('./contracts').PreviewSession | null,
+  role: import('./contracts').AccountRole,
+): void {
+  if (!session || session.kind !== 'mock-preview' || session.expiresAt <= Date.now())
+    throw new Error('SESSION_EXPIRED');
   if (session.role !== role) throw new Error('ROLE_MISMATCH');
 }
