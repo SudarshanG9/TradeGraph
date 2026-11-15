@@ -10,7 +10,7 @@ from typing import Literal
 from backend.config import Settings
 from backend.stores.postgres import Database
 from backend.risk.order_reservation import Coordinator
-from backend.api.routes import auth, orders, admin, market, simulator
+from backend.api.routes import auth, orders, admin, market, simulator, instruments
 from backend.simulator.live_supervisor import LiveMarketSupervisor
 from backend.workers.settlement_worker import SettlementWorker
 from backend.workers.cache_worker import CacheWorker
@@ -83,6 +83,7 @@ def create_app(settings=None, *, settlement=True):
     application.include_router(admin.router)
     application.include_router(market.router)
     application.include_router(simulator.router)
+    application.include_router(instruments.router)
 
     @application.exception_handler(StarletteHTTPException)
     async def http_error(request, exc):
