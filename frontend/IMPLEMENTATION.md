@@ -6,22 +6,22 @@ Baseline: e99bc37, confirmed equal to fetched origin/main. All original frontend
 
 Reference: TradeGraph Frontend Mockups.pdf (11 pages), visually inspected at 1600px. Main canvas #090d12, top bar/cards #101722, border #253040, text #e2e8f0, muted #939fb2, blue #3b82f6, green #22c55e. 60px top bar, 220px sidebar, 32px content inset, 18px gaps, 12px card radius. System sans text and monospace financial values. Mobile behavior is not specified: use a collapsible navigation and stacked cards with horizontal scrolling contained inside tables.
 
-| Phase | Page / PDF                      | Components                                                                 | Backend contracts                                    | Gate    |
-| ----- | ------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------- | ------- |
-| 0     | Foundation                      | contracts, fixtures, service interfaces, shell, UI primitives              | all implemented route models                         | passed  |
-| 1     | Authentication / 1              | container, mode selector, role selector, sign-in, sign-up, preview         | Login, LoginResponse                                 | passed  |
-| 2     | Dashboard / 2                   | header, balances, positions, orders, executions, actions                   | Account, OwnOrders, Trades                           | pending |
-| 3     | Terminal / 3                    | instrument, depth, line chart, analytics, executions, order form, feedback | InstrumentCatalog, Book, Trades, Analytics, NewOrder | pending |
-| 4     | My Orders / 4                   | status filters, history, details, cancel dialog, cursor controls           | OwnOrders, CancelledOrder                            | pending |
-| 5     | Market Analytics / 5            | instrument, VWAP, price band, execution history, cursor controls           | Analytics, Trades                                    | pending |
-| 6     | Account / no separate reference | reuse balances and positions from PDF 2                                    | Account                                              | pending |
-| 7     | Admin Overview / 6              | health cards, investigation links, embedded simulator                      | HealthResponse, SimulationStart/Status               | pending |
-| 8     | Surveillance / 7                | limit, candidate table, directed cycle                                     | Cycles                                               | pending |
-| 9     | Regimes / 8                     | mode, six features, on-demand results                                      | Similar                                              | pending |
-| 10    | Disclosures / 9                 | query, metadata results                                                    | Search                                               | pending |
-| 11    | Optimizer / 10                  | allowlisted scenarios, parameters, paired plan trees                       | Optimizer                                            | pending |
-| 12    | Desks / 11                      | aggregate table, recursive explanation                                     | Rollup                                               | pending |
-| 13    | Navigation                      | role guards, logout, aliases, end-to-end checks, handoff                   | future BFF only                                      | pending |
+| Phase | Page / PDF                      | Components                                                                 | Backend contracts                                    | Gate   |
+| ----- | ------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------- | ------ |
+| 0     | Foundation                      | contracts, fixtures, service interfaces, shell, UI primitives              | all implemented route models                         | passed |
+| 1     | Authentication / 1              | container, mode selector, role selector, sign-in, sign-up, preview         | Login, LoginResponse                                 | passed |
+| 2     | Dashboard / 2                   | header, balances, positions, orders, executions, actions                   | Account, OwnOrders, Trades                           | passed |
+| 3     | Terminal / 3                    | instrument, depth, line chart, analytics, executions, order form, feedback | InstrumentCatalog, Book, Trades, Analytics, NewOrder | passed |
+| 4     | My Orders / 4                   | status filters, history, details, cancel dialog, cursor controls           | OwnOrders, CancelledOrder                            | passed |
+| 5     | Market Analytics / 5            | instrument, VWAP, price band, execution history, cursor controls           | Analytics, Trades                                    | passed |
+| 6     | Account / no separate reference | reuse balances and positions from PDF 2                                    | Account                                              | passed |
+| 7     | Admin Overview / 6              | health cards, investigation links, embedded simulator                      | HealthResponse, SimulationStart/Status               | passed |
+| 8     | Surveillance / 7                | limit, candidate table, directed cycle                                     | Cycles                                               | passed |
+| 9     | Regimes / 8                     | mode, six features, on-demand results                                      | Similar                                              | passed |
+| 10    | Disclosures / 9                 | query, metadata results                                                    | Search                                               | passed |
+| 11    | Optimizer / 10                  | allowlisted scenarios, parameters, paired plan trees                       | Optimizer                                            | passed |
+| 12    | Desks / 11                      | aggregate table, recursive explanation                                     | Rollup                                               | passed |
+| 13    | Navigation                      | role guards, logout, aliases, end-to-end checks, handoff                   | future BFF only                                      | passed |
 
 ## Resolved design/contract differences
 
@@ -83,3 +83,15 @@ OptimizerControls and recursive PlanPanel/PlanTree committed. Explicit compare, 
 ## Phase 12 — Desk Analytics
 
 DeskRollup and DeskExplanation committed independently. Exact signed PnL and execution volume, local sorting, refresh and shared data states completed. Browser visual check and typecheck pass; evidence/12-desks.jpg compared with PDF 11. Removed unsupported desk names/hierarchy while preserving the table and explanation-card arrangement. No extra totals over overlapping ancestor/child rows. No backend integration.
+
+## Phase 13 — Navigation, regression and integration boundary
+
+All twelve pages and legacy aliases are connected. The centralized catalog service now supplies instrument selection/symbol resolution and supports an empty active catalog without fallback data. The mock provider preserves selected instruments/local order state across client navigation, isolates role access, handles direct routes/expiry and clears the session on logout. Shared loading/error/empty states, mobile navigation, native dialog Escape and focusable table regions were verified in the browser. Request sequence guards discard stale administrative query results.
+
+Final checks: `npm run format:check` passed; `npm run typecheck` passed; `npm test` **16 passed, 0 failed**; `npm run build` passed with every intended page and legacy alias. `npm start` served the production build; root/login/trade/surveillance/optimizer aliases, signed-out routing, dialog Escape and final terminal rendering were smoke-tested. Production browser error log: empty. The owned preview servers were stopped afterward.
+
+All eleven authenticated pages at 375×812 reported document width/scroll width of 375. Secondary text contrast and blue action contrast were improved slightly from the reference; mobile drawer stacking was corrected after the footer obstructed logout. Remaining visible deviations are the contract differences recorded above. The standalone Account screen reuses Dashboard components because no separate reference exists. Screenshots evidence/01 through evidence/15 cover desktop, mobile and large-value scenarios; 03-terminal.jpg is the final production rendering.
+
+The development build cache encountered disk pressure during extensive hot reloads; only the generated `.next/dev/cache` was removed. The final production build and smoke tests succeeded afterward. No user files outside the task were deleted.
+
+Deliverables: README.md for run instructions, VERIFICATION.md for executed checks and reference mapping, INTEGRATION.md for service/endpoint mappings and the still-unimplemented server-side BFF/session/lossless normalization work. No live backend call, bot process, database operation, registration or financial transaction occurred. Git diff confirms backend/, db/, repository tests/, docs/, scripts/ and root README.md unchanged from e99bc37. All commits are local on codex/frontend-mockups; nothing pushed.
