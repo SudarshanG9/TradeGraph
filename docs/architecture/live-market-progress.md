@@ -40,3 +40,14 @@
   Explicit dry-run and two CLI apply invocations validate all eight persistent
   accounts; both applies preserve them. Follow-up verification recorded below.
 - Isolation follow-up: same native selection **32 passed**, one warning (9.42s).
+
+## Phase 2 — pure reference model and strategies
+
+- Added `backend/simulator/market_model.py`, `backend/simulator/agents.py`, and
+  `tests/unit/test_live_agents.py`. No existing runtime files modified.
+- Immutable observations/actions/account/order snapshots; local seeded randomness;
+  passive maintained maker quotes, variable noise, momentum, mean reversion.
+- Cash plus actual fee budgeting, pending-order inventory bounds, four outstanding
+  orders, five lots/order and 1,000,000 minor units/order maximum notional.
+- `.venv/bin/python -m pytest -q tests/unit`: **128 passed** (0.68s), including
+  all 111 original unit tests and 17 new strategy tests. Next: shared supervisor.
