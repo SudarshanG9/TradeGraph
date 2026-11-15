@@ -4,6 +4,12 @@ from scripts.seed_live_bots import load_bot_specs, inspect_existing_bots, provis
 from scripts.verify_schema import EXPECTED_TABLES
 
 
+@pytest.fixture(autouse=True)
+def provisioning_transaction(db_conn):
+    # Ensure provision_missing_bots() uses a savepoint, never a top-level COMMIT.
+    db_conn.execute('SELECT 1')
+
+
 def test_allowlist_and_dry_inspection(db_conn):
     specs = load_bot_specs()
     assert len(specs) == len({s.email for s in specs}) == 8

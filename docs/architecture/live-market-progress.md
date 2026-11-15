@@ -32,3 +32,11 @@
 - Tests and commit: recorded after execution below.
 - Phase 1 verification: provisioning + existing database-integrity/RBAC tests:
   **32 passed**, one existing warning (13.17s). No original source modified.
+- Phase 1 commit: `fb55e1b837f780127b7d75ace119391f9f44f006`.
+- Post-commit audit caught that a provisioning test entered conn.transaction()
+  before the rollback fixture had begun a transaction. That created the approved
+  bot accounts persistently. All conflict mutations were rolled back; no ordinary
+  data changed. Added an explicit outer transaction to make every test isolated.
+  Explicit dry-run and two CLI apply invocations validate all eight persistent
+  accounts; both applies preserve them. Follow-up verification recorded below.
+- Isolation follow-up: same native selection **32 passed**, one warning (9.42s).
