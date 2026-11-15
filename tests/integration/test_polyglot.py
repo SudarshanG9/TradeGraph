@@ -118,3 +118,52 @@ def test_derived_backlog_overflow_fails_closed():
     with pytest.raises(RuntimeError): worker.publish({'version':2})
     assert dispatcher.failure
     assert worker.queue.qsize()==1
+
+
+def test_neo4j_committed_ring_merge_replay_rebuild_and_retention(accounts):
+    from datetime import datetime,timedelta,timezone
+    from backend.stores.neo4j_graph import Neo4jGraph
+    from backend.stores.postgres import Database
+    from tests.concurrency.test_settlement_locks import reserve,make_event
+    users,instrument=accounts
+    db=Database(Settings.from_env())
+    graph=Neo4jGraph(Settings.from_env(),db)
+    ids=[u['trader_id'] for u in users[:3]]
+    try:
+        graph.initialize()
+        events=[]
+        for buyer,seller in ((users[0],users[1]),(users[1],users[2]),(users[2],users[0]),(users[0],users[1])):
+            buy=reserve(buyer,instrument,'BUY',100,1); sell=reserve(seller,instrument,'SELL',100,1)
+            event=make_event(buy,sell,buyer,seller,instrument,100,1)
+            assert graph.pair(buyer['trader_id'],seller['trader_id'])==(None if not events or (buyer,seller)!=(users[0],users[1]) else {'trade_count':1,'total_notional':100})
+            db.settle(event)
+            graph.apply(event)
+            graph.apply(event)
+            events.append(event)
+        pair=graph.apply(events[0])
+        assert pair=={'trade_count':2,'total_notional':200}
+        for _ in range(2): assert graph.rebuild(ids)==3
+        assert graph.apply(events[0])==pair
+        candidates=graph.cycles(trader_ids=ids)
+        assert any(set(c['trader_ids'])==set(map(str,ids)) for c in candidates)
+        graph.run('MATCH (a:Trader {id:$a})-[r:EXECUTED_AGAINST]->(b:Trader {id:$b}) SET r.last_traded_at=datetime($old)',{'a':str(ids[0]),'b':str(ids[1]),'old':datetime.now(timezone.utc)-timedelta(days=100)})
+        assert graph.retention(trader_ids=ids)==1
+        assert graph.cycles(trader_ids=ids)==[]
+        assert graph.rebuild(ids)==3
+        assert graph.cycles(trader_ids=ids)
+    finally:
+        graph.close()
+
+
+def test_api_graph_receives_only_committed_facts_and_role_gates(accounts):
+    users,instrument=accounts
+    with TestClient(create_app()) as client:
+        headers=[login(client,u) for u in users]
+        for buyer,seller in ((0,1),(1,2),(2,0)):
+            assert client.post('/orders',headers=headers[buyer],json=order(instrument)).status_code==201
+            assert client.post('/orders',headers=headers[seller],json=order(instrument,'SELL')).status_code==201
+        assert client.get('/admin/surveillance/cycles',headers=headers[0]).status_code==403
+        result=wait_until(lambda:client.get('/admin/surveillance/cycles',headers=headers[3]).json(),lambda r:any(set(c['trader_ids'])=={str(u['trader_id']) for u in users[:3]} for c in r.get('candidates',[])))
+        assert result['candidates']
+        with db_connect() as conn:
+            assert conn.execute('SELECT count(*) FROM execution WHERE instrument_id=%s',(instrument,)).fetchone()[0]==3

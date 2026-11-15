@@ -14,6 +14,8 @@ from backend.api.routes import auth, orders, admin, market
 from backend.workers.settlement_worker import SettlementWorker
 from backend.workers.cache_worker import CacheWorker
 from backend.stores.redis_depth import RedisDepth
+from backend.stores.neo4j_graph import Neo4jGraph
+from backend.workers.graph_worker import GraphWorker
 
 
 class HealthResponse(BaseModel):
@@ -38,6 +40,12 @@ def create_app(settings=None, *, settlement=True):
                 for row in await asyncio.to_thread(app.state.database.query,'SELECT id FROM instrument'):
                     app.state.service.notify_book(row['id'])
                 app.state.service.worker = SettlementWorker(app.state.database,app.state.service.engine,app.state.service.dispatcher)
+                app.state.graph=Neo4jGraph(app.state.settings,app.state.database)
+                graph=GraphWorker(app.state.graph,app.state.service.dispatcher)
+                app.state.service.derived['neo4j']=graph
+                graph.start()
+                graph.publish(None)
+                app.state.service.worker.after_commit.append(graph.publish)
                 app.state.service.worker.start()
             yield
         finally:
@@ -47,6 +55,8 @@ def create_app(settings=None, *, settlement=True):
                 await consumer.stop()
             if hasattr(app.state,'depth'):
                 app.state.depth.close()
+            if hasattr(app.state,'graph'):
+                app.state.graph.close()
             app.state.service.close()
 
     application = FastAPI(title='TradeGraph', version='1.0', lifespan=lifespan)

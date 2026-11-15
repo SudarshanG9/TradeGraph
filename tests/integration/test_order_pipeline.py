@@ -35,6 +35,11 @@ def accounts(request):
         yield users, instrument
     finally:
         from backend.stores.redis_depth import RedisDepth
+        from backend.stores.neo4j_graph import Neo4jGraph
+        from backend.stores.postgres import Database
+        graph=Neo4jGraph(Settings.from_env(),Database(Settings.from_env()))
+        try: graph.remove_owned_nodes(traders)
+        finally: graph.close()
         depth=RedisDepth(Settings.from_env().redis_url)
         try: depth.client.delete(*depth.keys(instrument_symbol))
         finally: depth.close()

@@ -531,3 +531,58 @@ sub-millisecond guarantee claimed. ER unchanged; frontend untouched. NEXT: Phase
  M tests/integration/test_order_pipeline.py
  M tests/integration/test_polyglot.py
 ```
+
+## Phase 7 — PASS (15 November 2026)
+
+Source Day 5 Neo4j. Phase 6 committed/pushed d50e703. Native adapter/worker now
+projects only committed SQL execution aggregates into Trader nodes and directed
+EXECUTED_AGAINST edges, with the three source properties. No processed-event
+entity or extra store. MERGE increments count for a new canonical execution;
+retries/backlogs/rebuild assign authoritative absolute aggregates without double
+counting. Rebuild executes seed.cypher from SQL facts, removes orphan edges only
+within known PostgreSQL trader scope, and does not touch unrelated graph IDs.
+All graph admin reads are JWT gated; cycle lengths 3–5 are simple-node rings,
+rotation-deduplicated and labelled investigation candidates. Scoped 90-day
+retention and source uniqueness constraint demonstrated on actual native Neo4j.
+
+Initial run exited 139 in Neo4j's temporal encoder while handling a psycopg
+zoneinfo timestamp, leaving two fixture sets. Driver temporal boundary now uses
+UTC ISO strings and Cypher datetime() (storage remains real Neo4j DATETIME),
+avoiding Python timezone codec coupling. See official temporal type compatibility:
+https://neo4j.com/docs/api/python-driver/current/types/temporal.html .
+Inspected crash leftovers read-only: no non-test active orders; all identified test
+orders terminal. Removed only eight explicitly identified synthetic fixture users,
+their both-test-counterparty executions/rows, their two instruments and scoped
+derived keys/nodes. No rematching or automatic user-fund recovery was performed.
+
+Focused actual Neo4j acceptance -> 7 passed in 8.03s. Final regression:
+`PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/unit tests/concurrency tests/integration -q`
+-> 180 passed in 35.70s, one upstream httpx warning. Verified seeded SQL A→B→C→A
+ring, repeat A→B weights 2/200 minor, same-event replay/rebuild stability, deletion
+of one stale edge and canonical rebuild, pre-settlement absence and trader 403.
+Graph integer aggregate overflow is rejected explicitly; no float money conversion.
+13-table ER and frontend unchanged. NEXT: automatic Phase 8 after commit/push.
+
+```text
+ backend/api/main.py                      | 10 ++++
+ backend/api/routes/admin.py              | 12 ++++-
+ backend/stores/neo4j_graph.py            | 88 ++++++++++++++++++++++++++++++++
+ backend/workers/graph_worker.py          | 15 ++++++
+ db/neo4j/constraints.cypher              |  1 +
+ db/neo4j/retention.cypher                |  6 +++
+ db/neo4j/seed.cypher                     |  6 +++
+ db/neo4j/wash_trade_cycles.cypher        |  8 +++
+ tests/integration/test_order_pipeline.py |  5 ++
+ tests/integration/test_polyglot.py       | 49 ++++++++++++++++++
+ 10 files changed, 199 insertions(+), 1 deletion(-)
+ M backend/api/main.py
+ M backend/api/routes/admin.py
+ M backend/stores/neo4j_graph.py
+ M backend/workers/graph_worker.py
+ M db/neo4j/constraints.cypher
+ M db/neo4j/retention.cypher
+ M db/neo4j/seed.cypher
+ M db/neo4j/wash_trade_cycles.cypher
+ M tests/integration/test_order_pipeline.py
+ M tests/integration/test_polyglot.py
+```
