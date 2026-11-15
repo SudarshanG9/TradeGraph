@@ -167,3 +167,91 @@ def test_api_graph_receives_only_committed_facts_and_role_gates(accounts):
         assert result['candidates']
         with db_connect() as conn:
             assert conn.execute('SELECT count(*) FROM execution WHERE instrument_id=%s',(instrument,)).fetchone()[0]==3
+
+
+def test_engineered_features_boundaries_and_no_observation():
+    from backend.stores.regimes import market_features,validate_vector
+    assert market_features([],[],[],[]) is None
+    trade={'price_ticks':105,'quantity':1}
+    assert market_features([(95,3)],[(105,2)],[trade],[trade])==[0.1,0.2,0.0,0.01,0.6,0.0]
+    vector=market_features([(1,2**63)],[(10000,1)],[{'price_ticks':1,'quantity':1},{'price_ticks':10000,'quantity':1}],[trade])
+    assert all(-1<=v<=1 for v in vector)
+    for bad in ([0]*6,[1]*5,[float('nan')]*6,[True]*6):
+        with pytest.raises(ValueError): validate_vector(bad)
+
+
+def test_pgvector_upsert_similarity_retention_fts_and_rls(accounts):
+    from datetime import datetime,timedelta,timezone
+    from backend.stores.postgres import Database
+    from backend.stores.regimes import Regimes
+    from psycopg.errors import InsufficientPrivilege
+    users,instrument=accounts
+    db=Database(Settings.from_env()); store=Regimes(db)
+    now=datetime.now(timezone.utc)
+    # Controlled axis fixtures test cosine behavior, not fabricated market features.
+    first=store.upsert(instrument,now,[1,0,0,0,0,0])
+    assert store.upsert(instrument,now,[1,0,0,0,0,0])==first
+    other=store.upsert(instrument,now-timedelta(seconds=1),[0,1,0,0,0,0])
+    store.upsert(instrument,now-timedelta(days=100),[0,0,1,0,0,0])
+    rows=store.similar([1,0,0,0,0,0],instrument)
+    assert rows[0]['id']==first and rows[0]['cosine_distance']==pytest.approx(0,abs=1e-6)
+    assert len(rows)==3
+    assert store.prune(now-timedelta(days=90),instrument)==1
+    token='merger'+uuid4().hex
+    disclosure=store.disclosure(instrument,'Synthetic '+token,'Fictional merger and earnings observation')
+    assert store.search(token)[0]['id']==disclosure
+    assert store.search("' OR 1=1 --") == []
+    with db.connect() as conn:
+        conn.execute('SET LOCAL ROLE trader_role');conn.execute("SET LOCAL app.role='COMPLIANCE_ADMIN'")
+        with pytest.raises(InsufficientPrivilege): conn.execute('SELECT * FROM regime_snapshot')
+    with db.connect() as conn:
+        conn.execute('SET LOCAL ROLE compliance_admin_role');conn.execute("SET LOCAL app.role='TRADER'")
+        assert conn.execute('SELECT id FROM regime_snapshot WHERE instrument_id=%s',(instrument,)).fetchall()==[]
+        assert conn.execute('SELECT id FROM market_disclosure WHERE instrument_id=%s',(instrument,)).fetchall()==[]
+    with db.admin_context() as conn:
+        index=conn.execute("SELECT indexdef FROM pg_indexes WHERE indexname='idx_regime_hnsw'").fetchone()['indexdef']
+        assert 'hnsw' in index and 'vector_cosine_ops' in index
+        plan=conn.execute('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) SELECT id FROM regime_snapshot ORDER BY features <=> %s::vector LIMIT 2',('[1,0,0,0,0,0]',)).fetchone()['QUERY PLAN'][0]
+        assert 'Actual Rows' in plan['Plan']  # seq scan on tiny data is legitimate
+
+
+def test_api_actual_regime_generation_and_admin_fts_access(accounts):
+    users,instrument=accounts
+    with TestClient(create_app()) as client:
+        a,b,_,admin_headers=[login(client,u) for u in users]
+        # Resting bid 95x3, ask 105x3, then one settled fill leaves ask 105x2.
+        assert client.post('/orders',headers=a,json=order(instrument,'BUY',95,3)).status_code==201
+        ask=client.post('/orders',headers=b,json=order(instrument,'SELL',105,3)).json()['order_id']
+        buy=client.post('/orders',headers=a,json=order(instrument,'BUY',110,1)).json()['order_id']
+        assert client.post(f'/orders/{ask}/cancel',headers=b).status_code==200
+        from backend.stores.regimes import Regimes
+        rows=wait_until(lambda:client.app.state.database.named('similar',{'features':'[0,1,0,0.01,1,0]','instrument_id':instrument,'limit':10}),lambda rows:bool(rows))
+        assert rows[0]['instrument_id']==instrument
+        url=f'/admin/regimes/similar?instrument_id={instrument}&current=true'
+        assert client.get(url,headers=a).status_code==403
+        result=client.get(url,headers=admin_headers)
+        assert result.status_code==200,result.text
+        features=result.json()['matches'][0]['features']
+        assert len(features)==6 and features[3]==pytest.approx(.01)
+        assert client.get(f'/admin/regimes/similar?instrument_id={instrument}&features=nan',headers=admin_headers).status_code==422
+        marker='earnings'+uuid4().hex
+        doc=Regimes(client.app.state.database).disclosure(instrument,marker,'Synthetic earnings report')
+        assert client.get('/admin/disclosures/search?q='+marker,headers=a).status_code==403
+        assert client.get('/admin/disclosures/search?q='+marker,headers=admin_headers).json()['items'][0]['id']==doc
+        for item in client.get('/orders/me',headers=a).json()['items']:
+            if item['status'] in ('OPEN','PARTIAL'):
+                assert client.post(f"/orders/{item['id']}/cancel",headers=a).status_code==200
+
+
+def test_regime_stale_snapshot_cannot_replace_newer_capture(accounts):
+    from datetime import datetime,timezone
+    from backend.stores.regimes import Regimes
+    from backend.stores.postgres import Database
+    _,instrument=accounts
+    store=Regimes(Database(Settings.from_env()))
+    now=datetime.now(timezone.utc)
+    newer={'epoch':'test','version':2,'bids':[(95,3)],'asks':[(105,2)]}
+    first=store.capture(instrument,newer,now)
+    second=store.capture(instrument,{'epoch':'test','version':1,'bids':[(1,1)],'asks':[]},now)
+    assert second['id']==first['id']
+    assert second['features']==pytest.approx(first['features'])

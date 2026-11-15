@@ -16,6 +16,8 @@ from backend.workers.cache_worker import CacheWorker
 from backend.stores.redis_depth import RedisDepth
 from backend.stores.neo4j_graph import Neo4jGraph
 from backend.workers.graph_worker import GraphWorker
+from backend.stores.regimes import Regimes
+from backend.workers.regime_worker import RegimeWorker
 
 
 class HealthResponse(BaseModel):
@@ -46,6 +48,12 @@ def create_app(settings=None, *, settlement=True):
                 graph.start()
                 graph.publish(None)
                 app.state.service.worker.after_commit.append(graph.publish)
+                app.state.regimes=Regimes(app.state.database)
+                regimes=RegimeWorker(app.state.regimes,app.state.service.dispatcher)
+                app.state.service.derived['regimes']=regimes
+                app.state.service.book_observers.append(regimes.record_book)
+                regimes.start()
+                app.state.service.worker.after_commit.append(regimes.publish_settled)
                 app.state.service.worker.start()
             yield
         finally:
@@ -107,8 +115,8 @@ def create_app(settings=None, *, settlement=True):
         names = ('postgres','redis','neo4j')
         dependencies = dict(zip(names, await asyncio.gather(*(asyncio.to_thread(probe,n) for n in names))))
         for name,consumer in application.state.service.derived.items():
-            if consumer.failed:
-                dependencies[name]='down'
+            if name not in dependencies or consumer.failed:
+                dependencies[name]='down' if consumer.failed else 'up'
         ready = not application.state.service.dispatcher.failure and dependencies['postgres']=='up'
         return {'status':'ok' if ready and all(v=='up' for v in dependencies.values()) else 'unhealthy','dependencies':dependencies,'trading_ready':ready}
 

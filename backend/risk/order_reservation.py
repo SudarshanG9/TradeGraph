@@ -24,11 +24,14 @@ class Coordinator:
         self.derived = {}
         self.epoch = str(uuid4())
 
-    def notify_book(self, instrument):
-        snapshot={'instrument_id':instrument,'version':self.version,'epoch':self.epoch,
+    def book_snapshot(self, instrument):
+        return {'instrument_id':instrument,'version':self.version,'epoch':self.epoch,
                   'as_of':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
                   'bids':self.engine.book.depth(instrument,'BUY'),
                   'asks':self.engine.book.depth(instrument,'SELL')}
+
+    def notify_book(self, instrument):
+        snapshot=self.book_snapshot(instrument)
         for observer in self.book_observers:
             observer(snapshot)
 

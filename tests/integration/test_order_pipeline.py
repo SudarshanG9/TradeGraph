@@ -44,6 +44,8 @@ def accounts(request):
         try: depth.client.delete(*depth.keys(instrument_symbol))
         finally: depth.close()
         with db_connect() as conn:
+            conn.execute('DELETE FROM regime_snapshot WHERE instrument_id=%s',(instrument,))
+            conn.execute('DELETE FROM market_disclosure WHERE instrument_id=%s',(instrument,))
             conn.execute('DELETE FROM execution WHERE buy_trader_id=ANY(%s) OR sell_trader_id=ANY(%s)',(traders,traders))
             for table in ('position','order_history','order','margin_account','trader'):
                 key = 'id' if table=='trader' else 'trader_id'

@@ -586,3 +586,51 @@ Graph integer aggregate overflow is rejected explicitly; no float money conversi
  M tests/integration/test_order_pipeline.py
  M tests/integration/test_polyglot.py
 ```
+
+## Phase 8 — PASS (15 November 2026)
+
+Source Day 6. Phase 7 committed/pushed 6e2ad43. Implemented six engineered
+features from observed immutable books and committed SQL trades, last-100 VWAP
+drift, 60-second velocity/volatility, documented normalization/defaults, finite
+nonzero vector validation, UTC minute UPSERT, per-instrument stale-capture
+protection, cosine nearest neighbors, explicit scoped 90-day retention and
+parameterized ranked disclosure FTS. Regime worker receives only settled facts;
+admin on-demand capture supports idle intervals. SQL forced RLS/effective native
+role remain enforced; trader API receives 403. No random vectors are represented
+as market features (axis vectors only in explicitly labelled retrieval fixtures).
+
+Created docs/architecture/polyglot-data-models.md and normalization-proof.md in
+existing directory. Detailed keys/FDs, Armstrong closure, valid 2NF/3NF/BCNF/4NF
+counterexamples and lossless decomposition; hypothetical relations remain paper
+only. Generated body_tsv is explicitly a physical derived-column exception to a
+blanket physical BCNF claim. No extra production table or fee/cost-basis field.
+
+Focused actual polyglot run: 10 passed in 9.42s. Final full regression:
+`PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/unit tests/concurrency tests/integration -q`
+-> 184 passed in 39.64s, one upstream httpx warning. Verified same-ID UPSERT,
+three controlled cosine neighbors with exact-match distance ~0, one old snapshot
+deleted, ranked synthetic disclosure returned, quote/injection-shaped query safe,
+trader grants/RLS denied, spoofed app.role insufficient, actual HNSW index and
+EXPLAIN execution, actual API-generated market vector and old-version rejection.
+No index acceleration assumed for tiny vector fixtures. Native services real;
+13-table structure and frontend unchanged. NEXT: automatic Phase 9.
+
+```text
+ backend/api/main.py                      | 12 ++++-
+ backend/api/routes/admin.py              | 24 +++++++++
+ backend/risk/order_reservation.py        |  7 ++-
+ backend/stores/regimes.py                | 91 ++++++++++++++++++++++++++++++++
+ backend/workers/regime_worker.py         | 18 +++++++
+ tests/integration/test_order_pipeline.py |  2 +
+ tests/integration/test_polyglot.py       | 88 ++++++++++++++++++++++++++++++
+ 7 files changed, 238 insertions(+), 4 deletions(-)
+ M backend/api/main.py
+ M backend/api/routes/admin.py
+ M backend/risk/order_reservation.py
+ M backend/stores/regimes.py
+ M backend/workers/regime_worker.py
+ M tests/integration/test_order_pipeline.py
+ M tests/integration/test_polyglot.py
+?? docs/architecture/normalization-proof.md
+?? docs/architecture/polyglot-data-models.md
+```
