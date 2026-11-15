@@ -541,4 +541,3 @@ readiness blocker was found.
 Verification artifacts for this run are under `/tmp/tradegraph-prefrontend/` (full/JUnit
 results, readiness JSON, actual catalog response, schema and bot logs, deterministic
 report). These are local operational artifacts, not secrets or committed database dumps.
-
