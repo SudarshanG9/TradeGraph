@@ -2,6 +2,7 @@
 import asyncio
 import psycopg
 from datetime import datetime, timezone
+from uuid import uuid4
 from backend.events.dispatcher import Dispatcher
 from backend.events.trade_event import TradeEvent
 from backend.matching.engine import Engine
@@ -19,6 +20,17 @@ class Coordinator:
         self.last_order_id = 0
         self.version = 0
         self.worker = None
+        self.book_observers = []
+        self.derived = {}
+        self.epoch = str(uuid4())
+
+    def notify_book(self, instrument):
+        snapshot={'instrument_id':instrument,'version':self.version,'epoch':self.epoch,
+                  'as_of':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
+                  'bids':self.engine.book.depth(instrument,'BUY'),
+                  'asks':self.engine.book.depth(instrument,'SELL')}
+        for observer in self.book_observers:
+            observer(snapshot)
 
     async def admit(self, trader_id, request):
         async with self.lock:
@@ -59,6 +71,7 @@ class Coordinator:
                     else:
                         await self.worker.drain()
                         await asyncio.to_thread(self.database.cancel,row['id'],trader_id)
+                self.notify_book(row['instrument_id'])
                 return row
             except BaseException:
                 self.dispatcher.failure = 'Admission failed after reservation; operator reconciliation required'
@@ -70,7 +83,7 @@ class Coordinator:
                 raise RuntimeError('Settlement not installed')
             await self.worker.drain()
             rows = await asyncio.to_thread(self.database.query,
-                'SELECT status FROM public."order" WHERE id=%s AND trader_id=%s UNION ALL SELECT status FROM order_history WHERE id=%s AND trader_id=%s',
+                'SELECT status,instrument_id FROM public."order" WHERE id=%s AND trader_id=%s UNION ALL SELECT status,instrument_id FROM order_history WHERE id=%s AND trader_id=%s',
                 (order_id,trader_id,order_id,trader_id))
             if not rows:
                 raise LookupError('Unknown owned order')
@@ -83,6 +96,7 @@ class Coordinator:
                 self.dispatcher.failure = 'Cancellation outcome uncertain; reconciliation required'
                 raise
             self.version += 1
+            self.notify_book(rows[0]['instrument_id'])
             return quantity
 
     def close(self):

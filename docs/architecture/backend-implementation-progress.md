@@ -484,3 +484,50 @@ frontend untouched; one upstream httpx warning. NEXT: automatic Phase 6.
 ?? db/queries/query_indexes.sql
 ?? docs/architecture/query-optimization.md
 ```
+
+## Phase 6 — PASS (15 November 2026)
+
+Source Day 5 Redis. Phase 5 committed/pushed ff4dde4 (an intermediate commentary
+hash was corrected immediately after verifying Git output). Implemented atomic Lua
+top-20 ZSET/HASH paired updates/reads, price ordering, exact decimal-string
+quantities, 2^53-1 price adapter bound, ZREM/HDEL/DEL, owner epoch + monotonic
+version rejection and freshness metadata. Ordered book notifications happen
+outside the unchanged matcher; startup refreshes known instrument snapshots.
+Bounded derived worker retries retained jobs; overflow fails new admissions closed.
+Raw settlement shutdown now waits for any committing thread before owner release,
+as do derived writers. Startup/shutdown cleanup protects the single-owner lease.
+Market book/trades/analytics read Redis, canonical SQL and settled in-memory
+analytics respectively. Optional derived outages mark dependency unhealthy while
+financial admission remains safe until bounded backpressure; no money is dropped.
+
+Initial Redis/API acceptance: 10 passed in 9.69s. Final command:
+`PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/unit tests/concurrency tests/integration -q`
+-> 178 passed in 34.75s, one upstream httpx warning, zero skipped/failed.
+Real Redis tests verify 25 levels, bid/ask direction, quantities at BIGINT max,
+old snapshot rejection, emptied keys deleted, API fills/cancels and rebuild,
+connection-refused outage plus actual retry/recovery, and backlog fail-closed.
+Fixture instruments/accounts and Redis keys are uniquely owned/scoped and cleaned.
+Pure matching test still succeeds with a real failed Redis connection. No Redis
+sub-millisecond guarantee claimed. ER unchanged; frontend untouched. NEXT: Phase 7.
+
+```text
+ backend/api/main.py                      |  29 ++++++--
+ backend/api/routes/market.py             |  42 +++++++++++
+ backend/events/dispatcher.py             |  51 +++++++++++++
+ backend/risk/order_reservation.py        |  16 ++++-
+ backend/stores/redis_depth.py            |  64 +++++++++++++++++
+ backend/workers/cache_worker.py          |  14 ++++
+ backend/workers/settlement_worker.py     |  10 ++-
+ tests/integration/test_order_pipeline.py |   7 +-
+ tests/integration/test_polyglot.py       | 120 +++++++++++++++++++++++++++++++
+ 9 files changed, 344 insertions(+), 9 deletions(-)
+ M backend/api/main.py
+ M backend/api/routes/market.py
+ M backend/events/dispatcher.py
+ M backend/risk/order_reservation.py
+ M backend/stores/redis_depth.py
+ M backend/workers/cache_worker.py
+ M backend/workers/settlement_worker.py
+ M tests/integration/test_order_pipeline.py
+ M tests/integration/test_polyglot.py
+```

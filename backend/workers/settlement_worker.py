@@ -40,7 +40,15 @@ class SettlementWorker:
             try:
                 for attempt in range(3):
                     try:
-                        await asyncio.to_thread(settle, self.database, event)
+                        job=asyncio.create_task(asyncio.to_thread(settle,self.database,event))
+                        try:
+                            await asyncio.shield(job)
+                        except asyncio.CancelledError:
+                            # A committing DB thread cannot be canceled. Keep the
+                            # owner lease until its outcome is known at shutdown.
+                            try: await job
+                            except Exception: pass
+                            raise
                         break
                     except psycopg.Error as exc:
                         if attempt==2 or exc.sqlstate not in (None,'40001','40P01'):

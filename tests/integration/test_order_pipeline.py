@@ -19,7 +19,8 @@ def accounts(request):
     password = 'synthetic-test-password'
     hashed = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode()
     with db_connect() as conn:
-        instrument = conn.execute('INSERT INTO instrument(symbol,tick_size,lot_size) VALUES (%s,1,1) RETURNING id',('T'+uuid4().hex[:16],)).fetchone()[0]
+        instrument_symbol='T'+uuid4().hex[:16]
+        instrument = conn.execute('INSERT INTO instrument(symbol,tick_size,lot_size) VALUES (%s,1,1) RETURNING id',(instrument_symbol,)).fetchone()[0]
         tier = conn.execute('SELECT id FROM fee_tier WHERE tier_name=%s',(getattr(request,'param','STANDARD'),)).fetchone()[0]
         for role in ('TRADER','TRADER','TRADER','COMPLIANCE_ADMIN'):
             email = f'pipeline-{uuid4()}@tradegraph.test'
@@ -33,6 +34,10 @@ def accounts(request):
     try:
         yield users, instrument
     finally:
+        from backend.stores.redis_depth import RedisDepth
+        depth=RedisDepth(Settings.from_env().redis_url)
+        try: depth.client.delete(*depth.keys(instrument_symbol))
+        finally: depth.close()
         with db_connect() as conn:
             conn.execute('DELETE FROM execution WHERE buy_trader_id=ANY(%s) OR sell_trader_id=ANY(%s)',(traders,traders))
             for table in ('position','order_history','order','margin_account','trader'):

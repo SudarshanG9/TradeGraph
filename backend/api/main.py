@@ -10,8 +10,10 @@ from typing import Literal
 from backend.config import Settings
 from backend.stores.postgres import Database
 from backend.risk.order_reservation import Coordinator
-from backend.api.routes import auth, orders, admin
+from backend.api.routes import auth, orders, admin, market
 from backend.workers.settlement_worker import SettlementWorker
+from backend.workers.cache_worker import CacheWorker
+from backend.stores.redis_depth import RedisDepth
 
 
 class HealthResponse(BaseModel):
@@ -26,20 +28,32 @@ def create_app(settings=None, *, settlement=True):
         app.state.settings = settings or Settings.from_env()
         app.state.database = Database(app.state.settings)
         app.state.service = Coordinator(app.state.database, app.state.settings)
-        if settlement:
-            app.state.service.worker = SettlementWorker(app.state.database,app.state.service.engine,app.state.service.dispatcher)
-            app.state.service.worker.start()
         try:
+            if settlement:
+                app.state.depth=RedisDepth(app.state.settings.redis_url,app.state.settings.health_timeout_seconds)
+                cache=CacheWorker(app.state.database,app.state.depth,app.state.service.dispatcher)
+                app.state.service.derived['redis']=cache
+                app.state.service.book_observers.append(cache.publish)
+                cache.start()
+                for row in await asyncio.to_thread(app.state.database.query,'SELECT id FROM instrument'):
+                    app.state.service.notify_book(row['id'])
+                app.state.service.worker = SettlementWorker(app.state.database,app.state.service.engine,app.state.service.dispatcher)
+                app.state.service.worker.start()
             yield
         finally:
             if app.state.service.worker:
                 await app.state.service.worker.stop()
+            for consumer in app.state.service.derived.values():
+                await consumer.stop()
+            if hasattr(app.state,'depth'):
+                app.state.depth.close()
             app.state.service.close()
 
     application = FastAPI(title='TradeGraph', version='1.0', lifespan=lifespan)
     application.include_router(auth.router)
     application.include_router(orders.router)
     application.include_router(admin.router)
+    application.include_router(market.router)
 
     @application.exception_handler(StarletteHTTPException)
     async def http_error(request, exc):
@@ -82,8 +96,11 @@ def create_app(settings=None, *, settlement=True):
                 return 'down'
         names = ('postgres','redis','neo4j')
         dependencies = dict(zip(names, await asyncio.gather(*(asyncio.to_thread(probe,n) for n in names))))
-        ready = not application.state.service.dispatcher.failure and all(v=='up' for v in dependencies.values())
-        return {'status':'ok' if ready else 'unhealthy','dependencies':dependencies,'trading_ready':ready}
+        for name,consumer in application.state.service.derived.items():
+            if consumer.failed:
+                dependencies[name]='down'
+        ready = not application.state.service.dispatcher.failure and dependencies['postgres']=='up'
+        return {'status':'ok' if ready and all(v=='up' for v in dependencies.values()) else 'unhealthy','dependencies':dependencies,'trading_ready':ready}
 
     return application
 
