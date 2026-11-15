@@ -83,3 +83,24 @@
 - Native API and existing pipeline checks: **14 passed**, one warning (15.62s).
   Unit regressions: **142 passed** (1.85s).
 - Next: deterministic human/bot proof through the genuine shared financial path.
+- Phase 4 commit: `0041281e842e0b00b8385786d11eed0b436a9d63`.
+
+## Phase 5 — real human/bot integration
+
+- Added `tests/integration/test_live_simulator.py`. No runtime fixes needed.
+- Automatic approval review rejected the initial persistent shared-history proof.
+  Replaced it with isolated synthetic identities/instrument and strictly scoped
+  cleanup. A test-only namespace substitution still exercises production identity
+  validation; production allowlist behavior is covered separately by phase 4.
+  No financial operation, coordinator, matcher, worker or derived store is mocked.
+- A deterministic injected strategy quotes SELL 100 x 2; authenticated human places
+  BUY 110 x 1. Actual maker-price fill: 100 x 1. Tests verify reservation, partial
+  fill, exact maker/taker fees, positions, Redis depth, read-only Neo4j query,
+  regime snapshot, market analytics, safe stop and preservation of a human bid.
+- Execution persists through stop, replay is a no-op, cold restart rehydrates
+  analytics while simulator stays STOPPED. Only fixture-owned records are then
+  removed; external counterparties cause cleanup refusal.
+- Native proof + existing polyglot regressions: **12 passed**, one existing warning
+  (9.59s). Evidence captured at `/tmp/tradegraph-live-proof.json`; summarize exact
+  observations in final documentation. No persistent/demo financial history deleted.
+- Next: remaining lifecycle/failure tests, full regression, deterministic CLI.
