@@ -29,7 +29,7 @@ const observations: [string, Int, Int][] = [
  ['13:39:00','100','6'],['13:42:00','99','11'],['13:45:00','101','7'],['13:49:00','100','13'],
  ['13:52:00','102','5'],['13:55:00','101','9'],['13:59:02','99','4'],['14:01:48','99','12'],['14:02:11','100','6'],
 ];
-export const executions: Trade[] = observations.map(([clock,price_ticks,quantity],i) => ({ id:String(50215+i) as Int, instrument_id:1, buy_order_id:i===16?'8841':'8795', sell_order_id:'8790', buy_trader_id:trader, sell_trader_id:traders[1], price_ticks,quantity,executed_at:`2026-11-15T${clock}Z` })).reverse();
+export const executions: Trade[] = observations.map<Trade>(([clock,price_ticks,quantity],i) => ({ id:String(50215+i) as Int, instrument_id:1, buy_order_id:i===16?'8841':'8795', sell_order_id:'8790', buy_trader_id:trader, sell_trader_id:traders[1], price_ticks,quantity,executed_at:`2026-11-15T${clock}Z` })).reverse();
 executions.push({ ...executions[0], id:'50210', instrument_id:2, price_ticks:'220', quantity:'30', executed_at:'2026-11-15T11:47:03Z', buy_order_id:'8805', sell_order_id:'8830' });
 export const depth = (id:number): Book => {
  const item = catalog.items.find(x=>x.id===id)!;

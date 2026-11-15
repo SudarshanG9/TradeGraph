@@ -8,8 +8,8 @@ Reference: TradeGraph Frontend Mockups.pdf (11 pages), visually inspected at 160
 
 | Phase | Page / PDF | Components | Backend contracts | Gate |
 |---|---|---|---|---|
-| 0 | Foundation | contracts, fixtures, service interfaces, shell, UI primitives | all implemented route models | pending |
-| 1 | Authentication / 1 | container, mode selector, role selector, sign-in, sign-up, preview | Login, LoginResponse | pending |
+| 0 | Foundation | contracts, fixtures, service interfaces, shell, UI primitives | all implemented route models | passed |
+| 1 | Authentication / 1 | container, mode selector, role selector, sign-in, sign-up, preview | Login, LoginResponse | passed |
 | 2 | Dashboard / 2 | header, balances, positions, orders, executions, actions | Account, OwnOrders, Trades | pending |
 | 3 | Terminal / 3 | instrument, depth, line chart, analytics, executions, order form, feedback | InstrumentCatalog, Book, Trades, Analytics, NewOrder | pending |
 | 4 | My Orders / 4 | status filters, history, details, cancel dialog, cursor controls | OwnOrders, CancelledOrder | pending |
@@ -35,3 +35,6 @@ Reference: TradeGraph Frontend Mockups.pdf (11 pages), visually inspected at 160
 - No separate full frontend specification was supplied beyond the pasted brief. Original architecture/project requirements are contextual only; actual route schemas control semantics.
 
 All interactions are mock-only, all commits are local, and all implementation changes stay within frontend/. Per-component commits are recorded in Git.
+
+## Phases 0–1 verification
+Strict TypeScript, six financial/service tests and production build passed. Authentication visually compared to PDF 1 at desktop and narrow viewport; sign-up submission confirms no account creation. Screenshot: evidence/01-auth.jpg. Requested role/mode controls increase card height. Components and per-component history are committed. No live integration.
