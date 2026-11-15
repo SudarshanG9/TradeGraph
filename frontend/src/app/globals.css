@@ -7,7 +7,7 @@
   --border: #253040;
   --text: #e2e8f0;
   --muted: #939fb2;
-  --dim: #69758b;
+  --dim: #7f8ba0;
   --blue: #3b82f6;
   --green: #22c55e;
   --red: #ff444f;
@@ -1390,4 +1390,39 @@ input[type='checkbox'] {
 }
 .desk-sort .link[aria-pressed='true'] {
   color: var(--text);
+}
+.table-scroll:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+@media (max-width: 700px) {
+  .sidebar {
+    z-index: 40;
+    overflow-y: auto;
+  }
+  .sidebar:not(.open) {
+    visibility: hidden;
+  }
+  .sidebar nav,
+  .sidebar-bottom {
+    flex-shrink: 0;
+  }
+  .nav-backdrop {
+    z-index: 35;
+  }
+  .topbar {
+    z-index: 45;
+  }
+}
+
+.button.primary {
+  background: #2f70dd;
+  border-color: #2f70dd;
+}
+.segmented button.active,
+.badge.blue {
+  color: #7bb1ff;
+}
+tr.selected .link {
+  color: #7bb1ff;
 }

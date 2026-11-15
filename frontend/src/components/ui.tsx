@@ -102,7 +102,7 @@ export function Table({
   label: string;
 }) {
   return (
-    <div className="table-scroll">
+    <div className="table-scroll" role="region" aria-label={`${label} scroll area`} tabIndex={0}>
       <table aria-label={label}>
         <thead>
           <tr>
@@ -244,7 +244,10 @@ export function Modal({
       ref={ref}
       className="modal"
       aria-labelledby="dialog-title"
-      onCancel={onClose}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
