@@ -455,3 +455,13 @@ The backend supports bounded live sessions in the shared human/bot order book.
 Provision dedicated synthetic traders explicitly, then use the administrator-only
 start/stop/status APIs. See the [live market architecture, API and runbook](docs/architecture/live-market-simulator.md)
 and [phase verification ledger](docs/architecture/live-market-progress.md). Run one API worker.
+
+### Frontend integration readiness
+
+Next.js implementation remains pending. See the [frontend integration contract](docs/architecture/frontend-integration-contract.md)
+for the authenticated instrument catalog, same-origin proxy, exact financial numbers,
+polling, freshness and recovery rules. With one API server running, check readiness without writes:
+
+```bash
+.venv/bin/python scripts/verify_frontend_readiness.py --api-base-url http://127.0.0.1:8000
+```
