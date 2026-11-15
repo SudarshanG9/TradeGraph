@@ -292,3 +292,64 @@ No API/settlement claimed. NEXT: automatic Phase 3 after phase commit/push.
  M tests/unit/test_rolling_vwap.py
 ?? scripts/setup_backend.sh
 ```
+
+## Phase 3 — PASS (15 November 2026)
+
+Source Day 3. Phase 2 commit/push: ab3185d. Implemented FastAPI/Pydantic contracts,
+bcrypt/JWT, server-derived trader identity, runtime PostgreSQL service login and
+restricted grants, native health, own orders/account routes and explicit commit
+before matching. One asyncio admission lock spans reserve/commit/ID allocation/
+book submission/event handoff; PG advisory lease rejects another process and
+startup with unresolved active orders. Queue capacity checked before reservation;
+uncertain/canceled reservation and post-reservation failures fail closed.
+Raw events remain pending until Phase 4; cancellation explicitly 501 at this gate.
+GROUP BY/HAVING query is installed as source, data demonstration pending clearing.
+
+Installer --phase 3 created only the service login/grants, generated missing
+runtime and invalid/missing JWT secrets in ignored .env; existing user data and
+account passwords preserved. Neo4j placeholder was initially rejected by approved
+validation: two integration failures (118 others passed). User chose to update
+Neo4j credentials themselves; no Neo4j password was changed by Codex. A second
+preflight exposed an invalid JWT key; installer repaired the new API signing key.
+Environment mapping repr is now redacted to protect error diagnostics.
+
+Main acceptance: `.venv/bin/python -m pytest -p no:cacheprovider tests/unit tests/integration/test_order_pipeline.py tests/integration/test_rbac.py -q`
+with PYTHONDONTWRITEBYTECODE=1 -> 120 passed in 4.63s. Final strengthened/focused
+API/RBAC run after adding owner/restart/backpressure cases: 10 passed in 4.23s.
+Unit-only regression: 112 passed in 0.63s. One upstream Starlette httpx deprecation
+warning; no skip or weakened pre-existing test. Real PG/runtime grants/RLS,
+JWT expiry/spoof denial, eight concurrent API admissions, committed-row visibility,
+three raw fill events and no pretend settlement verified. Native health all up.
+No 13-table ER changes, no frontend edits. No routine review stop. NEXT: Phase 4.
+
+```text
+ backend/api/dependencies.py              |  36 +++++++++
+ backend/api/main.py                      |  82 +++++++++++++++++++
+ backend/api/routes/auth.py               |  33 ++++++++
+ backend/api/routes/orders.py             |  90 +++++++++++++++++++++
+ backend/auth/rbac.py                     |   7 ++
+ backend/auth/security.py                 |  26 ++++++
+ backend/config.py                        |  11 ++-
+ backend/events/dispatcher.py             |  16 ++++
+ backend/risk/order_reservation.py        |  64 +++++++++++++++
+ backend/stores/postgres.py               |  58 ++++++++++++++
+ db/queries/price_band_having.sql         |   6 ++
+ requirements.txt                         |   6 ++
+ scripts/setup_backend.sh                 |  34 +++++++-
+ tests/integration/test_order_pipeline.py | 132 +++++++++++++++++++++++++++++++
+ 14 files changed, 596 insertions(+), 5 deletions(-)
+ M backend/api/dependencies.py
+ M backend/api/main.py
+ M backend/api/routes/auth.py
+ M backend/api/routes/orders.py
+ M backend/auth/rbac.py
+ M backend/auth/security.py
+ M backend/config.py
+ M backend/events/dispatcher.py
+ M backend/risk/order_reservation.py
+ M backend/stores/postgres.py
+ M db/queries/price_band_having.sql
+ M requirements.txt
+ M scripts/setup_backend.sh
+ M tests/integration/test_order_pipeline.py
+```

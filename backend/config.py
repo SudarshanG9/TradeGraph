@@ -14,6 +14,11 @@ from dotenv import dotenv_values
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class _Environment(dict):
+    def __repr__(self):
+        return '<environment settings redacted>'
+
+
 def _secret(values: Mapping[str, str], name: str, minimum: int = 1) -> str:
     value = values.get(name, "")
     if len(value.strip()) < minimum or value.lower().startswith(("replace_", "change_me", "your_")):
@@ -60,12 +65,12 @@ class Settings:
         runtime fallbacks. PG role attributes/grants require API startup checks.
         """
         if environ is None:
-            values = {key: value for key, value in
+            values = _Environment({key: value for key, value in
                       (dotenv_values(env_file, interpolate=False) if env_file else {}).items()
-                      if value is not None}
+                      if value is not None})
             values.update(os.environ)
         else:
-            values = dict(environ)
+            values = _Environment(environ)
 
         runtime_user = values.get("POSTGRES_RUNTIME_USER", "tradegraph_runtime").strip()
         forbidden_users = {"postgres", "tradegraph_owner", "trader_role", "compliance_admin_role", getuser()}
