@@ -68,3 +68,6 @@ DisclosureSearch and DisclosureResults committed independently. Bounded on-deman
 
 ## Phase 11 — Query Optimizer
 OptimizerControls and recursive PlanPanel/PlanTree committed. Explicit compare, two allowlisted scenarios, disabled unused parameters, collapsible nested nodes, times, aggregate rows, dataset and buffer metrics implemented. Browser verified paired plans and Recent Executions disabling instrument/price inputs. Typecheck passes. evidence/11-optimizer.jpg compared with PDF 10. Faster/slower/equal badges compare returned timing values; there is no arbitrary SQL execution or automatic querying. No backend integration.
+
+## Phase 12 — Desk Analytics
+DeskRollup and DeskExplanation committed independently. Exact signed PnL and execution volume, local sorting, refresh and shared data states completed. Browser visual check and typecheck pass; evidence/12-desks.jpg compared with PDF 11. Removed unsupported desk names/hierarchy while preserving the table and explanation-card arrangement. No extra totals over overlapping ancestor/child rows. No backend integration.
