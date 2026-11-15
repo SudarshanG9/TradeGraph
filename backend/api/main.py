@@ -10,7 +10,8 @@ from typing import Literal
 from backend.config import Settings
 from backend.stores.postgres import Database
 from backend.risk.order_reservation import Coordinator
-from backend.api.routes import auth, orders, admin, market
+from backend.api.routes import auth, orders, admin, market, simulator
+from backend.simulator.live_supervisor import LiveMarketSupervisor
 from backend.workers.settlement_worker import SettlementWorker
 from backend.workers.cache_worker import CacheWorker
 from backend.stores.redis_depth import RedisDepth
@@ -33,6 +34,7 @@ def create_app(settings=None, *, settlement=True):
         app.state.settings = settings or Settings.from_env()
         app.state.database = Database(app.state.settings)
         app.state.service = Coordinator(app.state.database, app.state.settings)
+        app.state.live_simulator = LiveMarketSupervisor(app.state.service, app.state.database)
         try:
             # Only settled history is rehydrated. Active orders already triggered
             # a fail-closed reconciliation stop in acquire_owner().
@@ -63,6 +65,7 @@ def create_app(settings=None, *, settlement=True):
                 app.state.service.worker.start()
             yield
         finally:
+            await app.state.live_simulator.shutdown()
             await app.state.service.finish_admissions()
             if app.state.service.worker:
                 await app.state.service.worker.stop()
@@ -79,6 +82,7 @@ def create_app(settings=None, *, settlement=True):
     application.include_router(orders.router)
     application.include_router(admin.router)
     application.include_router(market.router)
+    application.include_router(simulator.router)
 
     @application.exception_handler(StarletteHTTPException)
     async def http_error(request, exc):

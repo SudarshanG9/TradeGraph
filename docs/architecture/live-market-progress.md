@@ -67,3 +67,19 @@
 - Unit regressions: **142 passed**. Existing native order pipeline and concurrency
   regressions: **44 passed**, one existing warning (28.84s).
 - Next: administrative API and lifecycle wiring, without changing old contracts.
+- Phase 3 commit: `0f835b7dac403afe5f85a88d54740dde93972c50`.
+
+## Phase 4 — administrative API and application lifecycle
+
+- Added `backend/api/routes/simulator.py` with strict typed start/stop/status
+  schemas and existing Compliance Admin dependency. No JWT or public trader
+  contract changes. The request cannot select any trader identity.
+- Minimal `backend/api/main.py` changes: construct the supervisor with the existing
+  coordinator, register the router, stop it before closing admissions/workers.
+- Added native `tests/integration/test_live_simulator_api.py`: RBAC, validation,
+  concurrent starts, same-owner identity, repeated session, lifespan shutdown,
+  and unavailable settlement worker. Bot quotes on existing instruments retain
+  their genuine cancelled history; disposable human fixtures never cross them.
+- Native API and existing pipeline checks: **14 passed**, one warning (15.62s).
+  Unit regressions: **142 passed** (1.85s).
+- Next: deterministic human/bot proof through the genuine shared financial path.
