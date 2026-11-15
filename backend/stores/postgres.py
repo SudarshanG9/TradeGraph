@@ -40,6 +40,7 @@ class Database:
         return psycopg.connect(host=s.postgres_host, port=s.postgres_port,
             dbname=s.postgres_db, user=s.postgres_runtime_user,
             password=s.postgres_runtime_password, connect_timeout=s.health_timeout_seconds,
+            options='-c statement_timeout=30000 -c lock_timeout=10000',
             row_factory=dict_row, **kwargs)
 
     def query(self, sql, params=()):
@@ -75,10 +76,11 @@ class Database:
                     conn.execute('SET LOCAL enable_bitmapscan=off')
                 plans[mode]=conn.execute('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+query,params).fetchone()['QUERY PLAN'][0]
         count=self.query('SELECT count(*) AS n FROM execution')[0]['n']
-        return {'scenario':scenario,'dataset_size':count,'plans':plans}
+        return {'scenario':scenario,'row_count':int(plans['automatic']['Plan']['Actual Rows']),'dataset_size':count,'plans':plans}
 
     def reserve(self, trader_id, request):
         with self.connect() as conn:
+            conn.execute("SET LOCAL app.role='TRADER'")
             order_id = conn.execute('SELECT public.place_and_reserve_order(%s,%s,%s,%s,%s) AS id',
                 (trader_id, request.instrument_id, request.side, request.price_ticks, request.quantity)).fetchone()['id']
             row = conn.execute('SELECT * FROM public."order" WHERE id=%s', (order_id,)).fetchone()
@@ -91,6 +93,7 @@ class Database:
 
     def settle(self, event):
         with self.connect() as conn:
+            conn.execute("SET LOCAL app.role='TRADER'")
             applied = conn.execute('SELECT public.settle_execution(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS applied',
                 (event.event_id,event.instrument_id,event.buy_order_id,event.sell_order_id,event.buy_trader_id,
                  event.sell_trader_id,event.price_ticks,event.quantity,event.taker_order_id,event.occurred_at)).fetchone()['applied']
@@ -98,6 +101,7 @@ class Database:
 
     def cancel(self, order_id, trader_id):
         with self.connect() as conn:
+            conn.execute("SET LOCAL app.role='TRADER'")
             quantity = conn.execute('SELECT public.cancel_order(%s,%s) AS quantity',(order_id,trader_id)).fetchone()['quantity']
         return quantity
 

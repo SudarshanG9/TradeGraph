@@ -63,6 +63,7 @@ def create_app(settings=None, *, settlement=True):
                 app.state.service.worker.start()
             yield
         finally:
+            await app.state.service.finish_admissions()
             if app.state.service.worker:
                 await app.state.service.worker.stop()
             for consumer in app.state.service.derived.values():
@@ -121,8 +122,9 @@ def create_app(settings=None, *, settlement=True):
         names = ('postgres','redis','neo4j')
         dependencies = dict(zip(names, await asyncio.gather(*(asyncio.to_thread(probe,n) for n in names))))
         for name,consumer in application.state.service.derived.items():
-            if name not in dependencies or consumer.failed:
-                dependencies[name]='down' if consumer.failed else 'up'
+            unavailable=consumer.failed or (name=='neo4j' and not consumer.ready)
+            if name not in dependencies or unavailable:
+                dependencies[name]='down' if unavailable else 'up'
         ready = not application.state.service.dispatcher.failure and dependencies['postgres']=='up'
         return {'status':'ok' if ready and all(v=='up' for v in dependencies.values()) else 'unhealthy','dependencies':dependencies,'trading_ready':ready}
 

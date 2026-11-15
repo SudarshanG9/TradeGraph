@@ -1,10 +1,10 @@
 # TradeGraph backend contracts — 1.0-review
 
-Status: Phase 1 review candidate, 14 November 2026. Approval of this document is
-required before Batch B. Only configuration and event types are implemented in
-Phase 1; endpoints, dispatch, reservation installation and settlement remain later
-phase work. The fee-collection schedule below is an explicit proposed clarification,
-not existing financial behavior and not permission to execute Batch B.
+Status: approved by the user for Batch B on 15 November 2026. The BUY advance,
+cumulative SELL assessment, terminal reconciliation, single-writer admission and
+bounded non-durable queue decisions were expressly accepted. Backend implementation
+and acceptance evidence are recorded in backend-implementation-progress.md and
+backend-demo.md. The native-only and backend-only overrides remain controlling.
 
 ## Authority and deployment
 
@@ -153,10 +153,10 @@ the whole-order maximum fee reserve is 2. One big trade charges 1 maker + 2 take
 cumulative CEIL(actual) can charge 1 on the first tiny fill while the reserve's
 fee delta is zero. Splitting alone must not manufacture fees or negative cash.
 
-**Proposal requiring Batch A approval: collect conservative BUY fee advances as
+**Approved policy: collect conservative BUY fee advances as
 collateral is released; reconcile exact actual BUY fees at terminal processing.
 SELL fees use cumulative exact assessment and are paid from sale proceeds.**
-This makes the cash-collection schedule explicit instead of claiming immediate
+This approved policy makes the cash-collection schedule explicit instead of claiming immediate
 per-fill actual fee debits can always fit each reserve delta.
 
 For each BUY fill, fee advance = F(q_before) − F(q_after). Let V be executed
@@ -186,8 +186,7 @@ nonnegative rates are at most 999.999bp (<100%); each cumulative-ceiling fee
 increment <= ceil(V_i×rate_i/10000) <= V_i. Thus SELL cash credit is nonnegative.
 Total cash+escrow decreases by BUY advances plus assessed SELL fees during an
 open BUY and by exact assessed fees once terminal. This qualifies the immediate per-fill
-actual-fee description. If this schedule is rejected, settlement must wait for
-an approved alternative; Phase 1 does not install either policy.
+actual-fee description. The user approved this timing clarification before settlement was implemented in Phase 4.
 
 Worked ledger: both start cash=20000, escrow=0; both limit=100, Q=100,
 tick_size=1; buyer is maker at 1bp, seller taker at 2bp; execute at 100.
@@ -211,7 +210,7 @@ For SELL limit 100 executed at a resting BUY 105 for all 100 units, the 2bp
 SELL actual fee is 3 (larger than reserved fee 2), safely paid from proceeds
 10500; final SELL cash is 30497 from starting cash 20000.
 
-Gross realized PnL excludes fees. Future trigger recomputes each affected
+Gross realized PnL excludes fees. The trigger recomputes each affected
 position from executions in execution.id order using exact weighted-average
 entry cost, long/short closing and zero-crossing rules. Persist net signed
 quantity and round cumulative gross PnL to nearest minor unit, ties away from
@@ -237,8 +236,8 @@ using this order in every reservation/cancel/settlement interaction. Settlement
 validates ownership, sides, limits/maker price, remaining capacity and fixed fee
 basis, then execution, balances, order state and PnL commit atomically.
 
-One bounded in-process queue and one settlement worker are proposed for the
-academic demo, subject to this review. Reserve queue capacity/IDs BEFORE book
+One bounded in-process queue and one settlement worker are approved and implemented for the
+academic demo, with the explicit crash limitation below. Reserve queue capacity/IDs BEFORE book
 mutation. Worker acknowledges only after commit. Derived trade consumers and
 in-memory executed-volume analytics see settled facts only. Redis additionally
 receives ordered book snapshots for resting submissions/cancels; it does not
@@ -262,15 +261,14 @@ HS256 configured explicitly, 15-minute default TTL. Server resolves trader.id
 from subject, never request-supplied trader_id. No self-registration or UI.
 POSTGRES_USER is legacy setup/owner configuration, never a runtime fallback.
 The new runtime settings select POSTGRES_RUNTIME_USER (default tradegraph_runtime)
-and POSTGRES_RUNTIME_PASSWORD independently. Phase 3 must provision/verify a
+and POSTGRES_RUNTIME_PASSWORD independently. Phase 3 provisioned and startup verifies a
 dedicated non-superuser LOGIN, without CREATEDB/CREATEROLE/BYPASSRLS, and narrow
-routine grants; it is a service identity, not a third user-facing role. Phase 1
-does not create this login. No direct runtime balance/order writes or arbitrary
+routine grants; it is a service identity, not a third user-facing role. The runtime login is a separate service identity, not another user-facing role. No direct runtime balance/order writes or arbitrary
 SQL route. Controlled service code alone resolves/authenticates the trader passed
 to SECURITY DEFINER routines. Configure effective PG role and SET LOCAL app.role
 inside the same transaction; app.role alone never authenticates anyone.
 
-All routes below are contracts for later phases, not implemented endpoints.
+All routes below are implemented, with typed Pydantic responses and OpenAPI schemas.
 Responses use integer money/ticks/quantity, UUID strings and UTC timestamps.
 Errors: {"error":{"code":"INSUFFICIENT_FUNDS","message":"..."}};
 no SQL details, password/hash or credentials. 401 missing/invalid/expired token;
@@ -298,7 +296,7 @@ Trade items include event/execution id, instrument, order/counterparty IDs,
 price_ticks, quantity, executed_at from PostgreSQL, never synthetic settled data.
 Decimal strings distinguish VWAP from cash; cosine distance and FTS rank are
 nonfinancial floats. Query limits are bounded; all SQL values parameterized.
-Future Pydantic/OpenAPI models must realize these contracts with strict integers.
+Pydantic/OpenAPI models realize these contracts with strict request integers.
 Login credential failure is 401; authentication does not leak account existence.
 Order status in the immediate accepted response is OPEN reservation status;
 GET queries later reflect committed settlement. Service failure after reservation
@@ -336,7 +334,7 @@ cosine HNSW with optional instrument filter; demo retention=90 days. Disclosures
 use existing generated body_tsv/GIN and safe ranked queries. Both stay admin-only.
 
 Fenwick tracks settled executed quantity once per event/instrument, not resting
-depth. Bucket mapping/expansion is Phase 2 work. VWAP is a true cumulative-prefix
+depth. Sparse coordinate expansion is implemented and tested; a new coordinate rebuild costs O(M log M), while existing updates/ranges cost O(log M). VWAP is a true cumulative-prefix
 ring over last N fills (default N=100), exact integer sums with decimal string
 presentation; distinct from SQL's rolling ten-minute time window.
 
@@ -371,7 +369,7 @@ from repr. Importing configuration does not connect or load global credentials.
 Placeholder/missing credentials fail validation when Settings.from_env is called.
 That failure does not require overwriting the user's working admin .env in Phase 1.
 
-Future install order (NOT executed in this batch):
+Incremental SQL install order (implemented through installer --phase 5):
 1. Verify the existing schema and preserve all user rows. Fresh databases alone
    use setup_day1.sh; never rerun bootstrap on this initialized database.
 2. Phase 2: create incremental scripts/setup_backend.sh, verify compatible catalog
@@ -385,6 +383,36 @@ Future install order (NOT executed in this batch):
 5. Later phases install compatible view/queries/indexes and derived-store
    constraints in source order. No new migration baseline or production table.
 
-Remaining course requirements, including full advanced SQL, NoSQL/vector
-operations, benchmarks, simulator and Next.js demonstration, are not completed
-by a Phase 1 contract. Batch B and the frontend remain separately authorized work.
+The backend SQL, NoSQL/vector operations, simulator and benchmarks were implemented
+and tested in authorized Batch B. Next.js, UI screenshots and the final full-project
+recording remain separate pending work. See backend-demo.md for exact acceptance,
+unmet original requirements and the approved queue limitation.
+
+## Implemented additive clarifications
+
+POST /orders optionally accepts Idempotency-Key, 1–128 ASCII alphanumeric/dot/
+underscore/hyphen characters. A repeated key for the same authenticated trader
+returns 409 DUPLICATE_REQUEST before reservation. Keyless repeated requests remain
+distinct orders; request keys never become execution IDs. The in-process key set
+is bounded at 100,000, has no eviction and is not persistent after restart. This
+is a nonbreaking demo guard, not durable API exactly-once delivery.
+
+GET /health additionally reports the regime worker dependency and trading_ready
+separately from optional projection readiness. A graph endpoint returns 503 until
+initial canonical rebuild completes or while its worker is unhealthy. Cache
+responses add monotonic version metadata. Operator archival accepts an explicit
+trader_ids scope. Optimizer row_count is result rows at the plan root (aggregate
+scenarios return one row); dataset_size is canonical execution cardinality.
+
+Clean startup reloads settled Fenwick/VWAP history; it never admits or rematches
+unresolved active orders automatically. Runtime financial routine calls set
+SET LOCAL app.role=TRADER while retaining the dedicated service's effective PG
+identity/execute grants; generic trader_role cannot call an unbound definer.
+Admin queries additionally SET LOCAL ROLE compliance_admin_role and trusted app
+context. This context is not authentication by itself.
+
+For the implemented demo, financial-basis triggers reject edits to fee rates,
+existing margin fee assignments and tick/lot metadata even before the first order;
+new rows may be inserted with their initial basis. This closes the first-order
+metadata race and keeps historical recomputation well-defined. Retention and
+archival never alter execution facts needed for fee/PnL/graph reconstruction.

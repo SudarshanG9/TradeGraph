@@ -57,6 +57,12 @@ class Account(BaseModel):
     positions: list[Position]
 
 
+class CancelledOrder(BaseModel):
+    order_id: int
+    status: Literal['CANCELLED']
+    cancelled_quantity: int
+
+
 @router.post('/orders', status_code=201, response_model=AcceptedOrder)
 async def submit(body: NewOrder, request: Request, identity=Depends(trader),
                  idempotency_key: str | None=Header(None,min_length=1,max_length=128,pattern=r'^[A-Za-z0-9._-]+$')):
@@ -71,7 +77,7 @@ async def submit(body: NewOrder, request: Request, identity=Depends(trader),
     return {'order_id':row['id'], 'status':'OPEN', 'accepted_at':row['created_at']}
 
 
-@router.post('/orders/{order_id}/cancel')
+@router.post('/orders/{order_id}/cancel',response_model=CancelledOrder)
 async def cancel(order_id: int, request: Request, identity=Depends(trader)):
     try:
         quantity = await request.app.state.service.cancel(order_id,identity['trader_id'])

@@ -1,9 +1,9 @@
 import pytest
 from psycopg.errors import CheckViolation, ForeignKeyViolation, UniqueViolation
 
-pytestmark = pytest.mark.day1
 
 
+@pytest.mark.day1
 def test_thirteen_tables(db_conn):
     with db_conn.cursor() as cur:
         cur.execute(
@@ -13,6 +13,7 @@ def test_thirteen_tables(db_conn):
         assert cur.fetchone()[0] == 13
 
 
+@pytest.mark.day1
 def test_static_seeds_and_hierarchy(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM instrument")
@@ -27,6 +28,7 @@ def test_static_seeds_and_hierarchy(db_conn):
         assert cur.fetchone()[0] == "Global Trading"
 
 
+@pytest.mark.day1
 def test_invalid_tick_size_rejected(db_conn):
     with db_conn.cursor() as cur, pytest.raises(CheckViolation):
         cur.execute(
@@ -35,6 +37,7 @@ def test_invalid_tick_size_rejected(db_conn):
         )
 
 
+@pytest.mark.day1
 def test_invalid_user_role_rejected(db_conn):
     with db_conn.cursor() as cur, pytest.raises(CheckViolation):
         cur.execute(
@@ -43,6 +46,7 @@ def test_invalid_user_role_rejected(db_conn):
         )
 
 
+@pytest.mark.day1
 def test_negative_balance_rejected(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT trader_id FROM margin_account LIMIT 1")
@@ -54,6 +58,7 @@ def test_negative_balance_rejected(db_conn):
             )
 
 
+@pytest.mark.day1
 def test_invalid_trader_fk_rejected(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT id FROM instrument LIMIT 1")
@@ -67,6 +72,7 @@ def test_invalid_trader_fk_rejected(db_conn):
             )
 
 
+@pytest.mark.day1
 def test_duplicate_instrument_symbol_rejected(db_conn):
     with db_conn.cursor() as cur, pytest.raises(UniqueViolation):
         cur.execute(
@@ -74,6 +80,7 @@ def test_duplicate_instrument_symbol_rejected(db_conn):
         )
 
 
+@pytest.mark.day1
 def test_invalid_filled_quantity_rejected(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT id FROM trader LIMIT 1")
@@ -89,6 +96,7 @@ def test_invalid_filled_quantity_rejected(db_conn):
             )
 
 
+@pytest.mark.day1
 def test_order_history_no_auto_generated_id(db_conn):
     with db_conn.cursor() as cur:
         cur.execute(
@@ -103,6 +111,7 @@ def test_order_history_no_auto_generated_id(db_conn):
     [("missing@tradegraph.test", "FILLED", ForeignKeyViolation),
      ("alice@tradegraph.test", "OPEN", CheckViolation)],
 )
+@pytest.mark.day1
 def test_archive_integrity(db_conn, trader_email, status, error):
     with db_conn.cursor() as cur, pytest.raises(error):
         cur.execute(
@@ -118,6 +127,7 @@ def test_archive_integrity(db_conn, trader_email, status, error):
         )
 
 
+@pytest.mark.day1
 def test_position_composite_key(db_conn):
     with db_conn.cursor() as cur:
         cur.execute(
@@ -238,3 +248,18 @@ def test_optimizer_real_execution_lab(db_conn):
         Path(os.environ['TRADEGRAPH_PLAN_REPORT']).write_text(json.dumps(result,indent=2))
     db_conn.rollback()
     db_conn.execute('ANALYZE public.execution')
+
+
+def test_installer_refuses_placeholder_for_existing_runtime_identity():
+    import os,subprocess,sys,hashlib
+    from backend.config import Settings
+    settings=Settings.from_env()
+    env=os.environ.copy();env['POSTGRES_RUNTIME_USER']=settings.postgres_runtime_user
+    env['POSTGRES_RUNTIME_PASSWORD']='replace_with_runtime_password'
+    path=Path('.env')
+    before=hashlib.sha256(path.read_bytes()).hexdigest()
+    result=subprocess.run(['bash','scripts/setup_backend.sh','--phase','5'],env=env,capture_output=True,text=True,timeout=30)
+    assert result.returncode!=0
+    assert 'requires its current password' in result.stderr
+    assert hashlib.sha256(path.read_bytes()).hexdigest()==before
+    assert Database(settings).query('SELECT 1 AS healthy')[0]['healthy']==1

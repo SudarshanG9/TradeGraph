@@ -220,3 +220,66 @@ def test_complete_native_simulation_and_existing_data_preservation():
     assert report['existing_data_preserved']
     assert report['clean_restart_analytics']=='rehydrated from committed executions'
     assert report['scoped_cleanup']=='complete'
+
+
+def test_openapi_declares_all_frozen_response_models(accounts):
+    users,_=accounts
+    with TestClient(create_app()) as client:
+        schema=client.get('/openapi.json').json()
+        paths=schema['paths']
+        expected=['/login','/health','/orders','/orders/{order_id}/cancel','/orders/me','/account/me',
+                  '/market/{symbol}/book','/market/{symbol}/trades','/market/{symbol}/analytics',
+                  '/admin/surveillance/cycles','/admin/regimes/similar','/admin/disclosures/search','/admin/optimizer/compare','/admin/desks/rollup']
+        for path in expected:
+            method='post' if path in ('/login','/orders','/orders/{order_id}/cancel') else 'get'
+            code='201' if path=='/orders' else '200'
+            assert '$ref' in paths[path][method]['responses'][code]['content']['application/json']['schema']
+        result=client.get('/admin/optimizer/compare',headers=login(client,users[3])).json()
+        assert result['row_count']==result['plans']['automatic']['Plan']['Actual Rows']
+
+
+def test_canceled_reservation_holds_owner_until_commit_thread_finishes(accounts):
+    from threading import Event
+    from backend.stores.postgres import Database
+    from backend.risk.order_reservation import Coordinator
+    from backend.api.routes.orders import NewOrder
+    users,instrument=accounts
+    committed,release=Event(),Event()
+    settings=Settings.from_env();db=Database(settings)
+    original=db.reserve
+    def delayed_ack(*args):
+        result=original(*args)  # actual native COMMIT, not mocked financial success
+        committed.set()
+        assert release.wait(15)
+        return result
+    db.reserve=delayed_ack
+    async def exercise():
+        coordinator=Coordinator(db,settings)
+        task=asyncio.create_task(coordinator.admit(users[0]['trader_id'],NewOrder(**order(instrument))))
+        try:
+            assert await asyncio.to_thread(committed.wait,5)
+            task.cancel()
+            await asyncio.sleep(0)
+            assert not task.done()
+            task.cancel()
+            await asyncio.sleep(0)
+            assert not task.done()
+            with pytest.raises(RuntimeError,match='Another matching owner'): db.acquire_owner()
+            release.set()
+            with pytest.raises(asyncio.CancelledError): await task
+            assert coordinator.dispatcher.failure
+            with pytest.raises(RuntimeError):
+                await coordinator.admit(users[0]['trader_id'],NewOrder(**order(instrument)))
+            with db_connect() as conn:
+                assert conn.execute('SELECT cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s',(users[0]['trader_id'],)).fetchone()==(19899,101)
+                assert conn.execute('SELECT count(*) FROM public."order" WHERE trader_id=%s AND status=\'OPEN\'',(users[0]['trader_id'],)).fetchone()[0]==1
+        finally:
+            release.set()
+            if not task.done():
+                task.cancel()
+                try: await task
+                except asyncio.CancelledError: pass
+            await coordinator.finish_admissions()
+            coordinator.close()
+        with pytest.raises(RuntimeError,match='operator reconciliation'): db.acquire_owner()
+    asyncio.run(exercise())

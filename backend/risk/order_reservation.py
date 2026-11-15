@@ -28,6 +28,27 @@ class Coordinator:
         self.derived = {}
         self.epoch = str(uuid4())
         self.request_keys = set()
+        self.closing = False
+
+    async def committed_io(self, operation, *args):
+        job=asyncio.create_task(asyncio.to_thread(operation,*args))
+        try:
+            return await asyncio.shield(job)
+        except asyncio.CancelledError:
+            # Cancellation cannot revoke a database COMMIT. Hold admission and
+            # its owner lease until even repeated cancellation has a known end.
+            while not job.done():
+                try: await asyncio.shield(job)
+                except asyncio.CancelledError: continue
+                except Exception: break
+            if job.done() and not job.cancelled():
+                job.exception()  # retrieve any exception without masking cancellation
+            raise
+
+    async def finish_admissions(self):
+        self.closing=True
+        async with self.lock:
+            pass  # waits for all shielded reservation/cancel threads before lease release
 
     def book_snapshot(self, instrument):
         return {'instrument_id':instrument,'version':self.version,'epoch':self.epoch,
@@ -42,6 +63,8 @@ class Coordinator:
 
     async def admit(self, trader_id, request, request_key=None):
         async with self.lock:
+            if self.closing:
+                raise RuntimeError('Trading service is closing')
             key=(str(trader_id),request_key) if request_key is not None else None
             if key in self.request_keys:
                 raise DuplicateRequest('Duplicate request key in this process')
@@ -58,7 +81,7 @@ class Coordinator:
             if request.price_ticks > 2**53 - 1:
                 raise ValueError('Price exceeds exact Redis demo range')
             try:
-                row = await asyncio.to_thread(self.database.reserve, trader_id, request)
+                row = await self.committed_io(self.database.reserve, trader_id, request)
                 if key is not None: self.request_keys.add(key)
             except psycopg.Error as exc:
                 if exc.sqlstate not in ('P0001','22023','22003','23514','23503'):
@@ -84,7 +107,7 @@ class Coordinator:
                         self.dispatcher.failure = 'Self-trade residual requires terminal processing'
                     else:
                         await self.worker.drain()
-                        await asyncio.to_thread(self.database.cancel,row['id'],trader_id)
+                        await self.committed_io(self.database.cancel,row['id'],trader_id)
                 self.notify_book(row['instrument_id'])
                 return row
             except BaseException:
@@ -93,6 +116,8 @@ class Coordinator:
 
     async def cancel(self, order_id, trader_id):
         async with self.lock:
+            if self.closing:
+                raise RuntimeError('Trading service is closing')
             if not self.worker:
                 raise RuntimeError('Settlement not installed')
             await self.worker.drain()
@@ -104,7 +129,7 @@ class Coordinator:
             if rows[0]['status']=='FILLED':
                 raise ValueError('Filled order cannot be canceled')
             try:
-                quantity = await asyncio.to_thread(self.database.cancel,order_id,trader_id)
+                quantity = await self.committed_io(self.database.cancel,order_id,trader_id)
                 self.engine.cancel(order_id)
             except BaseException:
                 self.dispatcher.failure = 'Cancellation outcome uncertain; reconciliation required'

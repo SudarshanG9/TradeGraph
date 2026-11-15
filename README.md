@@ -2,7 +2,7 @@
 
 A simulated electronic exchange designed to match orders, settle trades, and monitor its own trading activity for signs of market manipulation.
 
-> **Project status.** Day 1 includes the local database stack, schema, synthetic seed data, and database integration tests. The application tiers and performance targets below describe the intended design.
+> **Backend status (15 November 2026).** Phases 0–11 implement the native PostgreSQL/Redis/Neo4j backend, authenticated FastAPI, exact settlement/PnL, analytics, SQL demonstrations and simulator. [Acceptance report](docs/architecture/backend-demo.md), [phase evidence](docs/architecture/backend-implementation-progress.md), [contracts](docs/architecture/backend-contracts.md) and [measured performance](docs/architecture/query-optimization.md) describe actual results and limits. Next.js remains deferred and untouched. The approved in-process queue is not crash durable; production event-loss prevention is not claimed.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ A simulated electronic exchange designed to match orders, settle trades, and mon
 
 An exchange has to satisfy two competing requirements: fast matching and correct financial state.
 
-**Matching must be fast.** Incoming orders are compared against resting orders under strict price-time priority, with a target of microsecond-level execution. A delay on this path affects every participant.
+**Matching must be fast.** Incoming orders are compared against resting orders under strict price-time priority, with measured core timings documented separately from API/settlement latency; there is no guaranteed microsecond SLA. A delay on this path affects every participant.
 
 **Everything around matching must be correct.** Before accepting an order, the system must verify that the trader can afford it. After a trade, money must move atomically between accounts. Records must remain consistent under concurrent activity, and suspicious trading patterns must be detectable afterward. A lost update or double-spent balance is a correctness failure.
 
@@ -110,7 +110,7 @@ TradeGraph/
 
 ## System-Level Design
 
-This section describes the intended Tier 3 matching engine.
+This section describes the independently tested Tier 3 matching engine. New price levels also require heap management; see measured complexity and timings in the backend report.
 
 ### Order Book
 
@@ -138,7 +138,7 @@ The planned verification compares the engine against a deliberately simple brute
 
 ## Database-Level Design
 
-This section describes the intended guarantees for Tiers 2 and 4.
+This section describes the implemented Tiers 2 and 4. Atomic SQL effects are tested; crash recovery of the in-memory handoff remains an explicitly accepted demo limitation.
 
 ### Transactional Guarantees
 
@@ -197,10 +197,10 @@ Database integrity is intended to rely on `CHECK` constraints for sides, statuse
 
 | Key | Type | Planned content |
 | --- | --- | --- |
-| `depth:{symbol}:bids` | Sorted set | Price in ticks as member; aggregate resting quantity as score |
+| `depth:{symbol}:bids` | Sorted set | Price ticks as member and score; exact quantity in companion HASH |
 | `depth:{symbol}:asks` | Sorted set | Same representation for the ask side |
 
-The score determines Redis sorted-set ordering; price-ordered top-20 retrieval must account for this when implementing the depth adapter.
+Price determines ZSET ordering. Lua atomically maintains the top-20 side sets, quantity hashes and freshness/version metadata.
 
 **Neo4j counterparty graph**
 
@@ -268,7 +268,7 @@ The processing path flows downward. Tier 3 emits events without depending synchr
 
 ## Optimizations
 
-The following are planned techniques and expected properties, not benchmark results.
+The following describe implementation techniques and their intended benefits. Actual distributions and query plans are in docs/architecture/query-optimization.md; target labels are not performance guarantees.
 
 ### Matching Engine
 
@@ -335,78 +335,116 @@ The matching tier is designed to be independently replaceable. Potential improve
 
 ## Getting Started
 
-Day 1 uses Python 3, Git, and native PostgreSQL with pgvector. Redis and Neo4j are part of later development phases.
+Use the existing native Homebrew-managed PostgreSQL 17 with pgvector, Redis and
+Neo4j. Docker and Docker Compose are excluded. Keep existing databases and .env.
+The Next.js directory is deferred; it is not part of this backend runbook.
 
-### 1. Prepare native PostgreSQL
+### Native prerequisites
 
-On macOS with Homebrew, install PostgreSQL 17 and pgvector if you need a new local instance. [PostgreSQL 17 formula](https://formulae.brew.sh/formula/postgresql@17) and [pgvector formula](https://formulae.brew.sh/formula/pgvector).
+Confirm the configured services, without repeating working installation steps:
 
 ```bash
-brew install postgresql@17 pgvector
-export PATH="$(brew --prefix postgresql@17)/bin:$PATH"
-brew services start postgresql@17
 pg_isready -h /tmp -p 5432
+redis-cli PING
+neo4j status
 ```
 
-The default connection uses the `/tmp` socket, port `5432`, and your macOS username as the PostgreSQL administrator. Check for the project database.
+If a service is stopped, start that existing installation using its Homebrew
+service configuration (or `neo4j start` for the configured native Neo4j). Preserve
+its data directory, credentials and ownership. Configure Neo4j authentication in
+.env before backend startup. New users may install the same native technologies
+with Homebrew; no database reset is needed for an initialized clone.
+
+### Environment and Python
+
+From the project root, activate the existing environment. Create it only if absent:
 
 ```bash
-psql -h /tmp -p 5432 -d postgres -c "SELECT datname FROM pg_database WHERE datname = 'tradegraph';"
-```
-
-If the query returns zero rows, create the database.
-
-```bash
-createdb -h /tmp -p 5432 tradegraph
-```
-
-### 2. Configure the local environment
-
-```bash
+test -d .venv || python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 test -f .env || cp .env.example .env
 ```
 
-If your native PostgreSQL connection differs from the defaults, use the matching options in `psql` and `createdb`, and set `POSTGRES_ADMIN_HOST`, `POSTGRES_ADMIN_USER`, `POSTGRES_PORT`, or `POSTGRES_DB` in `.env` as needed. For a local server that requires a password, configure libpq's `.pgpass`. Keep `.env` out of Git.
+Set actual NEO4J_USER/NEO4J_PASSWORD/NEO4J_URI and native PG/Redis addresses.
+POSTGRES_ADMIN_HOST defaults /tmp and POSTGRES_ADMIN_USER defaults to the OS user;
+libpq .pgpass handles administrator passwords. POSTGRES_HOST/PORT select the
+runtime connection. The runtime service uses POSTGRES_RUNTIME_USER and
+POSTGRES_RUNTIME_PASSWORD, never owner credentials. Process environment overrides
+.env. Both are excluded from Git; do not put secrets in tracked examples.
 
-### 3. Install the Day 1 dependencies
+For a NEW runtime login, the installer generates a missing/placeholder password
+and invalid/missing JWT key into the ignored .env. For an EXISTING login, provide
+its current valid password: the installer refuses to reset it. Settings reject
+placeholder credentials, short JWT keys, privileged runtime identities and
+SERVICE_WORKERS other than 1.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-```
+### Safe database installation
 
-### 4. Initialize a fresh local database
-
-```bash
-bash scripts/setup_day1.sh
-```
-
-With the native PostgreSQL server running, the script applies the schema and reference rows in one transaction, prompts for synthetic trader and compliance passwords, and runs the verifier and integration tests. It stops if the selected database already contains public tables.
-
-### 5. Verify an initialized Day 1 database
+For the already initialized 13-table database:
 
 ```bash
+bash scripts/setup_backend.sh --phase 5
 python scripts/verify_schema.py
-python -m pytest -m day1
 ```
 
-If the current schema was installed and setup stopped at the demo password prompt, resume with `python scripts/seed_demo_accounts.py`. It creates Alice, Bob, and Carol as traders and one compliance administrator. Reruns preserve existing login passwords, balances, and manager assignments.
+Stage 5 installs all current backend SQL dependencies, grants, view and compatible
+indexes, transactionally where supported, without rerunning schema/seed bootstrap.
+It is rerunnable and preserves existing rows/passwords. The original
+`setup_day1.sh` is for an explicitly selected EMPTY database only; do not run it
+on an existing database. A fresh user must create/select a blank native database,
+run that Day 1 bootstrap and its interactive hashed-password seeder, then run the
+incremental installer. This task did not create or reset any database.
 
-### Planned application startup
-
-The following commands are for the later application phases.
-
-Backend, from the repository root with the virtual environment activated.
+### Run the API
 
 ```bash
-uvicorn backend.api.main:app --reload
+uvicorn backend.api.main:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-Frontend, from a separate terminal.
+GET /health reports native dependencies and financial trading readiness. GET
+/openapi.json contains all typed request/response contracts. POST /login accepts
+JSON email/password; use its Bearer token for trader/admin routes. Keep the one
+worker setting: a database owner lease rejects a second coordinator. Startup
+refuses unresolved OPEN/PARTIAL orders instead of silently reconstructing a lost
+match. See the reconciliation procedure in the acceptance report.
+
+### Demonstrate and test
+
+Stop any separately running API owner before the isolated in-process simulator
+or API tests acquire the same native PG owner lease:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+python scripts/run_simulation.py --seed 20261115 --report /private/tmp/tradegraph-simulation.json
+python -m pytest tests/unit -q
+python -m pytest -m day1 -q
+python -m pytest tests/concurrency tests/integration -q
+python -m pytest tests/benchmarks -q
+python -m pytest -q
 ```
+
+The simulator uses ASGI HTTP against the actual backend and native stores,
+creates only unique synthetic users/instruments, checks exact financial/PnL
+conservation and original-data fingerprints, and cleans only its owned data.
+No frontend, mocked store output or external TCP latency claim is involved.
+Tests use rollback or scoped fixture cleanup; do not disable failing tests.
+Benchmarks and the optimizer lab are reproducible from the measured-performance
+report. The native PostgreSQL verifier must always report 13 tables and 18 FKs.
+
+### Limits and review
+
+BUY fee advances reconcile to exact aggregate maker/taker fees at terminal
+processing; SELL cumulative fees are paid from proceeds. Both sides reserve cash,
+and synthetic collateralized shorts are allowed. Fees are an external sink;
+there is no extra ledger or cost-basis column. Fixed historical fee/tick bases
+are enforced for the demo, and position recomputation grows with execution history.
+
+The in-process queues and optional request-key cache are not crash durable.
+Financial failure or backlog overflow fails admissions closed. Operators must
+reconcile persisted facts and independently retained events before explicitly
+canceling or replaying anything. Graph rings are investigation candidates, not
+findings. Redis tick scores and graph integer aggregates have documented exact
+bounds. Frontend/UI recording and full course-interface compliance remain pending.
+
+Every phase was tested and, after the user's later Git authorization, committed
+and pushed separately. Further work requires review of the final Batch B report.

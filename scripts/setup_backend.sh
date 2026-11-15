@@ -5,6 +5,8 @@ cd "$(dirname "$0")/.."
 import argparse
 import os
 import secrets
+import subprocess
+from getpass import getuser
 from pathlib import Path
 from psycopg import sql as pgsql
 from dotenv import dotenv_values
@@ -13,16 +15,11 @@ from scripts.verify_schema import db_connect, EXPECTED_TABLES
 parser = argparse.ArgumentParser(description='Incremental native backend installation; no bootstrap or seeds')
 parser.add_argument('--phase', type=int, default=2, choices=[2, 3, 4, 5])
 args = parser.parse_args()
-values = dict(dotenv_values('.env')) | dict(os.environ)
-if args.phase >= 3 and (len(values.get('JWT_SECRET','').strip()) < 32 or values.get('JWT_SECRET','').lower().startswith(('replace_','change_me','your_'))):
-    with Path('.env').open('a') as stream:
-        stream.write('\nJWT_SECRET=' + secrets.token_urlsafe(48) + '\n')
-    print('Generated missing/invalid signing key for the new API in ignored .env')
-if args.phase >= 3 and not values.get('POSTGRES_RUNTIME_PASSWORD'):
-    values['POSTGRES_RUNTIME_PASSWORD'] = secrets.token_urlsafe(36)
-    with Path('.env').open('a') as stream:
-        stream.write('\nPOSTGRES_RUNTIME_PASSWORD=' + values['POSTGRES_RUNTIME_PASSWORD'] + '\n')
-    print('Generated missing runtime secret in ignored .env; existing values preserved')
+values = {k:v for k,v in dotenv_values('.env').items() if v is not None} | dict(os.environ)
+prefixes=('replace_','change_me','your_')
+runtime_secret_invalid=not values.get('POSTGRES_RUNTIME_PASSWORD','').strip() or values.get('POSTGRES_RUNTIME_PASSWORD','').lower().startswith(prefixes)
+if args.phase>=3 and (not Path('.env').is_file() or subprocess.run(['git','check-ignore','-q','.env']).returncode):
+    raise SystemExit('Create an ignored .env from .env.example before runtime installation')
 with db_connect() as conn:
     conn.execute("SELECT pg_advisory_xact_lock(hashtext('tradegraph-backend-install'))")
     tables = {r[0] for r in conn.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")}
@@ -37,12 +34,23 @@ with db_connect() as conn:
     else:
         print('Reservation already installed; preserved existing function')
     if args.phase >= 3:
-        user = values.get('POSTGRES_RUNTIME_USER', 'tradegraph_runtime')
-        if user in ('postgres', values.get('POSTGRES_USER'), values.get('POSTGRES_ADMIN_USER')):
+        user = values.get('POSTGRES_RUNTIME_USER', 'tradegraph_runtime').strip()
+        if not user or user in ('postgres','trader_role','compliance_admin_role',getuser(),values.get('POSTGRES_USER'),values.get('POSTGRES_ADMIN_USER')):
             raise SystemExit('Refusing owner/admin runtime identity')
-        role = conn.execute('SELECT rolsuper,rolcreaterole,rolcreatedb,rolbypassrls FROM pg_roles WHERE rolname=%s', (user,)).fetchone()
-        if role and any(role):
-            raise SystemExit('Existing runtime identity is privileged; refusing to modify it')
+        role = conn.execute('SELECT rolsuper,rolcreaterole,rolcreatedb,rolbypassrls,rolinherit,rolcanlogin FROM pg_roles WHERE rolname=%s', (user,)).fetchone()
+        if role and (any(role[:5]) or not role[5]):
+            raise SystemExit('Existing runtime identity must be nonprivileged NOINHERIT LOGIN; refusing to modify it')
+        if role is not None and runtime_secret_invalid:
+            raise SystemExit('Existing runtime role requires its current password in .env; no credential reset performed')
+        if runtime_secret_invalid:
+            values['POSTGRES_RUNTIME_PASSWORD']=secrets.token_urlsafe(36)
+            with Path('.env').open('a') as stream:
+                stream.write('\nPOSTGRES_RUNTIME_PASSWORD='+values['POSTGRES_RUNTIME_PASSWORD']+'\n')
+            print('Generated missing/placeholder secret for a NEW runtime login in ignored .env')
+        if len(values.get('JWT_SECRET','').strip())<32 or values.get('JWT_SECRET','').lower().startswith(prefixes):
+            with Path('.env').open('a') as stream:
+                stream.write('\nJWT_SECRET='+secrets.token_urlsafe(48)+'\n')
+            print('Generated missing/invalid signing key for the new API in ignored .env')
         if role is None:
             conn.execute(pgsql.SQL('CREATE ROLE {} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD {}').format(pgsql.Identifier(user), pgsql.Literal(values['POSTGRES_RUNTIME_PASSWORD'])))
         conn.execute(pgsql.SQL('GRANT CONNECT ON DATABASE {} TO {}').format(pgsql.Identifier(values.get('POSTGRES_DB','tradegraph')), pgsql.Identifier(user)))

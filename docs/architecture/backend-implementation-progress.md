@@ -728,3 +728,66 @@ real reservation/settlement concurrency, SQL, polyglot, simulator and benchmarks
  M tests/benchmarks/test_latency_isolation.py
  M tests/benchmarks/test_matching_latency.py
 ```
+
+## Phase 11 — PASS / FINAL REVIEW (15 November 2026)
+
+Phase 10 committed/pushed c508848. Completed README native runbook, approved
+contract status/additive implementation clarifications, final acceptance/rubric
+report backend-demo.md, concrete native simulator JSON and complete file manifest.
+Documented operator read-only diagnosis, stable-event replay, explicit residual
+cancellation, no automatic missing-event reconstruction, all accepted limitations.
+
+Final audit fixed proven contract/setup defects: every route now declares typed
+Pydantic/OpenAPI responses; optimizer returns required row_count (root result rows);
+financial service routine calls set trusted LOCAL app.role=TRADER while retaining
+approved service execute identity; graph reads refuse until rebuild readiness.
+Moved original Day 1 marker onto only its original tests so fresh bootstrap cannot
+select later-phase SQL tests. AST comparison proves original assertion bodies
+unchanged. Installer now handles missing/placeholder NEW-login credentials, refuses
+to reset an EXISTING login, validates login/noninherit flags and ignored .env, and
+preserves valid secrets. Final negative installer test verifies refusal and .env
+unchanged; idempotent success rerun also passed. No schema/public financial model
+change was needed. These are conformance fixes, not new architecture.
+
+Final shutdown audit also closed a request-cancellation race: reservation/cancel
+threads are shielded through repeated task cancellation, and shutdown waits on
+the admission lock before releasing ownership. A real post-COMMIT delayed-ACK
+regression verifies second-owner refusal, uncertain-admission fail-closed behavior
+and restart refusal for the unresolved order. Runtime connections now bound
+statement/lock waits to 30s/10s without changing global PostgreSQL configuration.
+
+Final full native command: `.venv/bin/python -m pytest -p no:cacheprovider -q`
+(PYTHONDONTWRITEBYTECODE=1) -> 192 passed in 51.69s, zero failures/skips.
+Original Day 1 selection -> 18 passed, 174 deselected in 2.26s. New installer and
+OpenAPI checks -> 2 passed in 1.61s. One upstream Starlette/httpx deprecation
+warning, no tests suppressed or weakened. Native schema verifier -> 24 PASS checks.
+Installer --phase 5 success rerun, shell syntax checks and git diff --check pass.
+
+Real Uvicorn HTTP smoke: localhost:8765, one worker, /health status ok with
+postgres/redis/neo4j/regimes up; 14 OpenAPI paths; unauthenticated own-order/admin/
+submission routes all 401. API process then shut down cleanly; native stores left
+running. Final HTTP smoke repeated successfully after the cancellation fix.
+Its wrapper initially asserted exit 0 after sending SIGTERM; Uvicorn re-raises
+that signal after graceful cleanup, so the wrapper assertion failed despite logs
+confirming application shutdown complete and finished server process. This was
+an evidence-wrapper assumption, not a failed backend test; no code was changed.
+Final read-only counts independently reconfirmed 4/3/3/0/0.
+PostgreSQL fsync/synchronous_commit/full_page_writes all on; base counts
+restored to 4 users, 3 traders, 3 instruments, 0 active-table orders/executions.
+Frontend baseline/current tree hash identical; original schema, ER, order_book,
+differential matcher tests and reservation tests unchanged from Batch A.
+
+RESULT: PASS for the approved bounded backend. Missing original full-project
+requirements: frontend/UI screenshots/recording and unconditional crash-durable
+event delivery (both explicitly excluded/accepted); production exchange guarantees
+not claimed. No remaining failed test or unimplemented backend route/algorithm.
+Git staging/commit/push authorized by user's later instruction; final Phase 11
+commit/push follows this entry. NEXT: STOP — PLANNED FINAL REVIEW. No further
+implementation runs automatically. Complete acceptance is backend-demo.md.
+
+Final Phase 11 file inventory: README.md; backend/api/main.py; API admin,
+market and orders routes; backend/risk/order_reservation.py;
+backend/stores/postgres.py; backend/workers/graph_worker.py;
+scripts/setup_backend.sh; database-integrity/order-pipeline integration tests;
+backend-contracts.md, this ledger and new backend-demo.md. Complete Batch B
+inventory is in the acceptance report; Git records the exact final diff.

@@ -4,6 +4,7 @@ from backend.events.dispatcher import DerivedWorker
 class GraphWorker(DerivedWorker):
     def __init__(self,store,dispatcher):
         self.store=store
+        self.ready=False
         super().__init__('neo4j',self.handle,dispatcher)
 
     def handle(self,event):
@@ -11,5 +12,6 @@ class GraphWorker(DerivedWorker):
             self.store.initialize()
             self.store.rebuild()
             self.store.retention()
+            self.ready=True
         else:
             self.store.apply(event)
