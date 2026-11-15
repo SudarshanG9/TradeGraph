@@ -18,6 +18,7 @@ class Coordinator:
         self.lease = database.acquire_owner()
         self.last_order_id = 0
         self.version = 0
+        self.worker = None
 
     async def admit(self, trader_id, request):
         async with self.lock:
@@ -53,12 +54,36 @@ class Coordinator:
                 self.dispatcher.publish(events)
                 self.version += 1
                 if result.self_trade_prevented:
-                    # Phase 4 installs terminal processing; never silently discard escrow.
-                    self.dispatcher.failure = 'Self-trade residual requires terminal processing'
+                    if self.worker is None:
+                        self.dispatcher.failure = 'Self-trade residual requires terminal processing'
+                    else:
+                        await self.worker.drain()
+                        await asyncio.to_thread(self.database.cancel,row['id'],trader_id)
                 return row
             except BaseException:
                 self.dispatcher.failure = 'Admission failed after reservation; operator reconciliation required'
                 raise
+
+    async def cancel(self, order_id, trader_id):
+        async with self.lock:
+            if not self.worker:
+                raise RuntimeError('Settlement not installed')
+            await self.worker.drain()
+            rows = await asyncio.to_thread(self.database.query,
+                'SELECT status FROM public."order" WHERE id=%s AND trader_id=%s UNION ALL SELECT status FROM order_history WHERE id=%s AND trader_id=%s',
+                (order_id,trader_id,order_id,trader_id))
+            if not rows:
+                raise LookupError('Unknown owned order')
+            if rows[0]['status']=='FILLED':
+                raise ValueError('Filled order cannot be canceled')
+            try:
+                quantity = await asyncio.to_thread(self.database.cancel,order_id,trader_id)
+                self.engine.cancel(order_id)
+            except BaseException:
+                self.dispatcher.failure = 'Cancellation outcome uncertain; reconciliation required'
+                raise
+            self.version += 1
+            return quantity
 
     def close(self):
         self.lease.close()

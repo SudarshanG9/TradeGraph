@@ -68,8 +68,16 @@ async def submit(body: NewOrder, request: Request, identity=Depends(trader)):
 
 
 @router.post('/orders/{order_id}/cancel')
-async def cancel(order_id: int, identity=Depends(trader)):
-    raise HTTPException(501, detail='CANCELLATION_NOT_INSTALLED')
+async def cancel(order_id: int, request: Request, identity=Depends(trader)):
+    try:
+        quantity = await request.app.state.service.cancel(order_id,identity['trader_id'])
+    except LookupError:
+        raise HTTPException(404, detail='ORDER_NOT_FOUND') from None
+    except ValueError:
+        raise HTTPException(409, detail='ORDER_TERMINAL') from None
+    except RuntimeError:
+        raise HTTPException(503, detail='TRADING_UNAVAILABLE') from None
+    return {'order_id':order_id,'status':'CANCELLED','cancelled_quantity':quantity}
 
 
 @router.get('/orders/me', response_model=OwnOrders)

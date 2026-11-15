@@ -353,3 +353,73 @@ No 13-table ER changes, no frontend edits. No routine review stop. NEXT: Phase 4
  M scripts/setup_backend.sh
  M tests/integration/test_order_pipeline.py
 ```
+
+## Phase 4 — PASS (15 November 2026)
+
+Source Day 4 clearing. Phase 3 committed/pushed 773a588. Implemented secure
+settle_execution, order_fee, cancel_order; deterministic UUID-account then ID-order
+locks; stable-ID advisory replay lock; exact BUY advances/refunds and cumulative
+SELL actual fees; execution/balances/order state/PnL in one transaction. Added
+exact rational weighted-average PnL trigger, half-away-from-zero storage rounding,
+long/short/partial close/flip handling. Financial-basis guards enforce the approved
+demo-wide immutable rates, assignments and tick/lot metadata (new inserts allowed),
+including before first reservation to prevent a metadata-update race.
+
+New db/procedures/cancel_order.sql fits existing procedures directory and approved
+terminal lifecycle. Runtime grants limited to settlement/cancel routines; no new
+table/column/key. Financial worker acknowledges only committed SQL, retries the
+same immutable event for transient failures, retains failed pending event, fails
+closed, and exposes reconciliation requirement. Cancel drains previous fills,
+releases residual exactly once and serializes with admission; STP residual alone
+is canceled. Raw Phase 3 component tests explicitly disable the worker; production
+app defaults to settlement enabled. No test financial expectation was removed.
+
+Initial transactional installation failed a PL/pgSQL CASE parser expression and
+rolled back. Nine premature tests then failed because routines/guards were absent.
+One negative guard test had incorrect context nesting and committed ACME tick_size
+1->2 before reporting failure. This was immediately restored ONLY after verifying
+exact value 2, lot_size 1 and no execution history; original tick_size=1 retained.
+The negative test now rolls back when an expected rejection fails. No other
+existing reference/user row was modified by the test. Fixed installer and rerun
+succeeded transactionally. This diagnostic incident is retained, not concealed.
+
+`.venv/bin/python -m pytest -p no:cacheprovider tests/concurrency tests/integration tests/unit -q`
+with PYTHONDONTWRITEBYTECODE=1 -> 166 passed in 17.99s. Final stronger settlement/API
+run with VIP, concurrent same-event replay and BIGINT overflow rollback additions:
+`.venv/bin/python -m pytest -p no:cacheprovider tests/concurrency/test_settlement_locks.py tests/integration/test_order_pipeline.py -q`
+-> 19 passed in 15.18s. Schema verifier: 24 PASS checks; 13 tables, 18 FKs retained.
+Tests use real native PG and isolated persisted fixture accounts with scoped cleanup.
+Verified 1 vs 100 fills, arbitrary partitions, one-fill/50-fill cancellation, pooled
+escrow, SELL price improvement, BUY maker/taker role changes, VIP fractional fees,
+SQL rollback including position trigger, conflicting replay, concurrent duplicate
+replay, two opposite account settlements, gross PnL, zero crossing, STP, API cancel
+authorization and worker-failure denial. One upstream httpx deprecation warning.
+Durable outbox/crash replay remains intentionally not implemented/claimed, as approved.
+Frontend/schema structure untouched. NEXT: automatic Phase 5 after commit/push.
+
+```text
+ backend/api/main.py                        |  10 +-
+ backend/api/routes/orders.py               |  12 +-
+ backend/clearing/settlement.py             |   3 +
+ backend/risk/order_reservation.py          |  29 ++++-
+ backend/stores/postgres.py                 |  12 ++
+ backend/workers/settlement_worker.py       |  73 +++++++++++
+ db/procedures/settle_execution.sql         |  80 ++++++++++++
+ db/triggers/update_positions.sql           |  60 +++++++++
+ scripts/setup_backend.sh                   |   8 +-
+ tests/concurrency/test_settlement_locks.py | 188 +++++++++++++++++++++++++++++
+ tests/integration/test_order_pipeline.py   |  58 +++++++--
+ 11 files changed, 519 insertions(+), 14 deletions(-)
+ M backend/api/main.py
+ M backend/api/routes/orders.py
+ M backend/clearing/settlement.py
+ M backend/risk/order_reservation.py
+ M backend/stores/postgres.py
+ M backend/workers/settlement_worker.py
+ M db/procedures/settle_execution.sql
+ M db/triggers/update_positions.sql
+ M scripts/setup_backend.sh
+ M tests/concurrency/test_settlement_locks.py
+ M tests/integration/test_order_pipeline.py
+?? db/procedures/cancel_order.sql
+```

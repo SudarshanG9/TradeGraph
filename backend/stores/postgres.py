@@ -35,6 +35,18 @@ class Database:
             return []
         return [r['id'] for r in self.query("SELECT nextval('public.execution_id_seq') AS id FROM generate_series(1,%s)", (count,))]
 
+    def settle(self, event):
+        with self.connect() as conn:
+            applied = conn.execute('SELECT public.settle_execution(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS applied',
+                (event.event_id,event.instrument_id,event.buy_order_id,event.sell_order_id,event.buy_trader_id,
+                 event.sell_trader_id,event.price_ticks,event.quantity,event.taker_order_id,event.occurred_at)).fetchone()['applied']
+        return applied  # financial acknowledgement only after COMMIT
+
+    def cancel(self, order_id, trader_id):
+        with self.connect() as conn:
+            quantity = conn.execute('SELECT public.cancel_order(%s,%s) AS quantity',(order_id,trader_id)).fetchone()['quantity']
+        return quantity
+
     def acquire_owner(self):
         conn = self.connect(autocommit=True)
         try:

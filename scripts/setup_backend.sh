@@ -11,7 +11,7 @@ from dotenv import dotenv_values
 from scripts.verify_schema import db_connect, EXPECTED_TABLES
 
 parser = argparse.ArgumentParser(description='Incremental native backend installation; no bootstrap or seeds')
-parser.add_argument('--phase', type=int, default=2, choices=[2, 3])
+parser.add_argument('--phase', type=int, default=2, choices=[2, 3, 4])
 args = parser.parse_args()
 values = dict(dotenv_values('.env')) | dict(os.environ)
 if args.phase >= 3 and (len(values.get('JWT_SECRET','').strip()) < 32 or values.get('JWT_SECRET','').lower().startswith(('replace_','change_me','your_'))):
@@ -52,5 +52,11 @@ with db_connect() as conn:
         conn.execute(pgsql.SQL('GRANT USAGE ON SEQUENCE execution_id_seq TO {}').format(pgsql.Identifier(user)))
         conn.execute(pgsql.SQL('GRANT EXECUTE ON FUNCTION public.place_and_reserve_order(uuid,integer,text,bigint,bigint) TO {}').format(pgsql.Identifier(user)))
         print('Runtime identity/grants verified and installed; no user-facing role added')
+    if args.phase >= 4:
+        for name in ('db/triggers/update_positions.sql','db/procedures/settle_execution.sql','db/procedures/cancel_order.sql'):
+            conn.execute(Path(name).read_text(), prepare=False)
+        for signature in ('public.settle_execution(bigint,integer,bigint,bigint,uuid,uuid,bigint,bigint,bigint,timestamptz)', 'public.cancel_order(bigint,uuid)'):
+            conn.execute(pgsql.SQL('GRANT EXECUTE ON FUNCTION {} TO {}').format(pgsql.SQL(signature),pgsql.Identifier(user)))
+        print('Installed atomic settlement, cancellation, position trigger and immutable-basis guards')
 print(f'Incremental Phase {args.phase} installation committed; existing rows preserved')
 PY

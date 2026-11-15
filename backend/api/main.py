@@ -11,6 +11,7 @@ from backend.config import Settings
 from backend.stores.postgres import Database
 from backend.risk.order_reservation import Coordinator
 from backend.api.routes import auth, orders
+from backend.workers.settlement_worker import SettlementWorker
 
 
 class HealthResponse(BaseModel):
@@ -19,15 +20,20 @@ class HealthResponse(BaseModel):
     trading_ready: bool
 
 
-def create_app(settings=None):
+def create_app(settings=None, *, settlement=True):
     @asynccontextmanager
     async def lifespan(app):
         app.state.settings = settings or Settings.from_env()
         app.state.database = Database(app.state.settings)
         app.state.service = Coordinator(app.state.database, app.state.settings)
+        if settlement:
+            app.state.service.worker = SettlementWorker(app.state.database,app.state.service.engine,app.state.service.dispatcher)
+            app.state.service.worker.start()
         try:
             yield
         finally:
+            if app.state.service.worker:
+                await app.state.service.worker.stop()
             app.state.service.close()
 
     application = FastAPI(title='TradeGraph', version='1.0', lifespan=lifespan)
@@ -48,6 +54,8 @@ def create_app(settings=None):
             code, status = 'INSUFFICIENT_FUNDS', 409
         elif exc.sqlstate in ('22023','22003','23514','23503'):
             code, status = 'INVALID_ORDER', 422
+        elif exc.sqlstate=='23505':
+            code, status = 'EVENT_CONFLICT', 409
         else:
             code, status = 'DATABASE_UNAVAILABLE', 503
         return JSONResponse({'error':{'code':code,'message':code}}, status_code=status)
