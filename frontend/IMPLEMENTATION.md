@@ -41,3 +41,6 @@ Strict TypeScript, six financial/service tests and production build passed. Auth
 
 ## Phase 2 — Dashboard
 AccountSummary, PositionsTable, RecentOrders and ExecutionsTable completed in separate commits; assembled in src/app/trader/dashboard/page.tsx. Refresh and the terminal action work. Exact Account/OwnOrders/Trades fixtures used. Desktop and narrow layouts visually compared with PDF 2; evidence/02-dashboard.jpg. Typecheck and six tests pass. Minor-unit labels replace unsupported dollars; execution rows are scoped to ACME. No backend integration.
+
+## Phase 3 — Trading Terminal
+OrderBook, PriceChart, MarketMetrics and OrderForm committed individually and assembled at src/app/trader/terminal/page.tsx. Instrument switching, exact notional/lot checks, BUY/SELL, mock submission and persistent feedback verified. Line chart uses only fixed chronological execution observations with grid, UTC axes, hover/focus tooltip and last-price marker. Typecheck passes; shared contract tests passed. Screenshot evidence/03-terminal.jpg compared with PDF 3; chart has the requested detailed line treatment, units/window corrected to contracts. No simulator controls and no backend integration.
