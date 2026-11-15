@@ -56,3 +56,6 @@ Reused AccountSummary and PositionsTable; added AccountExplanation in its own co
 
 ## Phase 7 — Compliance Overview
 HealthCards, InvestigationTools and SimulatorControls committed individually. Exact simulator config bounds, multiple instrument selection, seed precision, active-bot/state display and all returned counters/workers implemented. Browser verified RUNNING → STOPPING → STOPPED with controls disabled appropriately; service test covers ERROR and restart conflict. Typecheck passes. evidence/07-overview.jpg compared with PDF 6, preserving health/tool positions and adding the authorized compact simulator below. No invented latency and no backend calls/bot processes.
+
+## Phase 8 — Surveillance
+CycleCandidates and CycleGraph committed independently, with bounded result selection and refresh. Browser verified selection of the five-trader candidate updates only the returned directed edges and counts; UUID disclosure exposes full canonical identities. Typecheck passes. evidence/08-surveillance.jpg compared with PDF 7; candidate labels are explicitly local numbering because API supplies no IDs. Empty/error/loading fixtures available through shared preview scenarios. No backend integration.
