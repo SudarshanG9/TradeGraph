@@ -135,3 +135,18 @@ def test_real_regime_queries(accounts):
         assert current.status_code == 404 and current.json()['error']['code'] == 'NO_MARKET_OBSERVATIONS'
         assert client.get(path, headers=HEADERS, params=params + [('current', 'true')]).status_code == 422
         assert client.get(path, params=params).status_code == 403
+
+
+def test_real_disclosure_full_text_search(accounts):
+    from scripts.verify_schema import db_connect
+    users, instrument = accounts
+    with db_connect() as conn:
+        conn.execute('INSERT INTO market_disclosure(instrument_id,title,body) VALUES (%s,%s,%s)', (instrument, 'Integration disclosure', 'Quasar verification market disclosure'))
+    with httpx.Client(base_url=ORIGIN, timeout=40) as client:
+        assert signin(client, users[3]).status_code == 200
+        r = client.get('/api/backend/admin/disclosures/search', params={'q': 'quasar', 'limit': 100})
+        assert r.status_code == 200
+        row = next(x for x in r.json()['items'] if x['instrument_id'] == instrument)
+        assert row['title'] == 'Integration disclosure' and row['rank'] > 0
+        assert 'body' not in row and isinstance(row['id'], str)
+        assert client.get('/api/backend/admin/disclosures/search?q=').status_code == 422

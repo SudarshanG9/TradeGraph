@@ -29,13 +29,13 @@ export function DisclosureResults({ results }: { results: Search | null }) {
         ))}
       </Table>
       {!results ? (
-        <Empty message="Enter a search query to preview disclosure metadata." />
+        <Empty message="Enter a search query to retrieve disclosure metadata." />
       ) : (
         !results.items.length && <Empty message="No disclosures match your query." />
       )}
       <div className="panel-note">
         Showing titles and metadata only — full disclosure text viewing is not available in this
-        build. Demo search uses local title fixtures.
+        build. Search and ranking are provided by PostgreSQL full-text search.
       </div>
     </Card>
   );

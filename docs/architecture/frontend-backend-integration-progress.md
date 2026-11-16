@@ -272,3 +272,12 @@ fields/layout. Current capture and custom search remain explicit, exclusive and
 instrument-scoped. Native pgvector BFF test passed (2.10s): empty custom search,
 404 NO_MARKET_OBSERVATIONS for a new isolated instrument, invalid mixed modes,
 and CSRF rejection without the request header. Strict TypeScript passed.
+
+## Phase 11 — PostgreSQL disclosure search
+
+Phase 10 remote commit: `50f716291dcf2ea2a86a43c745f045cf0ebeb016`.
+Search preserves server full-text semantics and rank; the UI no longer claims
+local title matching. Query validation remains bounded and results expose only
+returned metadata. Native test passed (2.08s): an isolated disclosure matched a
+word in its body, returned positive rank and exact ID, and did not expose body
+text. Empty query was rejected. Strict TypeScript passed.
