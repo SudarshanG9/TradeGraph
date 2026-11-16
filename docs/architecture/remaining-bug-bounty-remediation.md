@@ -157,3 +157,28 @@ to live service. Durable acceptance proves reservation, not crash-safe completio
 of in-memory matching/publication. N-06 remains blocked; active-order startup still
 refuses unsafe reconstruction. Rollback disables new keyed traffic and INSERT grant
 while retaining identity rows for reconciliation; deleting identities online is unsafe.
+
+## Phase 3 — F-02 authoritative submission reconciliation
+
+Root cause: boolean sessionStorage gate had no authoritative resolution. Replaced
+with scoped persisted intent states, saved original payload/key/time, and explicit
+read-only reconciliation and same-key retry. No backend token enters storage.
+Legacy v1 intents are retained and may be resolved by a matching durable key;
+pre-migration unknown keys without saved payload remain operator-blocked safely.
+A failed lookup or failed replay authentication never discards the earlier intent.
+
+Changed backend/api/routes/orders.py (authenticated trader-only request outcome;
+absence is UNRESOLVED), frontend/src/lib/api/{submission,operations,schema,client}.ts,
+frontend/src/lib/{services,contracts}.ts and components/trader/order-form.tsx.
+Strict forwarding allowlist/response schemas retained. Form loads pending state,
+checks canonical outcomes, refreshes views, and offers explicit original-key/payload
+retry. It never creates a fresh key for unresolved intent.
+Tests: frontend/tests/transport.test.ts and tests/integration/test_order_pipeline.py;
+**34 frontend tests + typecheck passed**. Native pipeline tests include a real
+reservation COMMIT followed by injected lost acknowledgement: owned lookup and
+same-key replay identify exactly one reservation; pipeline failure is not reset.
+Final native result and format/build evidence recorded with commit verification.
+F-02: FIXED for post-migration durable intents upon successful push; legacy
+pre-migration unknown requests remain a documented limitation. Phase 2 `abcd4bf`
+confirmed pushed; no live migration/deployment. N-06 and durable publication remain
+separate constraints.

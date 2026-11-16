@@ -313,3 +313,28 @@ def test_noncrossing_orders_above_queue_capacity_reserve_once(accounts):
         with db_connect() as conn:
             assert conn.execute('SELECT cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s',
                                 (users[0]['trader_id'],)).fetchone() == (19596, 404)
+
+
+def test_request_outcome_is_owned_readonly_and_survives_lost_response(accounts):
+    users, instrument = accounts
+    with TestClient(create_app()) as client:
+        a, b = login(client,users[0]), login(client,users[1])
+        service = client.app.state.service
+        original = service.database.reserve
+        def lost_ack(*args):
+            original(*args)
+            import psycopg
+            raise psycopg.OperationalError('injected acknowledgement loss')
+        service.database.reserve = lost_ack
+        assert client.post('/orders',headers=a|{'Idempotency-Key':'lost-ack'},json=order(instrument)).status_code==503
+        outcome=client.get('/orders/requests/lost-ack',headers=a)
+        assert outcome.status_code==200 and outcome.json()['status']=='ACCEPTED'
+        assert client.get('/orders/requests/lost-ack',headers=b).json()['status']=='UNRESOLVED'
+        assert client.get('/orders/requests/lost-ack').status_code==401
+        service.database.reserve = original
+        replay=client.post('/orders',headers=a|{'Idempotency-Key':'lost-ack'},json=order(instrument))
+        assert replay.status_code==201 and replay.json()==outcome.json()['accepted_order']
+        assert service.dispatcher.failure
+        with db_connect() as conn:
+            assert conn.execute('SELECT count(*) FROM public."order" WHERE trader_id=%s',(users[0]['trader_id'],)).fetchone()==(1,)
+            assert conn.execute('SELECT cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s',(users[0]['trader_id'],)).fetchone()==(19899,101)

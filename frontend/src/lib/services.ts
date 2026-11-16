@@ -18,6 +18,9 @@ export interface Services {
   orders: {
     list(query?: PageQuery, signal?: AbortSignal): Promise<C.OwnOrders>;
     submit(order: C.NewOrder): Promise<C.AcceptedOrder>;
+    pending(): Promise<boolean>;
+    reconcile(): Promise<C.AcceptedOrder | null>;
+    retry(): Promise<C.AcceptedOrder>;
     cancel(id: C.Int): Promise<C.CancelledOrder>;
   };
   market: {
@@ -133,6 +136,11 @@ export function createMockServices(
       },
     },
     orders: {
+      pending: async () => false,
+      reconcile: async () => null,
+      retry: async () => {
+        throw new Error('NO_PENDING_SUBMISSION');
+      },
       list: async (q) => {
         await guard('TRADER');
         return page(

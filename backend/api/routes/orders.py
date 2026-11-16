@@ -106,3 +106,20 @@ async def account(request: Request, identity=Depends(trader)):
         raise HTTPException(404, detail='ACCOUNT_NOT_FOUND')
     positions = await asyncio.to_thread(db.query, "SELECT instrument_id,net_quantity,realized_pnl,'gross' AS pnl_basis FROM position WHERE trader_id=%s", (identity['trader_id'],))
     return rows[0] | {'positions':positions}
+
+
+class RequestOutcome(BaseModel):
+    trader_id: UUID
+    status: Literal['ACCEPTED', 'UNRESOLVED']
+    accepted_order: AcceptedOrder | None
+
+
+@router.get('/orders/requests/{request_key}', response_model=RequestOutcome)
+async def request_outcome(request_key: str, request: Request, identity=Depends(trader)):
+    # Read-only and always scoped to the authenticated server-derived trader.
+    import re
+    if not re.fullmatch(r'[A-Za-z0-9._-]{1,128}', request_key):
+        raise HTTPException(422, detail='INVALID_REQUEST')
+    row = await asyncio.to_thread(request.app.state.database.request_identity, identity['trader_id'], request_key)
+    return {'trader_id':identity['trader_id'], 'status':'ACCEPTED' if row else 'UNRESOLVED',
+            'accepted_order':{'order_id':row['order_id'], 'status':'OPEN', 'accepted_at':row['accepted_at']} if row else None}

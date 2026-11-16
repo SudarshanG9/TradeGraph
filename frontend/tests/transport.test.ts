@@ -130,7 +130,7 @@ test('timeout and abort report uncertain mutation outcome without retries', asyn
 });
 
 test('uncertain submission survives a new adapter and never dispatches a second order', async () => {
-  const { createSubmissionGate } = await import('../src/lib/api/submission');
+  const { createSubmissionTracker } = await import('../src/lib/api/submission');
   const values = new Map<string, string>();
   const storage = {
     getItem: (k: string) => values.get(k) ?? null,
@@ -143,16 +143,24 @@ test('uncertain submission survives a new adapter and never dispatches a second 
   };
   let calls = 0;
   await assert.rejects(
-    createSubmissionGate(storage)(async () => {
-      calls++;
-      throw new ApiError(504, 'TIMEOUT', true);
-    }),
+    createSubmissionTracker(storage).beginSubmission(
+      'account-a',
+      { instrument_id: 1, side: 'BUY', price_ticks: '1', quantity: '1' },
+      async () => {
+        calls++;
+        throw new ApiError(504, 'TIMEOUT', true);
+      },
+    ),
   );
   await assert.rejects(
-    createSubmissionGate(storage)(async () => {
-      calls++;
-      return 'duplicate';
-    }),
+    createSubmissionTracker(storage).beginSubmission(
+      'account-a',
+      { instrument_id: 1, side: 'BUY', price_ticks: '1', quantity: '1' },
+      async () => {
+        calls++;
+        return { order_id: '1', status: 'OPEN', accepted_at: '2026-11-16T00:00:00Z' };
+      },
+    ),
     /reconcile/i,
   );
   assert.equal(calls, 1);
@@ -176,4 +184,109 @@ test('execution history deduplicates exact IDs, scopes instruments and bounds me
     result.map((x) => x.id),
     ['9007199254740994', '9007199254740993'],
   );
+});
+
+test('durable-key reconciliation handles reload, lost response, account switch and outage', async () => {
+  const { createSubmissionTracker } = await import('../src/lib/api/submission');
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => values.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      values.set(k, v);
+    },
+    removeItem: (k: string) => {
+      values.delete(k);
+    },
+  };
+  const order = {
+    instrument_id: 1,
+    side: 'BUY' as const,
+    price_ticks: '100' as const,
+    quantity: '1' as const,
+  };
+  const accepted = {
+    order_id: '123' as const,
+    status: 'OPEN' as const,
+    accepted_at: '2026-11-16T00:00:00Z',
+  };
+  let originalKey = '';
+  await assert.rejects(
+    createSubmissionTracker(storage).beginSubmission('a', order, async (key) => {
+      originalKey = key;
+      throw new ApiError(504, 'TIMEOUT', true);
+    }),
+  );
+  const reload = createSubmissionTracker(storage);
+  assert.deepEqual(reload.getPendingSubmission('a')?.order, order);
+  assert.equal(reload.getPendingSubmission('b'), null);
+  await assert.rejects(
+    reload.reconcileSubmission('a', async () => {
+      throw new ApiError(503, 'UNAVAILABLE');
+    }),
+  );
+  assert.equal(reload.getPendingSubmission('a')?.key, originalKey);
+  assert.equal(
+    await reload.reconcileSubmission('a', async () => ({
+      trader_id: 'a',
+      status: 'UNRESOLVED',
+      accepted_order: null,
+    })),
+    null,
+  );
+  await assert.rejects(
+    reload.retrySubmission('a', async () => {
+      throw new ApiError(401, 'UNAUTHORIZED');
+    }),
+  );
+  assert.ok(reload.getPendingSubmission('a'));
+  await assert.rejects(
+    reload.reconcileSubmission('a', async () => ({
+      trader_id: 'b',
+      status: 'ACCEPTED',
+      accepted_order: accepted,
+    })),
+  );
+  assert.ok(reload.getPendingSubmission('a'));
+  assert.deepEqual(
+    await reload.retrySubmission('a', async (key, payload) => {
+      assert.equal(key, originalKey);
+      assert.deepEqual(payload, order);
+      return accepted;
+    }),
+    accepted,
+  );
+  assert.equal(reload.getPendingSubmission('a'), null);
+  await assert.rejects(
+    reload.beginSubmission('a', order, async () => {
+      throw new ApiError(422, 'INVALID_ORDER');
+    }),
+  );
+  assert.equal(reload.getPendingSubmission('a'), null);
+  await assert.rejects(
+    reload.beginSubmission('a', order, async () => {
+      throw new ApiError(504, 'TIMEOUT', true);
+    }),
+  );
+  assert.deepEqual(
+    await reload.reconcileSubmission('a', async () => ({
+      trader_id: 'a',
+      status: 'ACCEPTED',
+      accepted_order: accepted,
+    })),
+    accepted,
+  );
+  assert.equal(reload.getPendingSubmission('a'), null);
+});
+
+test('request reconciliation allowlist is exact, authenticated and read only', () => {
+  const op = operation('GET', ['orders', 'requests', 'saved-key'], new URLSearchParams());
+  assert.equal(op.kind, 'requestOutcome');
+  assert.equal(op.authenticated, true);
+  assert.equal(op.role, 'TRADER');
+  for (const key of ['..', 'x?y', 'x/y', 'x%2Fy'])
+    assert.throws(() => operation('GET', ['orders', 'requests', key], new URLSearchParams()));
+  assert.throws(() =>
+    operation('GET', ['orders', 'requests', 'key'], new URLSearchParams('trader_id=other')),
+  );
+  assert.throws(() => operation('POST', ['orders', 'requests', 'key'], new URLSearchParams()));
 });

@@ -1,4 +1,4 @@
-import { createSubmissionGate } from './submission';
+import { createSubmissionTracker } from './submission';
 import { ApiError } from './errors';
 import { schemas, type ApiResult, type ResponseKind } from './schema';
 import type { Services, PageQuery } from '../services';
@@ -54,16 +54,27 @@ const query = (values: Record<string, string | number | undefined>) => {
 const page = (q: PageQuery = {}) => query({ limit: q.limit, before_id: q.before_id });
 const market = (symbol: string, suffix: string) => `market/${encodeURIComponent(symbol)}/${suffix}`;
 export function createRealDataServices(): Omit<Services, 'auth'> {
-  const submit = createSubmissionGate(
-    typeof window === 'undefined' ? undefined : window.sessionStorage,
-  );
+  // Resolve storage lazily: this service is also constructed during SSR.
+  const tracker = () => {
+    if (typeof window === 'undefined') throw new ApiError(503, 'BROWSER_REQUIRED');
+    return createSubmissionTracker(window.sessionStorage);
+  };
+  const scope = async () => (await apiRequest('account', 'account/me')).trader_id;
+  const dispatch = (key: string, order: import('../contracts').NewOrder) =>
+    apiRequest('submit', 'orders', order, key);
   return {
     instruments: { list: () => apiRequest('instruments', 'instruments') },
     account: { get: (signal) => apiRequest('account', 'account/me', undefined, undefined, signal) },
     orders: {
       list: (q, signal) =>
         apiRequest('orders', `orders/me?${page(q)}`, undefined, undefined, signal),
-      submit: (order) => submit((key) => apiRequest('submit', 'orders', order, key)),
+      submit: async (order) => tracker().beginSubmission(await scope(), order, dispatch),
+      pending: async () => !!tracker().getPendingSubmission(await scope()),
+      reconcile: async () =>
+        tracker().reconcileSubmission(await scope(), (key) =>
+          apiRequest('requestOutcome', `orders/requests/${key}`),
+        ),
+      retry: async () => tracker().retrySubmission(await scope(), dispatch),
       cancel: (id) => apiRequest('cancel', `orders/${id}/cancel`, null),
     },
     market: {

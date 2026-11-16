@@ -62,6 +62,16 @@ export function operation(
       kind = 'orders';
       requiredRole = 'TRADER';
       allowed = ['limit', 'before_id'];
+    } else if (
+      method === 'GET' &&
+      segments.length === 3 &&
+      segments[0] === 'orders' &&
+      segments[1] === 'requests'
+    ) {
+      if (['.', '..'].includes(segments[2]) || !/^[A-Za-z0-9._-]{1,128}$/.test(segments[2]))
+        invalid();
+      kind = 'requestOutcome';
+      requiredRole = 'TRADER';
     } else if (method === 'POST' && name === 'orders') {
       const v = parseWire(raw ?? '');
       exactKeys(v, ['instrument_id', 'side', 'price_ticks', 'quantity']);

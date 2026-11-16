@@ -200,3 +200,9 @@ export interface PreviewSession {
   expiresAt: number;
   kind: 'mock-preview' | 'live';
 }
+
+export interface RequestOutcome {
+  trader_id: string;
+  status: 'ACCEPTED' | 'UNRESOLVED';
+  accepted_order: AcceptedOrder | null;
+}

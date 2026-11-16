@@ -148,6 +148,13 @@ export const schemas = {
     next_before_id: cursor,
   }),
   submit: object({ order_id: positive, status: oneOf('OPEN'), accepted_at: timestamp }),
+  requestOutcome: object({
+    trader_id: uuid,
+    status: oneOf('ACCEPTED', 'UNRESOLVED'),
+    accepted_order: nullable(
+      object({ order_id: positive, status: oneOf('OPEN'), accepted_at: timestamp }),
+    ),
+  }),
   cancel: object({ order_id: positive, status: oneOf('CANCELLED'), cancelled_quantity: exact() }),
   book: object({
     symbol: str,
