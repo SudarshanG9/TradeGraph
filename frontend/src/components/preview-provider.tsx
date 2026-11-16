@@ -47,6 +47,8 @@ interface Preview {
   liveState: LiveState;
   revision: number;
   invalidate: () => void;
+  registerResource: (refresh: () => Promise<boolean>) => () => void;
+  refreshResources: () => Promise<boolean>;
 }
 const Context = createContext<Preview | null>(null);
 const key = 'tradegraph.mock-preview.v1';
@@ -57,6 +59,19 @@ export function PreviewProvider({
   children: ReactNode;
   mock?: boolean;
 }) {
+  const resources = useRef(new Set<() => Promise<boolean>>());
+  const registerResource = useCallback((refresh: () => Promise<boolean>) => {
+    resources.current.add(refresh);
+    return () => {
+      resources.current.delete(refresh);
+    };
+  }, []);
+  const refreshResources = useCallback(async () => {
+    const results = await Promise.allSettled([...resources.current].map((refresh) => refresh()));
+    return (
+      results.length > 0 && results.every((result) => result.status === 'fulfilled' && result.value)
+    );
+  }, []);
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' });
   const [auth] = useState(() => createAuthController(setAuthState));
   const session = authState.status === 'authenticated' ? authState.session : null;
@@ -230,6 +245,8 @@ export function PreviewProvider({
         liveState,
         revision,
         invalidate: () => setRevision((r) => r + 1),
+        registerResource,
+        refreshResources,
       }}
     >
       {session && !mock && (
@@ -249,49 +266,80 @@ export function usePreview() {
   if (!value) throw new Error('PreviewProvider required');
   return value;
 }
+export type ResourceStatus = 'INITIAL_LOADING' | 'READY' | 'REFRESHING' | 'STALE' | 'ERROR';
 export function useResource<T>(
   load: (signal: AbortSignal) => Promise<T>,
   deps: unknown[] = [],
   interval = 0,
 ) {
-  const { fixture, revision, mock, session } = usePreview();
-  const [data, setData] = useState<T | null>(null),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
-    [nonce, setNonce] = useState(0);
-  const scope = JSON.stringify([fixture, session?.role, session?.expiresAt, ...deps]);
-  const previousScope = useRef<string | null>(null);
+  const { fixture, revision, mock, session, sessionGeneration, registerResource } = usePreview();
+  const scope = JSON.stringify([
+    fixture,
+    sessionGeneration,
+    session?.role,
+    session?.expiresAt,
+    ...deps,
+  ]);
+  const [resource, setResource] = useState<{
+    scope: string;
+    data: T | null;
+    status: ResourceStatus;
+    error: string;
+  }>({ scope, data: null, status: 'INITIAL_LOADING', error: '' });
   const fn = useRef(load);
   fn.current = load;
+  const poll = useRef<ReturnType<typeof startPolling<T>> | null>(null);
   useEffect(() => {
-    if (previousScope.current !== scope) {
-      setData(null);
-      setLoading(true);
-      previousScope.current = scope;
-    }
-    setError('');
-    const poll = startPolling({
+    setResource((previous) =>
+      previous.scope === scope
+        ? previous
+        : { scope, data: null, status: 'INITIAL_LOADING', error: '' },
+    );
+    const polling = startPolling({
       load: (signal) => fn.current(signal),
-      value: (value) => {
-        setData(value);
-        setError('');
-      },
-      error: (e) => setError(e instanceof Error ? e.message : 'Service unavailable'),
-      settled: () => setLoading(false),
+      started: () =>
+        setResource((previous) => ({
+          ...previous,
+          status:
+            previous.scope === scope && previous.data !== null ? 'REFRESHING' : 'INITIAL_LOADING',
+        })),
+      value: (data) => setResource({ scope, data, status: 'READY', error: '' }),
+      error: (error) =>
+        setResource((previous) => ({
+          scope,
+          data: previous.scope === scope ? previous.data : null,
+          status: previous.scope === scope && previous.data !== null ? 'STALE' : 'ERROR',
+          error: error instanceof Error ? error.message : 'Service unavailable',
+        })),
+      settled: () => {},
       interval: mock ? 0 : interval,
       hidden: () => !mock && document.hidden,
       enabled: !!session && fixture !== 'loading',
     });
+    poll.current = polling;
+    const unregister = interval < 0 ? () => {} : registerResource(polling.refresh);
     const visible = () => {
-      if (!document.hidden) poll.refresh();
+      if (!document.hidden) void polling.refresh();
     };
     if (interval > 0 && !mock) document.addEventListener('visibilitychange', visible);
     return () => {
-      poll.stop();
+      poll.current = null;
+      unregister();
+      polling.stop();
       document.removeEventListener('visibilitychange', visible);
     };
-  }, [fixture, revision, nonce, mock, session, interval, ...deps]);
-  return { data: session ? data : null, loading, error, reload: () => setNonce((x) => x + 1) };
+  }, [scope, revision, mock, session, interval, registerResource]);
+  const current = resource.scope === scope && !!session;
+  return {
+    data: current ? resource.data : null,
+    loading: !current || resource.status === 'INITIAL_LOADING',
+    refreshing: current && resource.status === 'REFRESHING',
+    status: current ? resource.status : ('INITIAL_LOADING' as ResourceStatus),
+    error: current ? resource.error : '',
+    reload: () => {
+      void poll.current?.refresh();
+    },
+  };
 }
 export function InstrumentSelector() {
   const { instrument, setInstrument, instruments, catalogLoading } = usePreview();

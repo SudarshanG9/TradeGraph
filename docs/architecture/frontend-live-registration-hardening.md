@@ -202,3 +202,21 @@ Connection state stays resyncing until snapshots are acknowledged, avoiding fals
 provider, preview provider, live-client tests. Tests verify shared widget subscribers,
 stale/order/gap handling, instrument switch, pending-ticket logout and bounded retries.
 Frontend tests/typecheck pass; browser network failure exercise follows acceptance.
+
+Phase 10: 47 frontend tests passed, 2 native skipped; typecheck passed.
+Commit `168002e`, pushed.
+
+## Phase 11 — deterministic loading and retry
+
+Status: FIXED for polling regressions; browser partial-failure exercise pending.
+Manual refresh during pending work now queues exactly one trailing request, with
+completion promises; no overlap or dropped Retry. Scope cleanup aborts old work
+and suppresses old results. Resource states distinguish initial load, refresh,
+ready, stale and error; successful snapshots stay visible on recoverable failures.
+Scope tags hide prior session/instrument data immediately. Dashboard account,
+orders and trades load/retry independently; account fields remain one HTTP snapshot.
+Files: polling, provider/resource hook, dashboard and polling tests. Tests cover
+coalesced retries, cancellation, hidden views, bounded backoff/recovery and stale
+completion suppression. 49 frontend tests passed, 2 native skipped; typecheck passed.
+No financial POST is retried by polling. Resource registry prepares snapshot
+acknowledgment without declaring an open socket synchronized.

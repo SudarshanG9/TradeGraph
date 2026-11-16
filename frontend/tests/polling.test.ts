@@ -64,3 +64,56 @@ test('failed polls retry with backoff and stopped generations cannot update stat
   assert.ok(values >= 1);
   assert.ok(calls <= 5);
 });
+
+test('manual retries while pending coalesce into one trailing request and await fresh result', async () => {
+  let release!: () => void;
+  let calls = 0;
+  const values: number[] = [];
+  const poll = startPolling({
+    interval: 0,
+    enabled: true,
+    hidden: () => false,
+    load: async () => {
+      const n = ++calls;
+      if (n === 1)
+        await new Promise<void>((r) => {
+          release = r;
+        });
+      return n;
+    },
+    value: (v) => values.push(v),
+    error: () => assert.fail('unexpected error'),
+    settled: () => {},
+  });
+  const retry = poll.refresh();
+  const another = poll.refresh();
+  assert.equal(calls, 1);
+  release();
+  assert.equal(await retry, true);
+  assert.equal(await another, true);
+  assert.deepEqual(values, [1, 2]);
+  assert.equal(calls, 2);
+  poll.stop();
+});
+test('scope cancellation suppresses old success and resolves queued refresh', async () => {
+  let release!: (v: string) => void;
+  const values: string[] = [];
+  const poll = startPolling({
+    interval: 0,
+    enabled: true,
+    hidden: () => false,
+    load: () =>
+      new Promise<string>((r) => {
+        release = r;
+      }),
+    value: (v) => values.push(v),
+    error: () => {},
+    settled: () => {},
+  });
+  const retry = poll.refresh();
+  poll.stop();
+  assert.equal(await retry, false);
+  release('old account');
+  await sleep(1);
+  assert.deepEqual(values, []);
+});
