@@ -20,6 +20,7 @@ from backend.workers.graph_worker import GraphWorker
 from backend.stores.regimes import Regimes
 from backend.workers.regime_worker import RegimeWorker
 from backend.events.trade_event import TradeEvent
+from backend.events.live_bus import LiveBus
 from backend.workers.housekeeping_worker import HousekeepingWorker
 
 
@@ -46,6 +47,9 @@ def create_app(settings=None, *, settlement=True):
         app.state.settings = settings or Settings.from_env()
         app.state.database = Database(app.state.settings)
         app.state.service = Coordinator(app.state.database, app.state.settings)
+        app.state.live_bus = LiveBus(app.state.service.epoch)
+        app.state.service.live_bus = app.state.live_bus
+        app.state.service.book_observers.append(app.state.live_bus.book_changed)
         app.state.live_simulator = LiveMarketSupervisor(app.state.service, app.state.database)
         try:
             # Only settled history is rehydrated. Active orders already triggered
@@ -83,6 +87,7 @@ def create_app(settings=None, *, settlement=True):
                 app.state.service.book_observers.append(regimes.record_book)
                 regimes.start()
                 app.state.service.worker.after_commit.append(regimes.publish_settled)
+                app.state.service.worker.after_commit.append(app.state.live_bus.settled)
                 app.state.service.worker.start()
             app.state.housekeeping = HousekeepingWorker(app.state.database, app.state.settings)
             if app.state.settings.maintenance_enabled:

@@ -134,3 +134,20 @@ Tests: 45 frontend passed, 2 native skipped, typecheck passed; abuse classificat
 unit test passed. Five-user browser signup is reserved for full-stack acceptance.
 Files: auth route/limiter, frontend auth forms/page/client/contracts/schema/operations,
 BFF route, registration and limiter tests. Financial HTTP mutation flow unchanged.
+
+Phase 6 commit `64679b3`, pushed. Backend broad native regression still running;
+all native failures will be classified before final acceptance.
+
+## Phase 7 — nonblocking notification publication
+
+Status: PARTIALLY_FIXED; authenticated transport is delivered with Phase 8.
+Added validated v1 envelopes, bounded per-client queues, per-user/global caps,
+private routing, market subscriptions, per-connection sequence and owner epoch.
+A slow client overflows and must resynchronize; publication never raises into the
+financial caller. Admission/cancel invalidations follow database commit; execution
+invalidations attach to the existing settlement after_commit callback. No matching,
+fees, financial SQL or settlement retry semantics changed. Simulator control
+mutations notify admins. Files: live_protocol/live_bus, main, coordinator, simulator
+routes and live bus tests. Unit tests prove privacy, sequence and queue limits;
+real socket authorization and COMMIT tests follow with tickets. Notification
+loss is handled by snapshots and polling; no durable event delivery claim.
