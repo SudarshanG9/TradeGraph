@@ -364,3 +364,25 @@ financial work and late old writers after a torn lease. Session advisory locks a
 not a distributed fence for remote writes already in flight. This limit applies
 across financial connections and derived Redis/Neo4j projection writers; it is not
 presented as fixed by the outbox. No automatic active-order recovery is enabled.
+
+
+## Completed final slow-receiver run
+
+Final regression checkpoint `fc0826b` pushed and confirmed on origin.
+Second sustained run: **PASS, 1810.30 seconds, 1582 executions, 3164 BFF requests**,
+with intentional slow receiver 6 and all five scoped interruptions. Three browsers:
+516 successful refreshes, 14,375 frames, zero recovery errors. No order errors or
+cross-user private events; 258 successful socket connections; final clients,
+socket tasks, settlement queue and all financial/publication mismatch counts zero.
+Independent auditor: 354 snapshots, all 1582 execution records, exact final cash
+plus escrow 36,836 (= 40,000 minus 3,164 fees), zero escrow, net position sum and
+realized PnL. Notification p95 includes the slow reader (6064.07 ms); financial
+transaction p95 remained 36.07 ms across 622 samples since backend restart.
+
+Combined runs: **3623.74 seconds, 3163 executions**. They are separate operational
+runs, not an uninterrupted hour or a deployment-specific capacity guarantee.
+Full timings, resource samples, tail latency and revision limitations are in
+`production-stability-results.md` and the final/rolling evidence JSON files.
+All test servers, browsers and the two isolated PostgreSQL/Redis stacks were
+stopped after read-only checks confirmed no active owner or unresolved orders.
+Private credentials, certificate keys and raw logs were not committed.

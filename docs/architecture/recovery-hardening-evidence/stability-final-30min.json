@@ -1,0 +1,6984 @@
+{
+  "started_at": "2026-11-16T20:47:37.109185+00:00",
+  "requested_seconds": 1800,
+  "traders": 3,
+  "target_clients": 10,
+  "slow_receiver_index": 6,
+  "executions": 1582,
+  "errors": [],
+  "interruptions": [
+    {
+      "kind": "neo4j",
+      "duration_seconds": 3.004748708975967,
+      "mode": "scoped handler fault"
+    },
+    {
+      "kind": "redis",
+      "duration_seconds": 3.0629006670205854,
+      "mode": "owned service restart"
+    },
+    {
+      "kind": "frontend",
+      "duration_seconds": 0.4622233330155723,
+      "mode": "owned service restart"
+    },
+    {
+      "kind": "proxy",
+      "duration_seconds": 0.13130437501240522,
+      "mode": "owned service restart"
+    },
+    {
+      "kind": "backend",
+      "duration_seconds": 1.3256470420164987,
+      "mode": "owned service restart"
+    }
+  ],
+  "scope": "isolated test PostgreSQL/Redis, scoped Neo4j fault injection; loopback TLS",
+  "latencies_ms": {
+    "http": {
+      "count": 3164,
+      "p50": 62.77858302928507,
+      "p95": 103.26362500200048,
+      "max": 233.29545801971108
+    },
+    "connect": {
+      "count": 258,
+      "p50": 38.22891699383035,
+      "p95": 73.7643750035204,
+      "max": 110.74087501037866
+    },
+    "notification": {
+      "count": 20000,
+      "p50": 1.33,
+      "p95": 6064.074,
+      "max": 27656.568
+    },
+    "settlement": {
+      "count": 622,
+      "p50": 25.78554197680205,
+      "p95": 36.06616600882262,
+      "max": 67.37012497615069
+    }
+  },
+  "observations": {
+    "ConnectionClosedError": 12,
+    "HTTPStatusError": 12
+  },
+  "status": "PASS",
+  "elapsed_seconds": 1810.3040907909744,
+  "final_invariants": {
+    "active_orders": 0,
+    "volume_mismatches": 0,
+    "escrow_mismatches": 0,
+    "position_mismatches": 0,
+    "duplicate_order_ids": 0,
+    "execution_order_mismatches": 0,
+    "missing_publication_intents": 0
+  },
+  "reconnections": 258,
+  "private_leaks": 0,
+  "finished_at": "2026-11-16T21:17:48.218506+00:00",
+  "browser": {
+    "sessions": 3,
+    "refreshes": 516,
+    "frames": 14375,
+    "recoverableErrors": 0,
+    "fatal": null
+  },
+  "limits": [
+    "Loopback TLS with explicitly trusted test certificate; public DNS/ACME not exercised",
+    "Historical-retention-only callback follow-up loaded on planned backend restart; current-trade path unchanged",
+    "Settlement timing samples reset at backend restart; notification timings retain latest 20000 samples",
+    "Separate sequential runs; not a single continuous 60-minute uptime claim"
+  ],
+  "final_socket_metrics": {
+    "clients": 0,
+    "socket_tasks": 0,
+    "dropped": 0,
+    "max_client_queue": 0,
+    "settlement_queue": 0,
+    "financial_failure": false,
+    "cache_failed": false,
+    "database_connections": 2
+  },
+  "resource_samples": [
+    {
+      "elapsed": 0.22456441598478705,
+      "metrics": {
+        "clients": 7,
+        "socket_tasks": 14,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 1,
+          "p50": 11.615249968599528,
+          "p95": 11.615249968599528,
+          "max": 11.615249968599528
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "93872",
+          "cpu_percent": "166.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "128176",
+          "cpu_percent": "32.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "47600",
+          "cpu_percent": "9.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 10.417819791007787,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 10,
+          "p50": 23.617250029928982,
+          "p95": 35.755334014538676,
+          "max": 35.755334014538676
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "56144",
+          "cpu_percent": "121.8"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "153248",
+          "cpu_percent": "4.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37552",
+          "cpu_percent": "0.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 20.62680274999002,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 19,
+          "p50": 22.74533297168091,
+          "p95": 39.443208021111786,
+          "max": 39.443208021111786
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "56240",
+          "cpu_percent": "128.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "154896",
+          "cpu_percent": "3.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37296",
+          "cpu_percent": "1.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 30.746824291010853,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 28,
+          "p50": 22.74533297168091,
+          "p95": 35.755334014538676,
+          "max": 39.443208021111786
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53168",
+          "cpu_percent": "141.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "158240",
+          "cpu_percent": "12.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37568",
+          "cpu_percent": "3.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 40.79091995797353,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 37,
+          "p50": 22.515041986480355,
+          "p95": 35.755334014538676,
+          "max": 39.443208021111786
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53648",
+          "cpu_percent": "145.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "149312",
+          "cpu_percent": "12.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37712",
+          "cpu_percent": "4.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 51.24199583299924,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 46,
+          "p50": 23.12795800389722,
+          "p95": 36.07641701819375,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54928",
+          "cpu_percent": "143.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "129968",
+          "cpu_percent": "15.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36864",
+          "cpu_percent": "5.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 61.39455750002526,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 55,
+          "p50": 23.12795800389722,
+          "p95": 36.07641701819375,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "51424",
+          "cpu_percent": "68.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "134512",
+          "cpu_percent": "11.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "34944",
+          "cpu_percent": "2.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 71.51750150002772,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 64,
+          "p50": 22.88816700456664,
+          "p95": 35.755334014538676,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52576",
+          "cpu_percent": "91.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "134768",
+          "cpu_percent": "12.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36224",
+          "cpu_percent": "4.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 81.62000370799797,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 73,
+          "p50": 22.993457969278097,
+          "p95": 35.755334014538676,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52608",
+          "cpu_percent": "70.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "136544",
+          "cpu_percent": "5.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36624",
+          "cpu_percent": "1.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 91.86283333302708,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 82,
+          "p50": 23.12795800389722,
+          "p95": 33.34662498673424,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53088",
+          "cpu_percent": "103.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "146736",
+          "cpu_percent": "11.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37600",
+          "cpu_percent": "3.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 102.04685120802606,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 91,
+          "p50": 23.255000007338822,
+          "p95": 35.755334014538676,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53024",
+          "cpu_percent": "142.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "140608",
+          "cpu_percent": "24.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36960",
+          "cpu_percent": "6.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 112.12231295800302,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 100,
+          "p50": 23.255000007338822,
+          "p95": 36.07641701819375,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53072",
+          "cpu_percent": "59.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "151344",
+          "cpu_percent": "7.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37440",
+          "cpu_percent": "1.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 122.28267079102807,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 109,
+          "p50": 23.255000007338822,
+          "p95": 35.755334014538676,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53168",
+          "cpu_percent": "80.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "152832",
+          "cpu_percent": "9.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37616",
+          "cpu_percent": "2.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 132.45364137500292,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 118,
+          "p50": 23.218250018544495,
+          "p95": 35.755334014538676,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53136",
+          "cpu_percent": "98.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "148960",
+          "cpu_percent": "11.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37760",
+          "cpu_percent": "3.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 142.57803116599098,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 127,
+          "p50": 23.20358296856284,
+          "p95": 35.374625003896654,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53200",
+          "cpu_percent": "61.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "151056",
+          "cpu_percent": "3.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37872",
+          "cpu_percent": "0.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 152.65145604102872,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 136,
+          "p50": 23.20358296856284,
+          "p95": 35.374625003896654,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53216",
+          "cpu_percent": "110.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "151888",
+          "cpu_percent": "9.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38624",
+          "cpu_percent": "4.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 162.7974148329813,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 145,
+          "p50": 23.218250018544495,
+          "p95": 33.34662498673424,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53280",
+          "cpu_percent": "104.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "153616",
+          "cpu_percent": "8.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37856",
+          "cpu_percent": "2.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 172.911986000021,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 154,
+          "p50": 23.218250018544495,
+          "p95": 33.34662498673424,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53360",
+          "cpu_percent": "81.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "158096",
+          "cpu_percent": "17.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38304",
+          "cpu_percent": "1.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 183.00354845798574,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 163,
+          "p50": 23.17695796955377,
+          "p95": 32.67395799048245,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53440",
+          "cpu_percent": "42.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "148352",
+          "cpu_percent": "3.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37696",
+          "cpu_percent": "0.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 193.20290912501514,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 172,
+          "p50": 23.20358296856284,
+          "p95": 32.67395799048245,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53296",
+          "cpu_percent": "131.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "144304",
+          "cpu_percent": "13.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37584",
+          "cpu_percent": "3.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 203.41439637501026,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 181,
+          "p50": 23.20358296856284,
+          "p95": 30.695166962686926,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53392",
+          "cpu_percent": "151.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "150736",
+          "cpu_percent": "10.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38272",
+          "cpu_percent": "7.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 213.4977835000027,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 190,
+          "p50": 23.218250018544495,
+          "p95": 32.612041977699846,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53408",
+          "cpu_percent": "127.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "152192",
+          "cpu_percent": "19.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38272",
+          "cpu_percent": "5.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 223.57984779099934,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 199,
+          "p50": 23.218250018544495,
+          "p95": 32.612041977699846,
+          "max": 53.52979199960828
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "74208",
+          "cpu_percent": "266.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "151920",
+          "cpu_percent": "44.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37584",
+          "cpu_percent": "12.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 233.77861062501324,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 3,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 5,
+        "settlement_sample": {
+          "count": 208,
+          "p50": 23.218250018544495,
+          "p95": 32.612041977699846,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "74208",
+          "cpu_percent": "217.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "151264",
+          "cpu_percent": "57.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37664",
+          "cpu_percent": "8.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 243.89718404097948,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 217,
+          "p50": 23.17695796955377,
+          "p95": 32.67395799048245,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52256",
+          "cpu_percent": "115.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "146192",
+          "cpu_percent": "11.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37216",
+          "cpu_percent": "2.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 254.06683808297385,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 226,
+          "p50": 23.20358296856284,
+          "p95": 32.612041977699846,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53424",
+          "cpu_percent": "167.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "141664",
+          "cpu_percent": "21.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37824",
+          "cpu_percent": "7.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 264.14669179101475,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 235,
+          "p50": 23.12108298065141,
+          "p95": 32.612041977699846,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52528",
+          "cpu_percent": "84.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "148000",
+          "cpu_percent": "7.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37632",
+          "cpu_percent": "2.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 274.3664837909746,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 244,
+          "p50": 23.20358296856284,
+          "p95": 32.08237502258271,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52976",
+          "cpu_percent": "49.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "141600",
+          "cpu_percent": "3.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37504",
+          "cpu_percent": "0.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 284.4832681660191,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 253,
+          "p50": 23.20358296856284,
+          "p95": 32.612041977699846,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52320",
+          "cpu_percent": "96.8"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "148496",
+          "cpu_percent": "42.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37296",
+          "cpu_percent": "3.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 294.5241223750054,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 262,
+          "p50": 23.218250018544495,
+          "p95": 32.08237502258271,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53312",
+          "cpu_percent": "108.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "149920",
+          "cpu_percent": "11.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37680",
+          "cpu_percent": "3.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 304.7097352499841,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 271,
+          "p50": 23.17695796955377,
+          "p95": 32.08237502258271,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52912",
+          "cpu_percent": "130.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "142816",
+          "cpu_percent": "14.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37840",
+          "cpu_percent": "7.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 314.85665270802565,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 280,
+          "p50": 23.20358296856284,
+          "p95": 32.612041977699846,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53232",
+          "cpu_percent": "50.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "145088",
+          "cpu_percent": "3.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38224",
+          "cpu_percent": "0.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 325.38434866600437,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 286,
+          "p50": 23.12795800389722,
+          "p95": 32.590000017080456,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54000",
+          "cpu_percent": "69.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "149824",
+          "cpu_percent": "6.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38384",
+          "cpu_percent": "1.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 335.50989124999614,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 295,
+          "p50": 23.17695796955377,
+          "p95": 32.590000017080456,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52656",
+          "cpu_percent": "118.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "138048",
+          "cpu_percent": "13.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36480",
+          "cpu_percent": "4.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 345.63625358301215,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 304,
+          "p50": 23.20358296856284,
+          "p95": 32.08237502258271,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53040",
+          "cpu_percent": "87.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "143696",
+          "cpu_percent": "10.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37504",
+          "cpu_percent": "2.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 355.93857541598845,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 313,
+          "p50": 23.20358296856284,
+          "p95": 32.08237502258271,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53424",
+          "cpu_percent": "63.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "146976",
+          "cpu_percent": "5.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36624",
+          "cpu_percent": "1.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 366.19689262501197,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 322,
+          "p50": 23.218250018544495,
+          "p95": 32.08237502258271,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53200",
+          "cpu_percent": "113.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "139504",
+          "cpu_percent": "14.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "34016",
+          "cpu_percent": "3.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 377.2533096660045,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 332,
+          "p50": 23.26745801838115,
+          "p95": 32.590000017080456,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52080",
+          "cpu_percent": "82.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "141728",
+          "cpu_percent": "8.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37712",
+          "cpu_percent": "4.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 387.4954441250302,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 2,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 8,
+        "settlement_sample": {
+          "count": 341,
+          "p50": 23.274083039723337,
+          "p95": 32.08237502258271,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52960",
+          "cpu_percent": "136.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "141584",
+          "cpu_percent": "36.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "33376",
+          "cpu_percent": "5.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 397.838792458002,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 350,
+          "p50": 23.344958026427776,
+          "p95": 32.08237502258271,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52224",
+          "cpu_percent": "66.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "141856",
+          "cpu_percent": "6.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37296",
+          "cpu_percent": "1.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 408.046191499976,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 4,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 359,
+          "p50": 23.344958026427776,
+          "p95": 32.590000017080456,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52960",
+          "cpu_percent": "73.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "137024",
+          "cpu_percent": "4.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36320",
+          "cpu_percent": "2.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 418.1256300410023,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 368,
+          "p50": 23.344958026427776,
+          "p95": 32.254124991595745,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53248",
+          "cpu_percent": "128.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "140176",
+          "cpu_percent": "13.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36064",
+          "cpu_percent": "4.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 428.2246445409837,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 377,
+          "p50": 23.305624956265092,
+          "p95": 32.254124991595745,
+          "max": 68.67779203457758
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53120",
+          "cpu_percent": "102.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "151184",
+          "cpu_percent": "10.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36400",
+          "cpu_percent": "2.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 438.4029872500105,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 386,
+          "p50": 23.344958026427776,
+          "p95": 32.254124991595745,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52864",
+          "cpu_percent": "119.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "148272",
+          "cpu_percent": "6.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37056",
+          "cpu_percent": "2.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 448.5769839580171,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 395,
+          "p50": 23.344958026427776,
+          "p95": 32.590000017080456,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "73696",
+          "cpu_percent": "77.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "109280",
+          "cpu_percent": "7.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "35824",
+          "cpu_percent": "4.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 458.70435974997235,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 404,
+          "p50": 23.344958026427776,
+          "p95": 32.254124991595745,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53312",
+          "cpu_percent": "107.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "144112",
+          "cpu_percent": "11.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "35904",
+          "cpu_percent": "3.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 468.9198072080035,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 413,
+          "p50": 23.305624956265092,
+          "p95": 32.254124991595745,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53216",
+          "cpu_percent": "71.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "154976",
+          "cpu_percent": "6.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38128",
+          "cpu_percent": "2.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 479.10759712499566,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 422,
+          "p50": 23.305624956265092,
+          "p95": 32.254124991595745,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52656",
+          "cpu_percent": "79.8"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "139040",
+          "cpu_percent": "7.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "31472",
+          "cpu_percent": "2.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 490.22637033299543,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 432,
+          "p50": 23.344958026427776,
+          "p95": 32.254124991595745,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52992",
+          "cpu_percent": "113.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "143248",
+          "cpu_percent": "10.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37072",
+          "cpu_percent": "4.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 500.3843375829747,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 441,
+          "p50": 23.305624956265092,
+          "p95": 32.08237502258271,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53216",
+          "cpu_percent": "49.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "147120",
+          "cpu_percent": "4.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36912",
+          "cpu_percent": "4.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 510.5835470830207,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 450,
+          "p50": 23.373625008389354,
+          "p95": 32.08237502258271,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53600",
+          "cpu_percent": "110.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "144592",
+          "cpu_percent": "14.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37536",
+          "cpu_percent": "3.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 520.7930652499781,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 4,
+        "settlement_sample": {
+          "count": 459,
+          "p50": 23.305624956265092,
+          "p95": 32.08237502258271,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52400",
+          "cpu_percent": "94.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "135904",
+          "cpu_percent": "9.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36624",
+          "cpu_percent": "2.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 530.8898962499807,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 468,
+          "p50": 23.45791697734967,
+          "p95": 32.08237502258271,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53168",
+          "cpu_percent": "57.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "142000",
+          "cpu_percent": "5.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "32608",
+          "cpu_percent": "1.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 541.1881290000165,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 477,
+          "p50": 23.45791697734967,
+          "p95": 32.08237502258271,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52912",
+          "cpu_percent": "127.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "144000",
+          "cpu_percent": "10.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36592",
+          "cpu_percent": "4.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 551.2623545830138,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 486,
+          "p50": 23.461291973944753,
+          "p95": 32.08237502258271,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53456",
+          "cpu_percent": "89.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "150176",
+          "cpu_percent": "7.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37648",
+          "cpu_percent": "2.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 561.5933494159835,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 495,
+          "p50": 23.462041979655623,
+          "p95": 32.254124991595745,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53536",
+          "cpu_percent": "47.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "146528",
+          "cpu_percent": "3.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37728",
+          "cpu_percent": "1.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 571.6683271250222,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 504,
+          "p50": 23.463958990760148,
+          "p95": 32.08237502258271,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53504",
+          "cpu_percent": "101.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "72475",
+          "rss_kib": "154560",
+          "cpu_percent": "10.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38192",
+          "cpu_percent": "3.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 582.7709239579854,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 513,
+          "p50": 23.50970800034702,
+          "p95": 32.612041977699846,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "153136",
+          "cpu_percent": "8.5"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53120",
+          "cpu_percent": "47.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36496",
+          "cpu_percent": "0.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 593.0117929159896,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 522,
+          "p50": 23.56212498852983,
+          "p95": 32.67395799048245,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "143872",
+          "cpu_percent": "11.8"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53488",
+          "cpu_percent": "75.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37392",
+          "cpu_percent": "2.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 604.082092083001,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 531,
+          "p50": 23.617250029928982,
+          "p95": 32.67395799048245,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "151520",
+          "cpu_percent": "3.7"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "55248",
+          "cpu_percent": "38.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "35840",
+          "cpu_percent": "0.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 615.2262808749801,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 541,
+          "p50": 23.718709009699523,
+          "p95": 32.99970802618191,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "163824",
+          "cpu_percent": "7.9"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54368",
+          "cpu_percent": "45.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36832",
+          "cpu_percent": "1.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 625.3458352910238,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 550,
+          "p50": 23.781916010193527,
+          "p95": 33.34662498673424,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "160496",
+          "cpu_percent": "10.2"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53440",
+          "cpu_percent": "61.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "33808",
+          "cpu_percent": "2.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 635.477699082985,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 4,
+        "settlement_sample": {
+          "count": 559,
+          "p50": 23.8282079808414,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "156464",
+          "cpu_percent": "10.5"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "52688",
+          "cpu_percent": "87.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37184",
+          "cpu_percent": "2.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 645.5557846659794,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 568,
+          "p50": 23.829709040001035,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "164368",
+          "cpu_percent": "34.5"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "72768",
+          "cpu_percent": "44.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "34208",
+          "cpu_percent": "1.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 655.6209839999792,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 577,
+          "p50": 23.874749953392893,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "167776",
+          "cpu_percent": "13.3"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53424",
+          "cpu_percent": "123.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37280",
+          "cpu_percent": "3.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 665.7770104579977,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 6,
+        "settlement_sample": {
+          "count": 586,
+          "p50": 23.89270899584517,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "163040",
+          "cpu_percent": "14.4"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "50288",
+          "cpu_percent": "122.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "36192",
+          "cpu_percent": "4.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 675.8634387910133,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 595,
+          "p50": 23.89266702812165,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "172064",
+          "cpu_percent": "25.4"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53584",
+          "cpu_percent": "185.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38272",
+          "cpu_percent": "8.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 686.0485464159865,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 604,
+          "p50": 23.933792021125555,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "171760",
+          "cpu_percent": "44.9"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53616",
+          "cpu_percent": "213.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37808",
+          "cpu_percent": "10.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 696.2160657910281,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 613,
+          "p50": 23.933792021125555,
+          "p95": 33.98495796136558,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "169168",
+          "cpu_percent": "34.3"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53456",
+          "cpu_percent": "122.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37328",
+          "cpu_percent": "7.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 707.3711104160175,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 623,
+          "p50": 23.960666032508016,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "178112",
+          "cpu_percent": "24.5"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53584",
+          "cpu_percent": "149.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37792",
+          "cpu_percent": "6.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 717.5350757080014,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 632,
+          "p50": 23.999875003937632,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "172816",
+          "cpu_percent": "33.9"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53600",
+          "cpu_percent": "267.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38000",
+          "cpu_percent": "11.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 727.840748290997,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 2,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 7,
+        "settlement_sample": {
+          "count": 641,
+          "p50": 23.999875003937632,
+          "p95": 33.34662498673424,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "176576",
+          "cpu_percent": "59.7"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54064",
+          "cpu_percent": "221.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38176",
+          "cpu_percent": "15.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 737.9815478749806,
+      "metrics": {
+        "clients": 8,
+        "socket_tasks": 16,
+        "dropped": 0,
+        "max_client_queue": 2,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 5,
+        "settlement_sample": {
+          "count": 650,
+          "p50": 23.999875003937632,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "182256",
+          "cpu_percent": "8.8"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54208",
+          "cpu_percent": "73.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38512",
+          "cpu_percent": "2.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 748.0764905830147,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 659,
+          "p50": 24.00049997959286,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "179536",
+          "cpu_percent": "17.3"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53904",
+          "cpu_percent": "118.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38208",
+          "cpu_percent": "4.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 758.1259162080241,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 668,
+          "p50": 24.00049997959286,
+          "p95": 33.34662498673424,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "175472",
+          "cpu_percent": "13.9"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53648",
+          "cpu_percent": "118.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37888",
+          "cpu_percent": "3.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 768.4156524999999,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 677,
+          "p50": 24.00049997959286,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "180976",
+          "cpu_percent": "7.4"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53904",
+          "cpu_percent": "48.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38080",
+          "cpu_percent": "0.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 778.6569032500265,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 686,
+          "p50": 24.00049997959286,
+          "p95": 33.34662498673424,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "181776",
+          "cpu_percent": "8.3"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54016",
+          "cpu_percent": "91.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38288",
+          "cpu_percent": "2.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 788.7649264159845,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 695,
+          "p50": 24.0184580325149,
+          "p95": 33.34662498673424,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "175312",
+          "cpu_percent": "3.6"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53552",
+          "cpu_percent": "53.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37888",
+          "cpu_percent": "0.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 798.9348121249932,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 704,
+          "p50": 23.999875003937632,
+          "p95": 33.13004202209413,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "176960",
+          "cpu_percent": "3.7"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53488",
+          "cpu_percent": "53.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37424",
+          "cpu_percent": "0.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 809.1915961250197,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 713,
+          "p50": 24.00049997959286,
+          "p95": 33.34662498673424,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "175712",
+          "cpu_percent": "9.0"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53520",
+          "cpu_percent": "93.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37456",
+          "cpu_percent": "2.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 819.2505900409888,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 722,
+          "p50": 24.0184580325149,
+          "p95": 33.13004202209413,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "183680",
+          "cpu_percent": "10.2"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53648",
+          "cpu_percent": "77.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "37904",
+          "cpu_percent": "2.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 830.4211902500247,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 732,
+          "p50": 24.00049997959286,
+          "p95": 33.13004202209413,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "180800",
+          "cpu_percent": "8.1"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53856",
+          "cpu_percent": "111.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "72490",
+          "rss_kib": "38144",
+          "cpu_percent": "4.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 840.5355592080159,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 740,
+          "p50": 23.999875003937632,
+          "p95": 33.34662498673424,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "181600",
+          "cpu_percent": "4.2"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54560",
+          "cpu_percent": "44.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "51408",
+          "cpu_percent": "1.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 850.8319605829893,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 749,
+          "p50": 23.999875003937632,
+          "p95": 33.49120798520744,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "179888",
+          "cpu_percent": "8.6"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54032",
+          "cpu_percent": "53.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52608",
+          "cpu_percent": "1.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 860.9512024580035,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 758,
+          "p50": 24.00049997959286,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "180704",
+          "cpu_percent": "5.0"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "75168",
+          "cpu_percent": "29.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "51888",
+          "cpu_percent": "1.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 871.1522087079939,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 767,
+          "p50": 23.960666032508016,
+          "p95": 33.49120798520744,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "181216",
+          "cpu_percent": "20.6"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "74992",
+          "cpu_percent": "152.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "51568",
+          "cpu_percent": "4.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 881.4456344579812,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 776,
+          "p50": 23.991000023670495,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "182560",
+          "cpu_percent": "2.9"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53696",
+          "cpu_percent": "34.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52096",
+          "cpu_percent": "0.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 891.7998088329914,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 785,
+          "p50": 23.999875003937632,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "183584",
+          "cpu_percent": "9.4"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54048",
+          "cpu_percent": "99.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52512",
+          "cpu_percent": "3.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 901.9537987079821,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 794,
+          "p50": 23.991000023670495,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "178192",
+          "cpu_percent": "13.5"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53168",
+          "cpu_percent": "125.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "51920",
+          "cpu_percent": "4.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 913.139569166,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 804,
+          "p50": 23.999875003937632,
+          "p95": 33.57237501768395,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "176864",
+          "cpu_percent": "15.4"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53536",
+          "cpu_percent": "132.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52400",
+          "cpu_percent": "4.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 923.5199043329922,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 813,
+          "p50": 23.991000023670495,
+          "p95": 33.98495796136558,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "176560",
+          "cpu_percent": "6.4"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53888",
+          "cpu_percent": "71.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52752",
+          "cpu_percent": "2.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 933.8378816249897,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 822,
+          "p50": 24.00049997959286,
+          "p95": 34.33729102835059,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "179072",
+          "cpu_percent": "5.3"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54032",
+          "cpu_percent": "67.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52560",
+          "cpu_percent": "1.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 944.0286525830161,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 831,
+          "p50": 24.0184580325149,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "180736",
+          "cpu_percent": "6.6"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54128",
+          "cpu_percent": "58.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52544",
+          "cpu_percent": "1.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 954.1608022910077,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 840,
+          "p50": 24.019333999603987,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "168016",
+          "cpu_percent": "7.5"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53968",
+          "cpu_percent": "98.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52672",
+          "cpu_percent": "4.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 964.3061353330268,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 849,
+          "p50": 24.019333999603987,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "157072",
+          "cpu_percent": "11.0"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53504",
+          "cpu_percent": "131.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "51776",
+          "cpu_percent": "3.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 974.5560163329937,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 858,
+          "p50": 24.0184580325149,
+          "p95": 34.735124965664,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "162000",
+          "cpu_percent": "8.0"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53856",
+          "cpu_percent": "76.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52720",
+          "cpu_percent": "2.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 984.6497300000046,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 867,
+          "p50": 24.00049997959286,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "166448",
+          "cpu_percent": "9.0"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53744",
+          "cpu_percent": "17.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52624",
+          "cpu_percent": "0.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 994.7622709579882,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 876,
+          "p50": 24.0184580325149,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "163216",
+          "cpu_percent": "10.8"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53888",
+          "cpu_percent": "81.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52720",
+          "cpu_percent": "2.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1005.1664146250114,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 885,
+          "p50": 24.0184580325149,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "158896",
+          "cpu_percent": "20.7"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53888",
+          "cpu_percent": "124.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "53280",
+          "cpu_percent": "3.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 1015.4629216659814,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 894,
+          "p50": 24.030708998907357,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "161760",
+          "cpu_percent": "11.7"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54064",
+          "cpu_percent": "131.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52960",
+          "cpu_percent": "3.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 1025.631429416011,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 903,
+          "p50": 24.046541017014533,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "156704",
+          "cpu_percent": "6.7"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53872",
+          "cpu_percent": "65.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52544",
+          "cpu_percent": "1.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1036.8376231250004,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 913,
+          "p50": 24.046541017014533,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "156720",
+          "cpu_percent": "7.9"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "53984",
+          "cpu_percent": "84.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52624",
+          "cpu_percent": "5.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1047.084386750008,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 922,
+          "p50": 24.0473750163801,
+          "p95": 34.67745799571276,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "156800",
+          "cpu_percent": "9.4"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54096",
+          "cpu_percent": "133.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52544",
+          "cpu_percent": "3.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1057.248576291022,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 931,
+          "p50": 24.0473750163801,
+          "p95": 34.91083299741149,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "144208",
+          "cpu_percent": "13.3"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54032",
+          "cpu_percent": "151.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52624",
+          "cpu_percent": "4.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 1067.4003656249843,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 940,
+          "p50": 24.046541017014533,
+          "p95": 34.91083299741149,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "159904",
+          "cpu_percent": "19.5"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54128",
+          "cpu_percent": "77.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52816",
+          "cpu_percent": "1.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 1077.4892407500301,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 949,
+          "p50": 24.019333999603987,
+          "p95": 34.735124965664,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "160720",
+          "cpu_percent": "3.5"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "54176",
+          "cpu_percent": "50.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52800",
+          "cpu_percent": "0.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 1087.8744059160235,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 958,
+          "p50": 24.019333999603987,
+          "p95": 34.735124965664,
+          "max": 90.34891601186246
+        }
+      },
+      "processes": [
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "153936",
+          "cpu_percent": "9.1"
+        },
+        {
+          "service": "backend",
+          "pid": "72451",
+          "rss_kib": "74896",
+          "cpu_percent": "153.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52336",
+          "cpu_percent": "6.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1098.3862017909996,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 6,
+          "p50": 26.353250024840236,
+          "p95": 29.225166013929993,
+          "max": 29.225166013929993
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60592",
+          "cpu_percent": "146.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "163088",
+          "cpu_percent": "12.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "53744",
+          "cpu_percent": "3.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 1108.7105851250235,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 15,
+          "p50": 23.700708989053965,
+          "p95": 35.91024997876957,
+          "max": 35.91024997876957
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60864",
+          "cpu_percent": "122.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "154256",
+          "cpu_percent": "9.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "51952",
+          "cpu_percent": "3.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 1118.9389084160211,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 24,
+          "p50": 24.805125023704022,
+          "p95": 35.91024997876957,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59760",
+          "cpu_percent": "83.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "160624",
+          "cpu_percent": "31.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52800",
+          "cpu_percent": "2.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1129.0689112499822,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 33,
+          "p50": 24.709415971301496,
+          "p95": 35.91024997876957,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59584",
+          "cpu_percent": "35.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "160368",
+          "cpu_percent": "4.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "53120",
+          "cpu_percent": "0.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1139.2176552910241,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 42,
+          "p50": 24.805125023704022,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59104",
+          "cpu_percent": "59.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "120528",
+          "cpu_percent": "3.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "51664",
+          "cpu_percent": "2.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1149.5957900829962,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 51,
+          "p50": 25.364625034853816,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59616",
+          "cpu_percent": "97.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "140880",
+          "cpu_percent": "7.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52944",
+          "cpu_percent": "2.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 1159.8794998329831,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 60,
+          "p50": 25.451791007071733,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59680",
+          "cpu_percent": "98.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "150880",
+          "cpu_percent": "14.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52768",
+          "cpu_percent": "3.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 1170.0235042080167,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 69,
+          "p50": 26.15200000582263,
+          "p95": 34.93524994701147,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59584",
+          "cpu_percent": "37.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "141712",
+          "cpu_percent": "3.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52176",
+          "cpu_percent": "0.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 1180.124414291,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 78,
+          "p50": 25.493416003882885,
+          "p95": 34.93524994701147,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59376",
+          "cpu_percent": "95.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "140144",
+          "cpu_percent": "9.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52080",
+          "cpu_percent": "2.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1190.3551497500157,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 87,
+          "p50": 26.2190829962492,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59552",
+          "cpu_percent": "67.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "132512",
+          "cpu_percent": "9.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "49248",
+          "cpu_percent": "1.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 1200.684161666024,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 96,
+          "p50": 26.2190829962492,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59792",
+          "cpu_percent": "56.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "146928",
+          "cpu_percent": "4.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52640",
+          "cpu_percent": "1.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 1211.7428134999936,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 105,
+          "p50": 26.15200000582263,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "62048",
+          "cpu_percent": "59.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "148208",
+          "cpu_percent": "17.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "53696",
+          "cpu_percent": "1.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1222.9302408749936,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 115,
+          "p50": 26.2190829962492,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "61680",
+          "cpu_percent": "44.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "146640",
+          "cpu_percent": "5.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52592",
+          "cpu_percent": "0.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 1233.0296758749755,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 124,
+          "p50": 26.265749998856336,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59552",
+          "cpu_percent": "107.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "143136",
+          "cpu_percent": "14.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52624",
+          "cpu_percent": "4.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1243.2920743750292,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 133,
+          "p50": 26.287499989848584,
+          "p95": 35.605540964752436,
+          "max": 49.06829202082008
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59904",
+          "cpu_percent": "58.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "149360",
+          "cpu_percent": "17.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52672",
+          "cpu_percent": "1.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1253.5499394999933,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 142,
+          "p50": 26.265749998856336,
+          "p95": 35.605540964752436,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60048",
+          "cpu_percent": "108.8"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "158864",
+          "cpu_percent": "11.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52272",
+          "cpu_percent": "4.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 1263.6818148330203,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 151,
+          "p50": 26.063958008307964,
+          "p95": 35.605540964752436,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59824",
+          "cpu_percent": "107.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "158688",
+          "cpu_percent": "13.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "52320",
+          "cpu_percent": "3.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 1273.8268102500006,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 160,
+          "p50": 26.049832988064736,
+          "p95": 35.605540964752436,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60032",
+          "cpu_percent": "279.8"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "149200",
+          "cpu_percent": "32.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "53008",
+          "cpu_percent": "12.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1284.1080562080024,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 7,
+        "settlement_sample": {
+          "count": 169,
+          "p50": 26.01283398689702,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "57312",
+          "cpu_percent": "240.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "145824",
+          "cpu_percent": "39.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "49440",
+          "cpu_percent": "11.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1294.4175392910256,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 9,
+        "settlement_sample": {
+          "count": 178,
+          "p50": 25.916167011018842,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "80736",
+          "cpu_percent": "202.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "146816",
+          "cpu_percent": "34.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "48480",
+          "cpu_percent": "10.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 1305.628053250024,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 188,
+          "p50": 26.01283398689702,
+          "p95": 34.739208000246435,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59648",
+          "cpu_percent": "106.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "148496",
+          "cpu_percent": "10.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38320",
+          "cpu_percent": "3.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 1316.8381977499812,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 198,
+          "p50": 25.970749964471906,
+          "p95": 34.739208000246435,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60016",
+          "cpu_percent": "72.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "146304",
+          "cpu_percent": "4.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38368",
+          "cpu_percent": "1.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1327.1427861659904,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 4,
+        "settlement_sample": {
+          "count": 207,
+          "p50": 25.84112499607727,
+          "p95": 34.62416701950133,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59936",
+          "cpu_percent": "84.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "149152",
+          "cpu_percent": "20.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37504",
+          "cpu_percent": "2.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 1337.3317302499781,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 216,
+          "p50": 25.838792033027858,
+          "p95": 34.739208000246435,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59984",
+          "cpu_percent": "67.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "148592",
+          "cpu_percent": "7.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37744",
+          "cpu_percent": "1.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1348.528233583027,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 226,
+          "p50": 25.711458991281688,
+          "p95": 34.87987502012402,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59952",
+          "cpu_percent": "43.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "144512",
+          "cpu_percent": "6.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37568",
+          "cpu_percent": "0.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 1358.6781603330164,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 235,
+          "p50": 25.492582994047552,
+          "p95": 34.87987502012402,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59792",
+          "cpu_percent": "82.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "146512",
+          "cpu_percent": "7.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37696",
+          "cpu_percent": "2.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 1368.924269916024,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 244,
+          "p50": 25.493416003882885,
+          "p95": 34.739208000246435,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60128",
+          "cpu_percent": "43.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "155872",
+          "cpu_percent": "4.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38320",
+          "cpu_percent": "1.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 1379.1684784999816,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 253,
+          "p50": 25.492582994047552,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60160",
+          "cpu_percent": "98.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "150400",
+          "cpu_percent": "10.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38048",
+          "cpu_percent": "3.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1389.3399975000066,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 262,
+          "p50": 25.566625001374632,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59648",
+          "cpu_percent": "126.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "151136",
+          "cpu_percent": "41.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38128",
+          "cpu_percent": "6.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 1400.5343382909778,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 272,
+          "p50": 25.566625001374632,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59856",
+          "cpu_percent": "94.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "147856",
+          "cpu_percent": "10.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38464",
+          "cpu_percent": "4.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 1410.9319425409776,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 281,
+          "p50": 25.493416003882885,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59760",
+          "cpu_percent": "147.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "147328",
+          "cpu_percent": "11.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38400",
+          "cpu_percent": "3.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1421.2014286660124,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 290,
+          "p50": 25.463624973781407,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60064",
+          "cpu_percent": "56.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "151552",
+          "cpu_percent": "6.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38816",
+          "cpu_percent": "1.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 1431.425987375027,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 299,
+          "p50": 25.463624973781407,
+          "p95": 35.60216695768759,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60080",
+          "cpu_percent": "122.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "145216",
+          "cpu_percent": "13.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38688",
+          "cpu_percent": "4.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1441.5584770829882,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 308,
+          "p50": 25.451791007071733,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60112",
+          "cpu_percent": "130.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "154368",
+          "cpu_percent": "23.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38832",
+          "cpu_percent": "5.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 1451.7719034160255,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 317,
+          "p50": 25.493416003882885,
+          "p95": 35.60216695768759,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60048",
+          "cpu_percent": "278.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "149552",
+          "cpu_percent": "38.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38624",
+          "cpu_percent": "11.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1462.082797540992,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 8,
+        "settlement_sample": {
+          "count": 326,
+          "p50": 25.679790996946394,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60304",
+          "cpu_percent": "228.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "149648",
+          "cpu_percent": "32.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38384",
+          "cpu_percent": "11.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 1472.3097415000084,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 335,
+          "p50": 25.588415970560163,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "59760",
+          "cpu_percent": "94.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "146160",
+          "cpu_percent": "23.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37280",
+          "cpu_percent": "7.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 1482.5599692499964,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 6,
+        "settlement_sample": {
+          "count": 344,
+          "p50": 25.566625001374632,
+          "p95": 34.87987502012402,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "60128",
+          "cpu_percent": "132.8"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "147808",
+          "cpu_percent": "11.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38448",
+          "cpu_percent": "5.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1493.7820040410152,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 354,
+          "p50": 25.498791015706956,
+          "p95": 34.87987502012402,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "58352",
+          "cpu_percent": "219.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "148304",
+          "cpu_percent": "41.8"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38000",
+          "cpu_percent": "9.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1504.1670101250056,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 5,
+        "settlement_sample": {
+          "count": 363,
+          "p50": 25.493416003882885,
+          "p95": 34.93524994701147,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "56448",
+          "cpu_percent": "262.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "145296",
+          "cpu_percent": "35.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38512",
+          "cpu_percent": "13.1"
+        }
+      ]
+    },
+    {
+      "elapsed": 1514.454993708001,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 2,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 372,
+          "p50": 25.492582994047552,
+          "p95": 35.60216695768759,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "58688",
+          "cpu_percent": "167.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "147280",
+          "cpu_percent": "40.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38608",
+          "cpu_percent": "10.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1524.9509339160286,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 381,
+          "p50": 25.492582994047552,
+          "p95": 35.60216695768759,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "79968",
+          "cpu_percent": "252.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "145840",
+          "cpu_percent": "31.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38560",
+          "cpu_percent": "12.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 1535.3094915410038,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 4,
+        "settlement_sample": {
+          "count": 390,
+          "p50": 25.498791015706956,
+          "p95": 35.605540964752436,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "54672",
+          "cpu_percent": "137.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "129104",
+          "cpu_percent": "37.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "36832",
+          "cpu_percent": "9.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 1545.4839017500053,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 5,
+        "settlement_sample": {
+          "count": 399,
+          "p50": 25.493416003882885,
+          "p95": 36.06616600882262,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "54464",
+          "cpu_percent": "55.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "142944",
+          "cpu_percent": "5.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37440",
+          "cpu_percent": "1.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 1555.6297831659904,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 408,
+          "p50": 25.577249994967133,
+          "p95": 35.91024997876957,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55616",
+          "cpu_percent": "85.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "143888",
+          "cpu_percent": "9.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38192",
+          "cpu_percent": "2.7"
+        }
+      ]
+    },
+    {
+      "elapsed": 1565.7641909160302,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 417,
+          "p50": 25.577249994967133,
+          "p95": 36.06616600882262,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55664",
+          "cpu_percent": "119.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "149936",
+          "cpu_percent": "12.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38048",
+          "cpu_percent": "4.2"
+        }
+      ]
+    },
+    {
+      "elapsed": 1576.084694457997,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 426,
+          "p50": 25.566625001374632,
+          "p95": 36.06616600882262,
+          "max": 49.12016703747213
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "54704",
+          "cpu_percent": "105.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "151168",
+          "cpu_percent": "17.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37360",
+          "cpu_percent": "3.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1586.4889613750274,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 435,
+          "p50": 25.577249994967133,
+          "p95": 36.2176249618642,
+          "max": 58.08362498646602
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55472",
+          "cpu_percent": "47.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "151088",
+          "cpu_percent": "2.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37024",
+          "cpu_percent": "0.6"
+        }
+      ]
+    },
+    {
+      "elapsed": 1596.985848958022,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 444,
+          "p50": 25.588415970560163,
+          "p95": 36.2176249618642,
+          "max": 65.69091702112928
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55808",
+          "cpu_percent": "99.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "150672",
+          "cpu_percent": "13.3"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38048",
+          "cpu_percent": "3.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 1607.3653375409776,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 453,
+          "p50": 25.662583007942885,
+          "p95": 37.11004200158641,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55872",
+          "cpu_percent": "34.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "150464",
+          "cpu_percent": "2.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38208",
+          "cpu_percent": "0.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 1617.5878169580246,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 4,
+        "settlement_sample": {
+          "count": 462,
+          "p50": 25.711458991281688,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "53120",
+          "cpu_percent": "124.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "123904",
+          "cpu_percent": "11.1"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "35504",
+          "cpu_percent": "3.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 1627.7413507499732,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 471,
+          "p50": 25.711458991281688,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55536",
+          "cpu_percent": "26.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "144352",
+          "cpu_percent": "3.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37920",
+          "cpu_percent": "0.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1637.9794838330126,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 480,
+          "p50": 25.679790996946394,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55712",
+          "cpu_percent": "139.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "148608",
+          "cpu_percent": "13.0"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38432",
+          "cpu_percent": "7.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 1648.2215192500153,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 2,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 5,
+        "settlement_sample": {
+          "count": 489,
+          "p50": 25.679790996946394,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55824",
+          "cpu_percent": "77.1"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "153552",
+          "cpu_percent": "13.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38592",
+          "cpu_percent": "2.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1658.507280083024,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 498,
+          "p50": 25.662583007942885,
+          "p95": 37.11004200158641,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55696",
+          "cpu_percent": "103.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "150400",
+          "cpu_percent": "6.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38416",
+          "cpu_percent": "2.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 1668.7362543750205,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 507,
+          "p50": 25.655167002696544,
+          "p95": 36.448291037231684,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55440",
+          "cpu_percent": "157.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "146480",
+          "cpu_percent": "10.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37712",
+          "cpu_percent": "3.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1679.9247397910221,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 517,
+          "p50": 25.588415970560163,
+          "p95": 36.448291037231684,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55392",
+          "cpu_percent": "110.8"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "150096",
+          "cpu_percent": "7.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38256",
+          "cpu_percent": "3.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1690.3553497500252,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 526,
+          "p50": 25.679790996946394,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55792",
+          "cpu_percent": "153.5"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "153232",
+          "cpu_percent": "11.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38032",
+          "cpu_percent": "2.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1700.6549454579945,
+      "metrics": {
+        "clients": 8,
+        "socket_tasks": 16,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 535,
+          "p50": 25.662583007942885,
+          "p95": 36.448291037231684,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "54752",
+          "cpu_percent": "125.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "144576",
+          "cpu_percent": "14.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "36608",
+          "cpu_percent": "6.0"
+        }
+      ]
+    },
+    {
+      "elapsed": 1710.8875898330007,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 3,
+        "settlement_sample": {
+          "count": 544,
+          "p50": 25.66795895108953,
+          "p95": 36.448291037231684,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "55008",
+          "cpu_percent": "74.2"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "145840",
+          "cpu_percent": "40.4"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "38144",
+          "cpu_percent": "2.4"
+        }
+      ]
+    },
+    {
+      "elapsed": 1721.0414800830185,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 4,
+        "settlement_sample": {
+          "count": 553,
+          "p50": 25.679790996946394,
+          "p95": 36.448291037231684,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "54848",
+          "cpu_percent": "96.6"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "142144",
+          "cpu_percent": "6.5"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "36784",
+          "cpu_percent": "2.8"
+        }
+      ]
+    },
+    {
+      "elapsed": 1731.3329316250165,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 562,
+          "p50": 25.708583008963615,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "54784",
+          "cpu_percent": "53.7"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "138352",
+          "cpu_percent": "5.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "36560",
+          "cpu_percent": "1.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1741.5834137910279,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 571,
+          "p50": 25.711458991281688,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "73216",
+          "cpu_percent": "83.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "141728",
+          "cpu_percent": "8.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "35872",
+          "cpu_percent": "2.3"
+        }
+      ]
+    },
+    {
+      "elapsed": 1751.7660385830095,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 580,
+          "p50": 25.78554197680205,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "53168",
+          "cpu_percent": "74.4"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "146048",
+          "cpu_percent": "11.2"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37072",
+          "cpu_percent": "4.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1761.9533595410176,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 589,
+          "p50": 25.777125032618642,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "53152",
+          "cpu_percent": "142.9"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "149824",
+          "cpu_percent": "10.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "36784",
+          "cpu_percent": "3.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1772.1908132500248,
+      "metrics": {
+        "clients": 9,
+        "socket_tasks": 18,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 598,
+          "p50": 25.777125032618642,
+          "p95": 36.40291700139642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "52608",
+          "cpu_percent": "50.0"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "150128",
+          "cpu_percent": "3.7"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "36416",
+          "cpu_percent": "0.5"
+        }
+      ]
+    },
+    {
+      "elapsed": 1782.4355987079907,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 607,
+          "p50": 25.777125032618642,
+          "p95": 36.2176249618642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "52784",
+          "cpu_percent": "101.8"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "136736",
+          "cpu_percent": "7.9"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "37248",
+          "cpu_percent": "2.9"
+        }
+      ]
+    },
+    {
+      "elapsed": 1792.5567003330216,
+      "metrics": {
+        "clients": 10,
+        "socket_tasks": 20,
+        "dropped": 0,
+        "max_client_queue": 0,
+        "settlement_queue": 0,
+        "financial_failure": false,
+        "cache_failed": false,
+        "database_connections": 2,
+        "settlement_sample": {
+          "count": 616,
+          "p50": 25.780708994716406,
+          "p95": 36.2176249618642,
+          "max": 67.37012497615069
+        }
+      },
+      "processes": [
+        {
+          "service": "backend",
+          "pid": "19517",
+          "rss_kib": "52704",
+          "cpu_percent": "56.3"
+        },
+        {
+          "service": "frontend",
+          "pid": "49653",
+          "rss_kib": "150288",
+          "cpu_percent": "3.6"
+        },
+        {
+          "service": "proxy",
+          "pid": "87507",
+          "rss_kib": "36832",
+          "cpu_percent": "0.6"
+        }
+      ]
+    }
+  ],
+  "resource_summary": {
+    "backend": {
+      "samples": 175,
+      "rss_mib": {
+        "count": 175,
+        "p50": 52.75,
+        "p95": 71.96875,
+        "max": 91.671875
+      },
+      "cpu_percent": {
+        "count": 175,
+        "p50": 98.1,
+        "p95": 221.9,
+        "max": 279.8
+      },
+      "first_rss_mib": 91.671875,
+      "last_rss_mib": 51.46875
+    },
+    "frontend": {
+      "samples": 175,
+      "rss_mib": {
+        "count": 175,
+        "p50": 146.421875,
+        "p95": 176.5625,
+        "max": 179.375
+      },
+      "cpu_percent": {
+        "count": 175,
+        "p50": 10.6,
+        "p95": 40.2,
+        "max": 59.7
+      },
+      "first_rss_mib": 125.171875,
+      "last_rss_mib": 146.765625
+    },
+    "proxy": {
+      "samples": 175,
+      "rss_mib": {
+        "count": 175,
+        "p50": 37.109375,
+        "p95": 51.5625,
+        "max": 52.484375
+      },
+      "cpu_percent": {
+        "count": 175,
+        "p50": 3.2,
+        "p95": 11.2,
+        "max": 15.1
+      },
+      "first_rss_mib": 46.484375,
+      "last_rss_mib": 35.96875
+    }
+  }
+}

@@ -86,8 +86,74 @@ First-run limitations: additive observation metadata was installed during the ru
 and loaded on the planned backend restart. It was a rolling recovery exercise,
 not a single-revision benchmark. An intended slow raw receiver was absent after
 the seven-client/three-browser allocation changed its index. Actual capacity cases
-did include slow readers; a second complete 30-minute run corrects the receiver and
-is in progress. Its result will be recorded only after actual completion.
+did include slow readers. The second completed run below corrects the receiver.
 Evidence: `recovery-hardening-evidence/stability-rolling-30min.json` and
 `recovery-hardening-evidence/accounting-rolling-30min.json`. Resource evidence
 summarizes repeated settlement arrays rather than duplicating cumulative samples.
+
+
+## Final slow-receiver run
+
+**PASS: 1810.30 seconds, 1582 executions and 3164 BFF order requests.** This run
+included the intentional 400 ms per-frame delay on raw receiver 6, seven raw WSS
+clients and three actual browser sessions. Three browsers completed 516 refreshes
+and received 14,375 frames with no browser recovery errors. There were no order
+errors or cross-user private invalidations. All five interruption scenarios
+recovered; their measured interruption/restart times were 3.00 sec scoped Neo4j,
+3.06 sec isolated Redis, 0.46 sec Next, 0.13 sec Caddy and 1.33 sec FastAPI.
+
+| Measurement | Actual result |
+|---|---:|
+| BFF order latency p50 / p95 / max | 62.78 / 103.26 / 233.30 ms |
+| WSS establishment p95 | 73.76 ms |
+| Notification latency p50 / p95 / max, including slow receiver | 1.33 / 6064.07 / 27656.57 ms |
+| Financial transaction p95 / max since backend restart (622 samples) | 36.07 / 67.37 ms |
+| Successful socket connections | 258 |
+| Server queue overflow/drop counter | 0 |
+| Final clients / socket tasks / settlement queue | 0 / 0 / 0 |
+| Final financial/invariant/publication mismatches | 0 |
+
+The deliberately slow receiver explains the notification tail; settlement and
+browser resynchronization continued. Zero server overflow counts do not mean
+end-to-end guaranteed notification delivery: intentional disconnections still
+require authoritative snapshots. Notifications remain best effort.
+
+The independent read-only auditor checked **354 snapshots** and every one of the
+**1582 canonical executions**. Final cash plus escrow was **36,836**, exactly
+40,000 minus 3,164 fees; final escrow, position sum and gross realized PnL were zero.
+Both actors' final net positions were zero because the trade count was even.
+All fixture publication intents drained before cleanup. Expected interruption
+observations were 12 closed sockets and 12 rejected/unavailable ticket requests;
+existing authorization was retained and clients reconnected.
+
+Across 175 resource samples, maximum RSS was 91.67 MiB backend, 179.38 MiB Next and
+52.48 MiB Caddy; final RSS was 51.47/146.77/35.97 MiB. CPU p95 was 221.9%/40.2%/11.2%
+of one core respectively on the eight-core host. These samples include startup and
+shared-host regression work and do not establish deployment capacity ceilings.
+No runaway queue or monotonic memory trend was observed in the measured window;
+process restarts and OS memory management limit leak conclusions.
+
+The first and second runs provide **3623.74 measured seconds** and **3163 total
+executions**, across two separate runs. This is more than 60 minutes cumulatively,
+not one uninterrupted hour or evidence of days/weeks of uptime. The second run
+loaded the separately tested historical-retention callback on its planned backend
+restart; its current-trade path and financial/transport behavior were unchanged.
+No additional financial or transport implementation changed during that run.
+Evidence: `recovery-hardening-evidence/stability-final-30min.json` and
+`recovery-hardening-evidence/accounting-final-30min.json`.
+
+## Remaining limits and cleanup
+
+Automatic active-order recovery and torn-lease fencing remain blocked by the absent
+admission/fill journal and transaction-level owner-generation protocol. Historical
+regime observations with missing inputs or unknown ordering are preserved and
+reported, not invented. The current tested replay paths do not prove safe remote
+writes from an old owner after a torn lease. Public DNS/ACME/firewall deployment and
+1024-client real capacity remain NOT_VERIFIED. Neo4j fault injection was scoped;
+the shared Neo4j service itself was never stopped.
+
+After both runs and all regressions, read-only checks confirmed zero active matching
+owners and unresolved orders. Only the two dedicated test PostgreSQL/Redis stacks
+were stopped. Owned Caddy, Next, FastAPI and browser processes were shut down by the
+harnesses; private evidence/data files were retained. No configured financial
+PostgreSQL or shared Neo4j service was stopped or reset.
