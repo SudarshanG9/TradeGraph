@@ -149,6 +149,8 @@ def test_postcommit_queue_overflow_is_not_financial_failure(accounts):
     assert calls==[event] and observed==[event] and delivered==[event]
     assert worker.pending is event and worker.pending_committed
     assert 'Settlement committed' in dispatcher.failure
+    with pytest.raises(RuntimeError,match='unhealthy'):
+        dispatcher.check_capacity(0)
     assert 'backlog full' in full.dispatcher.failure
     assert full.queue.qsize()==1
     assert_committed(a,b,event)
@@ -168,7 +170,6 @@ def test_neo4j_service_failure_retries_derived_work_without_resettlement(account
     db.settle=record
     async def run():
         dispatcher=Dispatcher(8); observed=[]; attempts=[]
-        release=asyncio.Event()
         def apply(e):
             attempts.append(e)
             if len(attempts)==1: raise ServiceUnavailable('injected graph outage')
