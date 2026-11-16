@@ -1,5 +1,6 @@
 'use client';
 import {
+  Fragment,
   createContext,
   useContext,
   useEffect,
@@ -39,6 +40,7 @@ interface Preview {
   instruments: InstrumentInfo[];
   catalogLoading: boolean;
   catalogError: string;
+  retryCatalog: () => void;
   setInstrument: (id: number) => void;
   api: Services;
   signIn: (s: PreviewSession) => void;
@@ -91,6 +93,10 @@ export function PreviewProvider({
   const [sessionReason, setSessionReason] = useState<'expired' | 'logout'>('expired');
   const [instruments, setInstruments] = useState<InstrumentInfo[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const catalogPoll = useRef<ReturnType<typeof startPolling> | null>(null);
+  const retryCatalog = useCallback(() => {
+    void catalogPoll.current?.refresh();
+  }, []);
   const [catalogError, setCatalogError] = useState('');
   const refs = useRef({ session, fixture, outcome });
   refs.current = { session, fixture, outcome };
@@ -112,31 +118,42 @@ export function PreviewProvider({
         },
   );
   useEffect(() => {
-    let active = true;
     if (!session) {
       setInstruments([]);
+      setCatalogLoading(false);
+      setCatalogError('');
       return;
     }
-    setCatalogLoading(true);
-    setCatalogError('');
-    api.instruments
-      .list()
-      .then((catalog) => {
-        if (active) setInstruments(catalog.items);
-      })
-      .catch((e) => {
-        if (active) {
-          setInstruments([]);
-          setCatalogError((e as Error).message);
-        }
-      })
-      .finally(() => {
-        if (active) setCatalogLoading(false);
-      });
+    const polling = startPolling({
+      load: () => api.instruments.list(),
+      value: (catalog) => {
+        const items = catalog.items.filter((item) => item.is_active);
+        setInstruments(items);
+        setCatalogError('');
+        setInstrument((current) =>
+          items.some((item) => item.id === current) ? current : (items[0]?.id ?? 0),
+        );
+      },
+      error: (error) => {
+        setInstruments([]);
+        setCatalogError(
+          error instanceof Error ? error.message : 'Instrument catalogue unavailable',
+        );
+      },
+      started: () => setCatalogLoading(true),
+      settled: () => setCatalogLoading(false),
+      interval: mock ? 0 : 15000,
+      hidden: () => !mock && document.hidden,
+      enabled: fixture !== 'loading',
+    });
+    catalogPoll.current = polling;
+    const unregister = registerResource(polling.refresh);
     return () => {
-      active = false;
+      catalogPoll.current = null;
+      unregister();
+      polling.stop();
     };
-  }, [api, session, fixture]);
+  }, [api, session, fixture, mock, sessionGeneration, registerResource]);
   useEffect(() => {
     if (!mock) {
       retrySession();
@@ -237,6 +254,7 @@ export function PreviewProvider({
         instruments,
         catalogLoading,
         catalogError,
+        retryCatalog,
         setInstrument,
         api,
         signIn,
@@ -367,15 +385,24 @@ export function InstrumentSelector() {
   );
 }
 export function MissingInstrument() {
-  const { catalogLoading, catalogError } = usePreview();
+  const { catalogLoading, catalogError, retryCatalog } = usePreview();
   if (catalogLoading) return <Skeleton />;
-  if (catalogError) return <Notice tone="error">{catalogError}</Notice>;
+  if (catalogError)
+    return (
+      <Notice tone="error">
+        {catalogError}{' '}
+        <button className="link" onClick={retryCatalog}>
+          Retry catalogue
+        </button>
+      </Notice>
+    );
   return (
     <Empty message="No active instruments are available. Trading and market queries are disabled." />
   );
 }
 export function RoleGuard({ role, children }: { role: AccountRole; children: ReactNode }) {
-  const { session, ready, sessionReason, authState, retrySession } = usePreview();
+  const { session, ready, sessionReason, authState, retrySession, sessionGeneration } =
+    usePreview();
   const router = useRouter();
   useEffect(() => {
     if (authState.status === 'unauthenticated')
@@ -409,5 +436,5 @@ export function RoleGuard({ role, children }: { role: AccountRole; children: Rea
         </a>
       </div>
     );
-  return children;
+  return <Fragment key={sessionGeneration}>{children}</Fragment>;
 }

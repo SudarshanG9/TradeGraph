@@ -241,3 +241,20 @@ per-instrument events. Files: cache/lifespan/depth/market route, live/provider h
 contracts/schema/mock, terminal/shell indicators. 206 backend unit and 49 frontend
 tests passed (2 native Redis tests skipped); typecheck passed. Native polyglot,
 order-pipeline/socket regression is running. No change to financial arithmetic.
+
+Phase 12: native socket/polyglot/order pipeline regression: 31 passed.
+Commit `efde926`, pushed.
+
+## Phase 13 — catalogue and admin recovery
+
+Status: PARTIALLY_FIXED until per-endpoint browser injection checks.
+Catalogue now has bounded recovery polling, explicit retry, scope cancellation,
+validated active selection and clears unavailable metadata so trading cannot use an
+unverified selection. It participates in reconnect snapshots. Protected content
+remounts on explicit account-generation changes, clearing manual admin query state.
+Admin query controls retain validated input and expose actual Retry submission;
+existing request-generation checks protect instrument/fixture/scenario transitions.
+Read-only desk/surveillance/health pages use shared resource error/empty/stale UI.
+Files: provider and admin disclosure/optimizer/regime controls. 49 frontend tests
+passed (2 native skipped); typecheck passed. Existing UI design preserved. Catalogue
+and all admin failure-recovery browser evidence follows in acceptance.
