@@ -254,3 +254,12 @@ and the human resting BUY 50 x 1 plus execution history survived. All matching,
 settlement and native stores were real. Persistent bot identities were untouched.
 The ordinary API was stopped only after readiness verified zero active orders;
 the harness was the sole owner and shut down before scoped cleanup.
+
+## Phase 9 — real surveillance
+
+Phase 8 remote commit: `ee8d7c15d1f025e816fd870ed42cd7f04b6a90a8`.
+Surveillance uses the real allowlisted Neo4j route and preserves explicit refresh,
+returned UUIDs/counts and candidate-only language. Removed fixture-specific empty
+copy. Native BFF surveillance/role/bounds test passed (2.72s); five component tests
+including directed graph rendering and strict TypeScript passed. No synthetic graph
+edges were inserted to make the read succeed.

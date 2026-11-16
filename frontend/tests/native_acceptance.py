@@ -106,3 +106,18 @@ def test_real_resting_partial_fill_and_cancellation(accounts):
         finally:
             for client, order_id in orders:
                 client.post(f'/api/backend/orders/{order_id}/cancel', headers=HEADERS, json=None)
+
+
+def test_real_surveillance_permissions_and_candidates(accounts):
+    users, _ = accounts
+    with httpx.Client(base_url=ORIGIN, timeout=40) as client:
+        assert signin(client, users[0]).status_code == 200
+        assert client.get('/api/backend/admin/surveillance/cycles?limit=5').status_code == 403
+        assert signin(client, users[3]).status_code == 200
+        result = client.get('/api/backend/admin/surveillance/cycles?limit=5')
+        assert result.status_code == 200
+        for row in result.json()['candidates']:
+            assert 3 <= len(row['trader_ids']) <= 5
+            assert len(row['edge_counts']) == len(row['trader_ids'])
+            assert all(isinstance(v, str) and int(v) >= 0 for v in row['edge_counts'])
+        assert client.get('/api/backend/admin/surveillance/cycles?limit=101').status_code == 422

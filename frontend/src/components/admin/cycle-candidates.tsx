@@ -35,7 +35,7 @@ export function CycleCandidates({
           </tr>
         ))}
       </Table>
-      {!candidates.length && <Empty message="No cycle candidates detected in this demo fixture." />}
+      {!candidates.length && <Empty message="No cycle candidates returned by surveillance." />}
     </Card>
   );
 }
