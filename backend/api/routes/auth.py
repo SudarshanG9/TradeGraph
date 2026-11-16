@@ -25,7 +25,7 @@ class LoginResponse(BaseModel):
 @router.post('/login', response_model=LoginResponse)
 async def login(body: Login, request: Request):
     db, settings = request.app.state.database, request.app.state.settings
-    rows = await asyncio.to_thread(db.query, 'SELECT id,role,password_hash FROM user_account WHERE email=%s', (body.email,))
+    rows = await asyncio.to_thread(db.auth_query, 'SELECT id,role,password_hash FROM user_account WHERE email=%s', (body.email,))
     row = rows[0] if rows else None
     valid = await asyncio.to_thread(password_matches, body.password, row['password_hash'] if row else DUMMY_HASH)
     if not valid or row is None:

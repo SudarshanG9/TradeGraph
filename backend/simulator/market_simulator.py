@@ -85,6 +85,10 @@ class DemoData:
                 symbol=prefix+'_'+str(index)
                 iid=conn.execute('INSERT INTO instrument(symbol,tick_size,lot_size,is_active) VALUES (%s,%s,%s,%s) RETURNING id',(symbol,tick,lot,index!=3)).fetchone()[0]
                 self.instruments.append({'id':iid,'symbol':symbol,'tick_size':tick,'lot_size':lot})
+        # Scoped native demonstration may provision approved read identities; never production admission.
+        if self.settings.database_identity_mode=='isolated':
+            from scripts.setup_database_identity import provision_test_traders
+            provision_test_traders([u['trader_id'] for u in self.users if u['trader_id']])
         return self
 
     def __exit__(self,kind,value,tb):
@@ -112,6 +116,9 @@ class DemoData:
                 conn.execute(f'DELETE FROM public."{table}" WHERE {key}=ANY(%s)',(tids,))
             conn.execute('DELETE FROM user_account WHERE id=ANY(%s)',([u['id'] for u in self.users],))
             conn.execute('DELETE FROM instrument WHERE id=ANY(%s)',(iids,))
+        if self.settings.database_identity_mode=='isolated':
+            from scripts.setup_database_identity import provision_test_traders
+            provision_test_traders(tids,remove=True)
         if self.fingerprint()!=self.before: raise AssertionError('Existing user/reference data changed')
         if errors: raise RuntimeError('Scoped derived cleanup failed: '+','.join(errors))
 

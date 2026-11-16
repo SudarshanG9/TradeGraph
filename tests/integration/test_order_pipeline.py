@@ -32,6 +32,8 @@ def accounts(request):
                 traders.append(tid)
             users.append({'id':uid,'email':email,'password':password,'role':role,'trader_id':tid})
     try:
+        from scripts.setup_database_identity import provision_test_traders
+        provision_test_traders(traders)
         yield users, instrument
     finally:
         from backend.stores.redis_depth import RedisDepth
@@ -53,6 +55,7 @@ def accounts(request):
                 conn.execute(f'DELETE FROM public."{table}" WHERE {key}=ANY(%s)',(traders,))
             conn.execute('DELETE FROM user_account WHERE id=ANY(%s)',([u['id'] for u in users],))
             conn.execute('DELETE FROM instrument WHERE id=%s',(instrument,))
+        provision_test_traders(traders,remove=True)
 
 
 def login(client, user):

@@ -83,6 +83,8 @@ def live_fixture(monkeypatch):
             users.append(dict(id=uid,trader_id=tid,email=spec.email))
         bot = (bot_ids[0],1_000_000,0)
     try:
+        from scripts.setup_database_identity import provision_test_traders
+        provision_test_traders([u['trader_id'] for u in users if u['trader_id']])
         yield dict(users=users, iid=iid, symbol=symbol, bot=bot, tier=tier, test_specs=test_specs)
     finally:
         from backend.config import Settings
@@ -116,6 +118,7 @@ def live_fixture(monkeypatch):
                 conn.execute(f'DELETE FROM public."{table}" WHERE {key}=ANY(%s)',(owned,))
             conn.execute('DELETE FROM user_account WHERE id=ANY(%s)',([u['id'] for u in users],))
             conn.execute('DELETE FROM instrument WHERE id=%s',(iid,))
+        provision_test_traders(owned,remove=True)
 
 
 def test_human_bot_native_trading_finance_derived_stores_and_safe_stop(live_fixture):

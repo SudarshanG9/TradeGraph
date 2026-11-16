@@ -37,10 +37,14 @@ class Database:
         self.settings = settings
 
     def connect(self, **kwargs):
+        s=self.settings
+        return self._connect_as(s.postgres_runtime_user,s.postgres_runtime_password,**kwargs)
+
+    def _connect_as(self,user,password,**kwargs):
         s = self.settings
         return psycopg.connect(host=s.postgres_host, port=s.postgres_port,
-            dbname=s.postgres_db, user=s.postgres_runtime_user,
-            password=s.postgres_runtime_password, connect_timeout=s.health_timeout_seconds,
+            dbname=s.postgres_db, user=user,
+            password=password, connect_timeout=s.health_timeout_seconds,
             options='-c statement_timeout=30000 -c lock_timeout=10000',
             row_factory=dict_row, **kwargs)
 
@@ -71,8 +75,40 @@ class Database:
         for batch in self.execution_batches(batch_size):
             yield from batch
 
+    def auth_query(self, sql, params=()):
+        if self.settings.database_identity_mode=='legacy':
+            return self.query(sql,params)
+        with self._connect_as(self.settings.postgres_auth_user,self.settings.postgres_auth_password) as conn:
+            conn.execute('SET TRANSACTION READ ONLY')
+            return conn.execute(sql,params).fetchall()
+
+    @contextmanager
+    def trader_context(self,trader_id):
+        if self.settings.database_identity_mode!='isolated':
+            raise psycopg.OperationalError('Trusted trader identity mode is not configured')
+        from backend.stores.trader_identity import credentials,trader_role
+        user,password=credentials(self.settings.trader_credentials_file,trader_id)
+        with self._connect_as(user,password) as conn:
+            conn.execute('SET TRANSACTION READ ONLY')
+            conn.execute('SET LOCAL ROLE trader_role')
+            actor=conn.execute("SELECT session_user AS login,current_user AS role,rolsuper,rolcreatedb,rolcreaterole,rolbypassrls,rolinherit,pg_has_role(session_user,%s,'MEMBER') AS financial_member,pg_has_role(session_user,'compliance_admin_role','MEMBER') AS admin_member FROM pg_roles WHERE rolname=session_user",(self.settings.postgres_runtime_user,)).fetchone()
+            if (actor['login']!=trader_role(trader_id) or actor['role']!='trader_role' or
+                any(actor[key] for key in ('rolsuper','rolcreatedb','rolcreaterole','rolbypassrls','rolinherit','financial_member','admin_member'))):
+                raise psycopg.OperationalError('Database trader identity mismatch')
+            yield conn
+
+    def trader_query(self,trader_id,sql,params=()):
+        if self.settings.database_identity_mode=='legacy':
+            return self.query(sql,params)
+        with self.trader_context(trader_id) as conn:
+            return conn.execute(sql,params).fetchall()
+
+    def trader_request_identity(self,trader_id,key):
+        rows=self.trader_query(trader_id,'SELECT * FROM public.order_request_identity WHERE trader_id=%s AND request_key=%s',(trader_id,key))
+        return rows[0] if rows else None
+
     def identity(self, subject):
-        rows = self.query('SELECT u.id,u.role,t.id AS trader_id FROM user_account u LEFT JOIN trader t ON t.user_account_id=u.id WHERE u.id=%s', (subject,))
+        rows = self.auth_query('SELECT u.id,u.role,t.id AS trader_id FROM user_account u LEFT JOIN trader t ON t.user_account_id=u.id WHERE u.id=%s', (subject,))
         return rows[0] if rows else None
 
     def named(self, name, params=None):
@@ -164,11 +200,28 @@ class Database:
         return True
 
     def acquire_owner(self):
+        if self.settings.database_identity_mode=='isolated':
+            from backend.stores.trader_identity import verify_password_authentication
+            s=self.settings
+            for user in (s.postgres_runtime_user,s.postgres_auth_user,s.postgres_compliance_user):
+                verify_password_authentication(s.postgres_host,s.postgres_port,s.postgres_db,user)
         conn = self.connect(autocommit=True)
         try:
             row = conn.execute('SELECT rolsuper,rolcreatedb,rolcreaterole,rolbypassrls,rolinherit FROM pg_roles WHERE rolname=current_user').fetchone()
             if any(row.values()):
                 raise RuntimeError('Runtime login must be nonprivileged and NOINHERIT')
+            if self.settings.database_identity_mode=='isolated':
+                boundary=conn.execute("""SELECT pg_has_role(current_user,'compliance_admin_role','MEMBER') AS admin_member,
+                  has_column_privilege(current_user,'public.user_account','password_hash','SELECT') AS credential_read,
+                  (SELECT count(*) FROM pg_policies p JOIN pg_class c ON c.relname=p.tablename
+                    AND c.relnamespace='public'::regnamespace
+                    WHERE p.schemaname='public' AND p.tablename IN
+                      ('margin_account','order','order_history','position','order_request_identity')
+                    AND p.policyname='financial_service_read' AND p.roles=ARRAY[current_user]::name[]
+                    AND p.cmd='SELECT' AND p.qual='true' AND c.relrowsecurity AND c.relforcerowsecurity) AS protected_tables""").fetchone()
+                if boundary['admin_member'] or boundary['credential_read'] or boundary['protected_tables']!=5:
+                    raise RuntimeError('Financial database identity boundary is not installed')
+
             if not conn.execute("SELECT pg_try_advisory_lock(hashtext('tradegraph-matching-owner')) AS locked").fetchone()['locked']:
                 raise RuntimeError('Another matching owner is active')
             if conn.execute("SELECT EXISTS(SELECT 1 FROM public.\"order\" WHERE status IN ('OPEN','PARTIAL')) AS pending").fetchone()['pending']:
@@ -180,7 +233,10 @@ class Database:
 
     @contextmanager
     def admin_context(self):
-        with self.connect() as conn:
+        s=self.settings
+        connection=(self._connect_as(s.postgres_compliance_user,s.postgres_compliance_password)
+                    if s.database_identity_mode=='isolated' else self.connect())
+        with connection as conn:
             conn.execute('SET LOCAL ROLE compliance_admin_role')
             conn.execute("SET LOCAL app.role='COMPLIANCE_ADMIN'")
             yield conn

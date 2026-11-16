@@ -63,6 +63,12 @@ class Settings:
     maintenance_retry_seconds: int = 1
     regime_retention_seconds: int = 0
     regime_retention_instruments: tuple[int, ...] = ()
+    database_identity_mode: str = 'isolated'
+    postgres_auth_user: str = ''
+    postgres_auth_password: str = field(default='', repr=False)
+    postgres_compliance_user: str = ''
+    postgres_compliance_password: str = field(default='', repr=False)
+    trader_credentials_file: str = ''
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None,
@@ -121,6 +127,20 @@ class Settings:
             any(not 0 < value < 2**31 for value in retention_instruments) or
             (retention and (retention<86400 or not retention_instruments))):
             raise ValueError('Retention requires explicit valid instruments and at least one day')
+        identity_mode=values.get('DATABASE_IDENTITY_MODE','isolated')
+        if identity_mode not in ('legacy','isolated'):
+            raise ValueError('DATABASE_IDENTITY_MODE must be legacy or isolated')
+        auth_user=values.get('POSTGRES_AUTH_USER','').strip()
+        compliance_user=values.get('POSTGRES_COMPLIANCE_USER','').strip()
+        auth_password=compliance_password=''
+        credentials_file=values.get('TRADER_DATABASE_CREDENTIALS_FILE','').strip()
+        if identity_mode=='isolated':
+            if (not auth_user or not compliance_user or not credentials_file or
+                len({runtime_user,auth_user,compliance_user})!=3 or
+                any(user in forbidden_users for user in (auth_user,compliance_user))):
+                raise ValueError('Isolated identity requires distinct service logins and trader credentials')
+            auth_password=_secret(values,'POSTGRES_AUTH_PASSWORD',16)
+            compliance_password=_secret(values,'POSTGRES_COMPLIANCE_PASSWORD',16)
         workers = _integer(values, "SERVICE_WORKERS", 1, 1, 1)
         return cls(
             postgres_host=host,
@@ -143,4 +163,8 @@ class Settings:
             maintenance_retry_seconds=_integer(values,'MAINTENANCE_RETRY_SECONDS',1,1,60),
             regime_retention_seconds=retention,
             regime_retention_instruments=retention_instruments,
+            database_identity_mode=identity_mode,
+            postgres_auth_user=auth_user,postgres_auth_password=auth_password,
+            postgres_compliance_user=compliance_user,postgres_compliance_password=compliance_password,
+            trader_credentials_file=credentials_file,
         )

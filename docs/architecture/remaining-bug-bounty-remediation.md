@@ -590,3 +590,69 @@ its transactional refund/outcome without resetting readiness. Added real cancell
 COMMIT-ack-loss regression. This closes the case where committed cancellation was
 known in PostgreSQL but the reconciliation read unnecessarily remained blocked.
 Native pipeline verification: **16 passed**. Phase 18 `9111e26` confirmed pushed.
+
+## Acceptance before the approved identity extension
+
+Backend suites passed 198 unit, 54 concurrency, 106 integration and 4 benchmark
+checks; complete suite **362 passed** (one existing Starlette warning). Frontend
+**40 tests passed including native Redis sharing/TTL/outage**, typecheck/format
+passed, and the supported webpack production build generated every route. Default
+Turbopack remains EPERM-blocked. Real HTTP BFF acceptance: **8 passed**; human/bot
+BFF settlement/stop: **1 passed**. Chrome verified all five trader/six admin pages,
+real login/logout, shared sessions across two frontend processes, a real COMMIT
+response loss/reload/resolution with one order, cancellation remount reconciliation
+and one refund, simulator start/verified stop, and no uncaught browser errors.
+
+Early PostgreSQL-isolated API tests mistakenly used shared Redis database 0 for
+ACME/BETA/GAMMA startup snapshots. This touched live cache metadata. Read-only
+verification found live orders=941, active=0, executions=547, no volume mismatches,
+empty cached books and healthy trading readiness. No financial rows, live schema,
+credentials, owner or routines were changed. Remaining HTTP/Chrome acceptance was
+rerun successfully with verified-empty dedicated Redis database 15, without FLUSH.
+Generated trader UUIDs do not overlap original Neo4j trader scopes. Native browser
+and benchmark evidence is retained separately; secret fixture metadata is removed
+at shutdown. The diagnostic's pg_locks count is now database-scoped.
+
+## Phase 7 approved extension — I-01/I-02 trusted database identities
+
+User explicitly approved separate database credentials and a trusted trader-read
+boundary. Added separate financial/auth/compliance logins and per-trader UUID-named
+NOINHERIT logins. Real session_user determines forced RLS on margin_account, order,
+order_history, position and request identity. Trader API reads use those dedicated
+connections after server-side JWT/actor verification. Financial operations remain
+on their existing authoritative procedures; financial service cannot read password
+hashes or assume compliance role. Auth credential cannot read financial tables;
+compliance cannot directly change financial rows. GUC impersonation is ineffective.
+
+New secure mode is the default; absent credentials fail closed. Legacy compatibility
+requires an explicit mode and makes no tenant-isolation claim. The old shared-role
+installer refuses implicit/mixed isolated deployment. Private mode-0600 manifests
+are atomically written, database-bound, never logged, and never exposed to browsers.
+Provisioning preserves existing passwords and only creates missing approved roles.
+No relational field/table beyond the previously approved request table was added.
+
+The original cluster uses trust authentication, so policy filtering there alone
+could not prove login authentication. A separate temporary UTF8 PostgreSQL cluster
+on 127.0.0.1:55432 was created with SCRAM. Provisioning verifies wrong passwords
+are rejected for every login; startup verifies service password rejection and the
+exact financial-policy/role boundary. Network/unknown errors fail closed. The
+original cluster's authentication/configuration was not changed. The first fresh
+cluster's SQL_ASCII default was corrected by creating a separate UTF8 test database;
+no existing financial database was reset.
+
+Focused verification: **26 native authorization/pipeline tests**, **12 authorization
+checks including real SCRAM rejection and misbound financial-role startup refusal**,
+and **91 identity/config unit tests passed**. RLS rollback was executed inside a
+rolled-back transaction, restoring all 18 policies; schema verification confirms
+13 core tables plus approved identity, all 19 FKs, unchanged financial constraints.
+Full secure-mode suites and browser acceptance follow. I-01/I-02 are FIXED in the
+approved isolated mode upon successful push; production rollout remains explicitly
+undeployed. Financial/compliance service credentials remain trusted internal
+capabilities; no protection from a compromised server holding all secrets is claimed.
+
+Affected files: config.py, postgres.py, new stores/trader_identity.py, auth/orders
+routes, simulator native demo fixture, setup_backend.sh, new setup_database_identity.py
+and run_isolated.py, verify_schema.py, trader_read_isolation up/down migrations,
+.env.example, authorization/pipeline/live-fixture/config/identity tests,
+database-identity-deployment.md and recovery-persistence-proposals.md.
+The matching journal/outbox remains unapproved and unimplemented.

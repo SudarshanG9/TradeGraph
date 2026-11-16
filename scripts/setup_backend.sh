@@ -20,6 +20,8 @@ prefixes=('replace_','change_me','your_')
 runtime_secret_invalid=not values.get('POSTGRES_RUNTIME_PASSWORD','').strip() or values.get('POSTGRES_RUNTIME_PASSWORD','').lower().startswith(prefixes)
 if args.phase>=3 and (not Path('.env').is_file() or subprocess.run(['git','check-ignore','-q','.env']).returncode):
     raise SystemExit('Create an ignored .env from .env.example before runtime installation')
+if args.phase>=3 and values.get('DATABASE_IDENTITY_MODE','isolated')!='legacy':
+    raise SystemExit('Shared-role installer requires explicit legacy mode; use reviewed routine migrations and setup_database_identity.py for isolated identities')
 with db_connect() as conn:
     conn.execute("SELECT pg_advisory_xact_lock(hashtext('tradegraph-backend-install'))")
     tables = {r[0] for r in conn.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")}
