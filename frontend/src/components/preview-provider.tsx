@@ -241,7 +241,7 @@ export function useResource<T>(
     }
     setError('');
     const run = async () => {
-      if (!active || pending || !session || fixture === 'loading') return;
+      if (!active || pending || !session || fixture === 'loading' || interval < 0) return;
       if (document.hidden && !mock) {
         timer = setTimeout(run, Math.max(interval, 1000));
         return;

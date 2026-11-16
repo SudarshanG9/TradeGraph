@@ -236,3 +236,21 @@ adapter; no optimistic settlement or separate balance cache exists.
 
 Strict types and five targeted component tests passed; all three native BFF
 acceptance tests passed again against the updated production build (4.19s).
+
+## Phase 8 — backend simulator and health
+
+Phase 7 remote commit: `f7036ebbf742d846249241b01b0886f08c15965a`.
+Existing Overview panel now polls actual supervisor status every 2.5 seconds and
+health every 10 seconds. Mutation controls are serialized; status polling pauses
+while a mutation is pending. Returned STOPPED alone confirms cleanup. Timeouts
+show unknown outcome and reconcile status instead of fabricating ERROR/STOPPED.
+Server last_error and real counters remain visible; no separate page was added.
+
+Strict types and 14 targeted transport/session tests passed. New real TCP BFF
+simulator acceptance **passed** (2.36s): the existing isolated live_fixture and
+deterministic strategy seam created a genuine SELL 100 x 2, a human BUY filled
+1 at 100, committed counter became 1, stop reached STOPPED with zero bot orders,
+and the human resting BUY 50 x 1 plus execution history survived. All matching,
+settlement and native stores were real. Persistent bot identities were untouched.
+The ordinary API was stopped only after readiness verified zero active orders;
+the harness was the sole owner and shut down before scoped cleanup.
