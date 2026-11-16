@@ -117,3 +117,41 @@ def test_delayed_regime_retry_cannot_replace_newer_observation(accounts):
         row=conn.execute('SELECT features::text AS features FROM regime_snapshot WHERE instrument_id=%s AND captured_at=%s',(first.instrument_id,datetime.fromisoformat(second_payload['captured_at']))).fetchone()
     import json
     assert json.loads(row['features'])==pytest.approx(second_payload['features'])
+
+
+def test_delayed_replay_preserves_newer_live_regime_observation(accounts):
+    import json
+    _,_,event=fixture_event(accounts)
+    db=Database(Settings.from_env())
+    db.regime_books={event.instrument_id:{'epoch':'same','version':1,'bids':[[95,3]],'asks':[[105,2]]}}
+    db.settle(event)
+    payload=db.query("SELECT payload FROM event_outbox WHERE execution_id=%s AND consumer='regime'",(event.event_id,))[0]['payload']
+    store=Regimes(db)
+    # Admin/current capture is a newer real observation in the same minute bucket.
+    newer_features=[.4,-.5,0,.1,.25,0]
+    store.upsert(event.instrument_id,datetime.fromisoformat(payload['captured_at']),newer_features)
+    drain(db,'regime',store.apply_observation)
+    with db.admin_context() as conn:
+        actual=conn.execute('SELECT features::text AS features FROM regime_snapshot WHERE instrument_id=%s AND captured_at=%s',
+                            (event.instrument_id,datetime.fromisoformat(payload['captured_at']))).fetchone()
+    assert json.loads(actual['features'])==pytest.approx(newer_features)
+
+
+def test_unknown_historical_observation_is_preserved_and_replay_stays_pending(accounts):
+    _,_,event=fixture_event(accounts)
+    db=Database(Settings.from_env())
+    db.regime_books={event.instrument_id:{'epoch':'same','version':1,'bids':[[95,3]],'asks':[[105,2]]}}
+    db.settle(event)
+    payload=db.query("SELECT payload FROM event_outbox WHERE execution_id=%s AND consumer='regime'",(event.event_id,))[0]['payload']
+    store=Regimes(db)
+    captured=datetime.fromisoformat(payload['captured_at'])
+    store.upsert(event.instrument_id,captured,[1,0,0,0,0,0])
+    with db.admin_context() as conn:
+        # Model an existing pre-migration snapshot: no invented timestamp backfill.
+        conn.execute('UPDATE regime_snapshot SET observed_at=NULL,observation_execution_id=NULL WHERE instrument_id=%s',(event.instrument_id,))
+    drain(db,'regime',store.apply_observation)
+    row=db.query("SELECT last_error,completed_at FROM event_outbox WHERE execution_id=%s AND consumer='regime'",(event.event_id,))[0]
+    assert row['last_error']=='ObservationOrderUnknown' and row['completed_at'] is None
+    with db.admin_context() as conn:
+        row=conn.execute('SELECT features::text AS features,observed_at FROM regime_snapshot WHERE instrument_id=%s',(event.instrument_id,)).fetchone()
+    assert row=={'features':'[1,0,0,0,0,0]','observed_at':None}

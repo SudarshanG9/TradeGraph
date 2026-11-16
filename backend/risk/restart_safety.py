@@ -53,8 +53,8 @@ def diagnose(database):
             counts.update(conn.execute('''SELECT count(*) AS missing_publication_intents FROM execution e
               CROSS JOIN (VALUES('graph'),('regime')) c(consumer)
               WHERE NOT EXISTS(SELECT 1 FROM event_outbox o WHERE o.execution_id=e.id AND o.consumer=c.consumer)''').fetchone())
-        trigger=conn.execute("""SELECT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.execution'::regclass
-          AND tgname='execution_publication' AND tgenabled IN ('O','A')) AS installed""").fetchone()['installed']
+        from backend.stores.postgres import recovery_schema_ready
+        trigger=recovery_schema_ready(conn)
     financial_keys=('active_orders','volume_mismatches','matching_owner_locks','escrow_mismatches',
                     'position_mismatches','duplicate_order_ids','execution_order_mismatches','missing_publication_intents')
     safe=installed and trigger and not any(counts[k] for k in financial_keys)

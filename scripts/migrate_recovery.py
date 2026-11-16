@@ -19,7 +19,8 @@ def main():
         if conn.info.dbname != args.database:
             raise ValueError('Explicit database does not match admin connection')
         conn.execute("SELECT pg_advisory_xact_lock(hashtext('tradegraph-recovery-install'))")
-        conn.execute((ROOT/'db/migrations/20261117_durable_event_outbox.sql').read_text(), prepare=False)
+        for name in ('20261117_durable_event_outbox.sql','20261117_regime_replay_ordering.sql'):
+            conn.execute((ROOT/'db/migrations'/name).read_text(), prepare=False)
         role = sql.Identifier(args.runtime_role)
         conn.execute(sql.SQL('GRANT SELECT ON public.event_outbox TO {}').format(role))
         conn.execute(sql.SQL('GRANT UPDATE(payload,completed_at,attempts,next_attempt_at,last_error) ON public.event_outbox TO {}').format(role))

@@ -32,6 +32,16 @@ def json_units(value):
     return value
 
 
+def recovery_schema_ready(conn):
+    return conn.execute("""SELECT to_regclass('public.event_outbox') IS NOT NULL
+        AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.execution'::regclass
+          AND tgname='execution_publication' AND tgenabled IN ('O','A'))
+        AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.regime_snapshot'::regclass
+          AND tgname='regime_observation_order' AND tgenabled IN ('O','A'))
+        AND (SELECT count(*) FROM pg_attribute WHERE attrelid='public.regime_snapshot'::regclass
+          AND attname IN ('observed_at','observation_execution_id') AND NOT attisdropped)=2 AS installed""").fetchone()['installed']
+
+
 class Database:
     def __init__(self, settings):
         self.settings = settings
@@ -251,9 +261,7 @@ class Database:
                 count(*) FILTER(WHERE completed_at IS NULL AND last_error IS NOT NULL) AS retrying,
                 count(*) FILTER(WHERE consumer='regime' AND payload IS NULL) AS observations_missing
                 FROM public.event_outbox''').fetchone()
-            row['installed'] = conn.execute("""SELECT EXISTS(SELECT 1 FROM pg_trigger
-                WHERE tgrelid='public.execution'::regclass AND tgname='execution_publication'
-                AND tgenabled IN ('O','A')) AS installed""").fetchone()['installed']
+            row['installed'] = recovery_schema_ready(conn)
             return row
 
     def acquire_owner(self):
@@ -283,9 +291,7 @@ class Database:
                 raise RuntimeError('Another matching owner is active')
             if conn.execute("SELECT EXISTS(SELECT 1 FROM public.\"order\" WHERE status IN ('OPEN','PARTIAL')) AS pending").fetchone()['pending']:
                 raise RuntimeError('Unresolved active orders: operator reconciliation required')
-            installed = conn.execute("""SELECT to_regclass('public.event_outbox') IS NOT NULL
-                AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.execution'::regclass
-                  AND tgname='execution_publication' AND tgenabled IN ('O','A')) AS installed""").fetchone()['installed']
+            installed = recovery_schema_ready(conn)
             if not installed:
                 raise RuntimeError('Durable publication migration required before trading')
             conn.execute('SELECT execution_id FROM public.event_outbox LIMIT 0')

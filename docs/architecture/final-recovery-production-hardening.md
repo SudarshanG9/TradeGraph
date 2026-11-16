@@ -223,3 +223,28 @@ Follow-up verification: **12 passed** including an actual isolated child-process
 `os._exit` immediately after financial COMMIT (intents and exact financial state
 survive, duplicate settlement remains a no-op). **4 passed** for the final shared
 restart diagnostics, including canonical order/trader/instrument/maker-price checks.
+
+## Additional replay ordering verification
+
+Recovery follow-up commit `63d70a4` pushed and confirmed on origin.
+A complete backend run passed **421 tests** (184.23 seconds), including actual TLS
+and capacity cases. Review then reproduced an additional uncovered failure: an old
+regime event could replace a newer live/current capture in the same minute.
+
+`20261117_regime_replay_ordering.sql` adds nullable observation time and canonical
+execution tie-break metadata to the existing regime table, without changing its
+vector, feature calculations, minute key or similarity query. Atomic upsert ordering
+now covers both durable replay and live capture. Unknown historical ordering is
+preserved and raises a retryable `ObservationOrderUnknown`; no timestamp is invented
+for an existing row. A compatibility trigger timestamps only actual new writes from
+a draining older writer. Startup/readiness require both reviewed migrations.
+
+Files: new ordering migration, `scripts/migrate_recovery.py`,
+`backend/stores/regimes.py`, `backend/stores/postgres.py`,
+`backend/risk/restart_safety.py`, `tests/integration/test_outbox_recovery.py`.
+Verification: the new regression failed before the fix with the old feature vector;
+after the fix **25 passed** across durable observations, all polyglot consumers and
+restart diagnostics, including preservation of unknown historical snapshots.
+The isolated soak uses compatible additive migration during its run and loads the
+updated worker on the planned backend restart; this is recorded as a limitation of
+revision uniformity, not hidden as a single-revision benchmark.

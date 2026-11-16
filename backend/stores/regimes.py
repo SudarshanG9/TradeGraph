@@ -37,33 +37,48 @@ def market_features(bids,asks,recent,history):
             clamp(len(recent)/100),clamp(bid_qty/total if total else 0.5),clamp(volatility)]
 
 
+class ObservationOrderUnknown(RuntimeError):
+    pass
+
+
 class Regimes:
     def __init__(self,database):
         self.database=database
         self.capture_locks={}
         self.versions={}
 
-    def upsert(self,instrument,captured_at,features):
+    def upsert(self,instrument,captured_at,features,*,observed_at=None,execution_id=None,replay=False):
         features=validate_vector(features)
+        observed_at=observed_at or datetime.now(timezone.utc)
+        if observed_at.tzinfo is None or observed_at.utcoffset() is None:
+            raise ValueError('Aware observation timestamp required')
         with self.database.admin_context() as conn:
-            return conn.execute("""INSERT INTO regime_snapshot(instrument_id,captured_at,features) VALUES (%s,%s,%s::vector)
-              ON CONFLICT(instrument_id,captured_at) DO UPDATE SET features=EXCLUDED.features RETURNING id""",
-              (instrument,captured_at,json.dumps(features,allow_nan=False))).fetchone()['id']
+            row=conn.execute("""INSERT INTO regime_snapshot(instrument_id,captured_at,features,observed_at,observation_execution_id)
+              VALUES (%s,%s,%s::vector,%s,%s)
+              ON CONFLICT(instrument_id,captured_at) DO UPDATE SET features=EXCLUDED.features,
+                observed_at=EXCLUDED.observed_at,observation_execution_id=EXCLUDED.observation_execution_id
+              WHERE (regime_snapshot.observed_at IS NULL AND %s)
+                 OR (regime_snapshot.observed_at,coalesce(regime_snapshot.observation_execution_id,9223372036854775807))
+                  < (EXCLUDED.observed_at,coalesce(EXCLUDED.observation_execution_id,9223372036854775807))
+              RETURNING id""",
+              (instrument,captured_at,json.dumps(features,allow_nan=False),observed_at,execution_id,not replay)).fetchone()
+            if row is not None:
+                return row['id']
+            existing=conn.execute('SELECT id,observed_at FROM regime_snapshot WHERE instrument_id=%s AND captured_at=%s',
+                                  (instrument,captured_at)).fetchone()
+            if existing is None or (replay and existing['observed_at'] is None):
+                raise ObservationOrderUnknown('Historical observation ordering unavailable; operator reconciliation required')
+            return existing['id']
 
     def apply_observation(self,event,payload):
-        """Replay persisted observations, never manufacture historical depth.
+        """Apply exact persisted features with atomic ordering across all writers.
 
-        Called under the durable regime consumer's advisory transaction lock.
-        A delayed retry must not overwrite a later observation in the same minute.
+        A delayed retry cannot replace either a newer durable observation or a
+        newer live capture. Legacy observations with unknown order are preserved.
         """
-        newer = self.database.query('''SELECT 1 FROM public.event_outbox o
-            JOIN public.execution e ON e.id=o.execution_id
-            WHERE o.consumer='regime' AND o.completed_at IS NOT NULL
-              AND e.instrument_id=%s AND o.payload->>'captured_at'=%s
-              AND (o.payload->>'observed_at',o.execution_id)>(%s,%s) LIMIT 1''',
-            (event.instrument_id,payload['captured_at'],payload['observed_at'],event.event_id))
-        if not newer and payload['features'] is not None:
-            self.upsert(event.instrument_id,datetime.fromisoformat(payload['captured_at']),payload['features'])
+        if payload['features'] is not None:
+            self.upsert(event.instrument_id,datetime.fromisoformat(payload['captured_at']),payload['features'],
+                        observed_at=datetime.fromisoformat(payload['observed_at']),execution_id=event.event_id,replay=True)
 
     def capture(self,instrument,snapshot,as_of=None):
         with self.capture_locks.setdefault(instrument,Lock()):
@@ -85,7 +100,7 @@ class Regimes:
         vector=market_features(snapshot.get('bids',[]),snapshot.get('asks',[]),recent,history)
         if vector is None: return None
         captured=now.replace(second=0,microsecond=0)
-        return {'id':self.upsert(instrument,captured,vector),'instrument_id':instrument,'captured_at':captured,'features':vector}
+        return {'id':self.upsert(instrument,captured,vector,observed_at=now),'instrument_id':instrument,'captured_at':captured,'features':vector}
 
     def similar(self,features,instrument=None,limit=10):
         rows=self.database.named('similar',{'features':json.dumps(validate_vector(features),allow_nan=False),'instrument_id':instrument,'limit':limit})
