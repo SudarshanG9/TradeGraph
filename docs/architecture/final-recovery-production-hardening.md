@@ -41,3 +41,26 @@ Phase 1 verification: **16 passed** (new crash-window suite and existing settlem
 recovery suite, real isolated PostgreSQL, 6.53 seconds). Branch creation and initial
 push confirmed by origin. No running financial process was killed. No financial
 routine or matching rule was modified. Commit recorded in the next phase entry.
+
+## Phase 2: durable publication intent
+
+Phase 1 commit `60dd9d8` pushed and confirmed on origin.
+New migration installs an AFTER INSERT trigger on execution, two uniquely keyed
+consumer intents per canonical execution, per-consumer progress, bounded retry
+metadata, pending index, and atomic historical backfill. Rollbacks remove both
+execution and intent. No settlement SQL or fee arithmetic changes.
+
+New `durable_outbox.py` claims one row with SKIP LOCKED and a consumer advisory
+transaction lock, performs derived work only, and acknowledges after success.
+External success followed by SQL rollback is deliberately at-least-once replay.
+It never invokes settlement. Polling and backoff are bounded; missing historical
+regime payloads remain visibly pending, never synthesized or acknowledged.
+`outbox_worker.py` awaits in-flight writers before releasing ownership on shutdown.
+Migration is explicit through `scripts/migrate_recovery.py`; only the selected
+runtime identity receives progress grants. Trader and generic compliance roles
+receive no outbox access. `verify_schema.py` recognizes the additive table.
+
+Phase 2 verification: **32 passed**, durable outbox + settlement recovery + settlement
+lock/fee invariants (15.43 seconds). Initial test run exposed a test deployment grant
+mistake (legacy runtime name versus isolated `tradegraph_financial`); corrected the
+isolated migration grant and reran all checks. No test result was suppressed.

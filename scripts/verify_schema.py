@@ -16,7 +16,7 @@ EXPECTED_TABLES = {
     "margin_account", "instrument", "order", "order_history", "execution",
     "position", "market_disclosure", "regime_snapshot",
 }
-SUPPLEMENTARY_TABLES = {'order_request_identity','registration_state','registration_policy'}
+SUPPLEMENTARY_TABLES = {'order_request_identity','registration_state','registration_policy','event_outbox'}
 
 EXPECTED_ROLES = {"trader_role", "compliance_admin_role"}
 EXPECTED_POLICIES = {
