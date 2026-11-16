@@ -48,7 +48,7 @@ export function SignInForm({
   role: AccountRole;
   onSession: (s: PreviewSession) => void;
 }) {
-  const { api } = usePreview();
+  const { api, mock } = usePreview();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   return (
@@ -87,13 +87,15 @@ export function SignInForm({
       <PasswordField name="password" label="Password" />
       {error && <Notice tone="error">{error}</Notice>}
       <Button variant="primary" type="submit" disabled={busy}>
-        {busy ? 'Opening preview…' : 'Sign In · Demo'}
+        {busy ? 'Signing in…' : mock ? 'Sign In · Demo' : 'Sign In'}
       </Button>
-      <p className="auth-hint">
-        Demo identity: {role === 'TRADER' ? 'alice@tradegraph.sim' : 'admin@tradegraph.sim'}
-        <br />
-        Demo password: preview-only. These are local fixture values, not backend credentials.
-      </p>
+      {mock && (
+        <p className="auth-hint">
+          Demo identity: {role === 'TRADER' ? 'alice@tradegraph.sim' : 'admin@tradegraph.sim'}
+          <br />
+          Demo password: preview-only. These are local fixture values, not backend credentials.
+        </p>
+      )}
     </form>
   );
 }

@@ -140,3 +140,28 @@ transport retry. An actual native FastAPI health request through transport-core
 returned ok, all four dependencies up and trading_ready=true. No backend source
 or database schema changes. Sessions, UI integration and real trading acceptance
 remain outstanding; the data adapter is not yet selected by the UI.
+
+## Phase 3 — authenticated BFF and role boundary
+
+Phase 2 remote commit: `dfbd75ea92c353df56cd891e0e5675c075c8150d`.
+Wired allowlisted Next.js routes behind server sessions, independent role checks
+and CSRF checks, including existing GET operations with capture/expensive effects.
+JWTs remain exclusively in a bounded process-local Next.js session map. Browser
+cookies contain random 256-bit IDs with HttpOnly/SameSite=Strict/expiry; Secure
+is enabled for HTTPS APP_ORIGIN. Restart logs users out; this deployment requires
+one Next.js instance. Logout removes its server session, not backend JWT revocation.
+Server layouts restrict direct role pages. Production cannot enable mock shortcuts.
+Sign-up remains unavailable and grants no roles.
+
+Verification: 28 Node tests passed, strict types/format/build passed. Real HTTP
+acceptance through production Next.js and the existing single FastAPI owner
+passed using the repository's scoped synthetic account fixture: both roles,
+missing identity, selected-role mismatch, cross-role API/page denial, catalog,
+logout and CSRF. Next.js streams unauthorized page redirects with HTTP 200;
+assertions verify the actual expired/forbidden redirect destination. The initial
+status-only expectation failed and was corrected after inspecting that response.
+Session expiry/tamper/role behavior is separately covered by deterministic unit
+checks. No existing test assertions or backend files were changed.
+
+Remaining: page-specific mock wording/assumptions, polling, uncertain-action UX,
+full browser and financial acceptance. The live adapter is now selected by default.

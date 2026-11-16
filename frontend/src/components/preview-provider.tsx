@@ -15,10 +15,13 @@ import type {
   PreviewSession,
   InstrumentInfo,
 } from '@/lib/contracts';
+import { createRealDataServices } from '@/lib/api/client';
+import * as liveAuth from '@/lib/api/auth-client';
 import { createMockServices, type Services } from '@/lib/services';
 import { useRouter } from 'next/navigation';
 import { Empty, Notice, Skeleton } from './ui';
 interface Preview {
+  mock: boolean;
   session: PreviewSession | null;
   ready: boolean;
   fixture: FixtureState;
@@ -32,14 +35,20 @@ interface Preview {
   setInstrument: (id: number) => void;
   api: Services;
   signIn: (s: PreviewSession) => void;
-  logout: (reason?: 'expired' | 'logout') => void;
+  logout: (reason?: 'expired' | 'logout') => Promise<void>;
   sessionReason: 'expired' | 'logout';
   revision: number;
   invalidate: () => void;
 }
 const Context = createContext<Preview | null>(null);
 const key = 'tradegraph.mock-preview.v1';
-export function PreviewProvider({ children }: { children: ReactNode }) {
+export function PreviewProvider({
+  children,
+  mock = false,
+}: {
+  children: ReactNode;
+  mock?: boolean;
+}) {
   const [session, setSession] = useState<PreviewSession | null>(null),
     [ready, setReady] = useState(false),
     [fixture, setFixture] = useState<FixtureState>('populated'),
@@ -53,11 +62,21 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
   const refs = useRef({ session, fixture, outcome });
   refs.current = { session, fixture, outcome };
   const [api] = useState(() =>
-    createMockServices(
-      () => refs.current.session,
-      () => refs.current.fixture,
-      () => refs.current.outcome,
-    ),
+    mock
+      ? createMockServices(
+          () => refs.current.session,
+          () => refs.current.fixture,
+          () => refs.current.outcome,
+        )
+      : {
+          ...createRealDataServices(),
+          auth: {
+            login: liveAuth.login,
+            preview: () => {
+              throw new Error('Mock login is disabled');
+            },
+          },
+        },
   );
   useEffect(() => {
     let active = true;
@@ -86,6 +105,23 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
     };
   }, [api, session, fixture]);
   useEffect(() => {
+    if (!mock) {
+      let active = true;
+      void liveAuth
+        .session()
+        .then((s) => {
+          if (active) setSession(s);
+        })
+        .catch(() => {
+          if (active) setSession(null);
+        })
+        .finally(() => {
+          if (active) setReady(true);
+        });
+      return () => {
+        active = false;
+      };
+    }
     try {
       const raw = sessionStorage.getItem(key);
       if (raw) {
@@ -104,26 +140,40 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
       /* Storage may be unavailable; an in-memory preview still works. */
     }
     setReady(true);
-  }, []);
-  const signIn = useCallback((s: PreviewSession) => {
-    setSession(s);
-    try {
-      sessionStorage.setItem(key, JSON.stringify(s));
-    } catch {
-      /* Memory-only preview. */
-    }
-    setFixture('populated');
-  }, []);
-  const logout = useCallback((reason: 'expired' | 'logout' = 'logout') => {
-    setSessionReason(reason);
-    setSession(null);
-    try {
-      sessionStorage.removeItem(key);
-    } catch {
-      /* No credentials are stored. */
-    }
-    setFixture('populated');
-  }, []);
+  }, [mock]);
+  const signIn = useCallback(
+    (s: PreviewSession) => {
+      setSession(s);
+      try {
+        if (mock) sessionStorage.setItem(key, JSON.stringify(s));
+      } catch {
+        /* Memory-only preview. */
+      }
+      setFixture('populated');
+    },
+    [mock],
+  );
+  const logout = useCallback(
+    async (reason: 'expired' | 'logout' = 'logout') => {
+      if (!mock && reason === 'logout') await liveAuth.logout();
+      setSessionReason(reason);
+      setSession(null);
+      try {
+        sessionStorage.removeItem(key);
+      } catch {
+        /* No credentials are stored. */
+      }
+      setFixture('populated');
+    },
+    [mock],
+  );
+  useEffect(() => {
+    const expired = () => {
+      void logout('expired');
+    };
+    window.addEventListener('tradegraph:expired', expired);
+    return () => window.removeEventListener('tradegraph:expired', expired);
+  }, [logout]);
   useEffect(() => {
     if (!session) return;
     const timeout = setTimeout(
@@ -135,6 +185,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider
       value={{
+        mock,
         session,
         ready,
         fixture,
@@ -237,14 +288,14 @@ export function RoleGuard({ role, children }: { role: AccountRole; children: Rea
   if (!ready || !session)
     return (
       <div className="loading-route" role="status">
-        Loading preview session…
+        Loading session…
       </div>
     );
   if (session.role !== role)
     return (
       <div className="loading-route">
-        <h1>Access unavailable for this preview role</h1>
-        <p>The selected mock identity cannot open this interface.</p>
+        <h1>Access unavailable for this role</h1>
+        <p>Your authenticated role cannot open this interface.</p>
         <a
           className="link"
           href={session.role === 'TRADER' ? '/trader/dashboard' : '/admin/overview'}
