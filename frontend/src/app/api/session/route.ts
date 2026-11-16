@@ -25,9 +25,12 @@ export async function GET(request: NextRequest) {
 }
 export async function POST(request: NextRequest) {
   try {
-    checkCsrf(request, process.env.APP_ORIGIN ?? 'http://127.0.0.1:3000');
+    checkCsrf(request);
   } catch (e) {
-    return NextResponse.json({ error: { code: (e as ApiError).code } }, { status: 403 });
+    return NextResponse.json(
+      { error: { code: (e as ApiError).code } },
+      { status: e instanceof ApiError ? e.status : 503 },
+    );
   }
   try {
     await deleteSession(request.cookies.get(SESSION_COOKIE)?.value);

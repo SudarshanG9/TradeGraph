@@ -34,7 +34,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       raw,
       request.headers.get('idempotency-key') ?? undefined,
     );
-    if (op.csrf) checkCsrf(request, process.env.APP_ORIGIN ?? 'http://127.0.0.1:3000');
+    if (op.csrf) checkCsrf(request);
     const session = op.authenticated ? authorize(await getSession(cookie), op.role) : null;
     const result = await requestBackend(op, session?.token, request.signal);
     if (op.kind === 'login') {

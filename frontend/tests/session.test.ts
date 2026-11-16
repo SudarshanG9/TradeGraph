@@ -152,3 +152,39 @@ test(
     }
   },
 );
+
+test('production origin requires explicit HTTPS with only an explicit local-test exception', async () => {
+  const { applicationOrigin } = await import('../src/lib/server/app-origin');
+  assert.throws(() => applicationOrigin({ NODE_ENV: 'production' }));
+  for (const APP_ORIGIN of [
+    'http://exchange.test',
+    'https://u:p@exchange.test',
+    'https://exchange.test/path',
+    'https://exchange.test?',
+    'https://exchange.test#',
+    'not a url',
+    ' https://exchange.test',
+    'http://127.0.0.1:3000',
+  ])
+    assert.throws(() => applicationOrigin({ NODE_ENV: 'production', APP_ORIGIN }));
+  assert.equal(
+    applicationOrigin({ NODE_ENV: 'production', APP_ORIGIN: 'https://exchange.test/' }),
+    'https://exchange.test',
+  );
+  assert.equal(applicationOrigin({ NODE_ENV: 'development' }), 'http://127.0.0.1:3000');
+  assert.equal(
+    applicationOrigin({
+      NODE_ENV: 'production',
+      APP_ORIGIN: 'http://127.0.0.1:3000',
+      ALLOW_INSECURE_LOOPBACK_ORIGIN: 'true',
+    }),
+    'http://127.0.0.1:3000',
+  );
+  assert.throws(() =>
+    applicationOrigin({
+      NODE_ENV: 'production',
+      APP_ORIGIN: 'http://exchange.test',
+      ALLOW_INSECURE_LOOPBACK_ORIGIN: 'true',
+    }),
+  );
+});

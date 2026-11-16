@@ -1,3 +1,4 @@
+import { applicationOrigin } from './app-origin';
 import { sharedSessionStore } from './redis-session-store';
 import type { AccountRole, LoginResponse } from '../contracts';
 import { ApiError } from '../api/errors';
@@ -72,8 +73,8 @@ export function authorize(s: ServerSession | null, role?: AccountRole) {
   return s;
 }
 /** Custom header cannot be sent by a cross-origin form; CORS is never enabled. */
-export function checkCsrf(request: Request, origin: string) {
-  const expected = new URL(origin).origin;
+export function checkCsrf(request: Request, origin: string = applicationOrigin()) {
+  const expected = applicationOrigin({ APP_ORIGIN: origin });
   const supplied = request.headers.get('origin');
   if (
     request.headers.get('x-tradegraph-request') !== '1' ||

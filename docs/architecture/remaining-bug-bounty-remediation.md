@@ -237,3 +237,19 @@ Client reconnect/timeout options checked against the maintained upstream docs:
 https://github.com/redis/ioredis . F-01: FIXED upon push; production configuration
 and end-to-end login acceptance remain deployment verification. Phase 4 `dd88cef`
 confirmed pushed. No existing Redis keys deleted; only random test session keys.
+
+## Phase 6 — F-04 trusted production origin
+
+New frontend/src/lib/server/app-origin.ts validates the one origin used by cookie
+security and CSRF. Production requires explicit HTTPS; HTTP is limited to loopback
+and an explicit ALLOW_INSECURE_LOOPBACK_ORIGIN controlled-test override. Development
+may use loopback HTTP. Credentials, paths, malformed URLs, whitespace, query and
+fragment (including empty delimiters) fail closed. No incoming Host header controls
+cookie security. HTTP-only and SameSite Strict preserved.
+Changed session.ts, session-core.ts, both API routes, .env.example and session tests.
+**37 frontend tests passed, one opt-in native Redis test skipped in the service-free
+suite; typecheck and format passed**. That native session test previously passed
+when explicitly enabled. Foreign/originless CSRF regressions remain passing.
+F-04: FIXED upon push. Phase 5 `a2797f1` confirmed pushed, with full webpack build,
+typecheck and formatting passed after resolving the TypeScript status-narrowing
+check (no runtime behavior suppressed). No live configuration or service restart.
