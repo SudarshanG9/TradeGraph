@@ -10,3 +10,7 @@ CREATE INDEX IF NOT EXISTS idx_execution_sell_instrument_id ON public.execution(
 
 CREATE INDEX IF NOT EXISTS idx_order_archive_candidates
 ON public."order"(updated_at,id) WHERE status IN ('FILLED','CANCELLED');
+
+CREATE INDEX IF NOT EXISTS idx_execution_counterparty_pair
+ON public.execution(buy_trader_id,sell_trader_id)
+INCLUDE(instrument_id,price_ticks,quantity,executed_at);

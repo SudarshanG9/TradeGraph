@@ -511,3 +511,29 @@ passed**. P-07: FIXED upon push. Exact files: cancellation procedure, up/down
 cancel_fee migrations, SQL integrity tests and ledger. Phase 14 `6bcfc1b` confirmed
 pushed. Production routine replacement still requires controlled deployment;
 no live accounting or routine was modified.
+
+## Phase 16 — N-04 bounded canonical graph aggregation (partial)
+
+GraphWorker now coalesces queued updates by counterparty pair using the same
+bounded replaceable-state worker, retaining in-flight retry payloads and a separate
+full-rebuild marker. Neo4jGraph.pair continues writing absolute canonical SQL totals,
+so repeated delivery, acknowledgement loss and out-of-order event IDs cannot
+increment totals twice. No new graph entities or persisted high-water contract.
+A covering (buy_trader_id,sell_trader_id) execution index supports the canonical
+pair query; migration is CONCURRENTLY and applied only in isolated tests.
+
+**25 native polyglot/recovery tests passed**, including six repeated deliveries
+coalesced into one queued job with exactly three canonical trades/300 notional,
+old-event replay, graph rebuild, real surveillance and outage retry regressions.
+benchmark_graph_aggregation.py uses a temporary 50,000-row execution clone:
+five before probes 1.579/0.297/0.289/0.292/0.288ms, after
+0.402/0.277/0.273/0.267/0.264ms. Plans and buffers are in graph-aggregation.json;
+warm-cache noise is substantial, no throughput claim.
+
+N-04: PARTIALLY_FIXED. Backlogged same-pair work is bounded/coalesced and indexed;
+canonical pair history is still aggregated for an isolated new delivery. Incremental
+all-time totals cannot safely assume no lower event ID will commit later under the
+existing SQL contract. Full elimination requires an approved canonical aggregation
+checkpoint/order contract or persisted state; no unsafe incremental addition adopted.
+Files: graph_worker.py, query_indexes.sql, counterparty_index migration, polyglot
+tests, benchmark/evidence and ledger. Phase 15 `5d0e8f0` confirmed pushed.
