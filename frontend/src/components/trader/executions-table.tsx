@@ -46,9 +46,7 @@ export function ExecutionsTable({
           </tr>
         ))}
       </Table>
-      {!trades.length && (
-        <Empty message="No settled execution observations in this demo fixture." />
-      )}
+      {!trades.length && <Empty message="No settled executions observed for this instrument." />}
       {children}
     </Card>
   );

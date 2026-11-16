@@ -224,3 +224,15 @@ The phase 5 real BFF acceptance already proved resting depth without trades,
 settled maker-price execution, actual partial status, book convergence and real
 analytics; this phase adds independent UI refresh and exact history tests. Full
 browser polling/visual proof remains part of phase 15 acceptance, not claimed here.
+
+## Phase 7 — Trader consistency cleanup
+
+Phase 6 remote commit: `cbf9c6afa1e9d98c53cfc7948dd363517e45c74c`.
+Removed remaining unconditional mock labels from shared Trader observations and
+empty states. Price-band queries now start with explicit full supported bounds,
+validate the Redis-safe limit, abort superseded queries and retain submitted
+bounds alongside results. Account/order invalidation and polling share the same
+adapter; no optimistic settlement or separate balance cache exists.
+
+Strict types and five targeted component tests passed; all three native BFF
+acceptance tests passed again against the updated production build (4.19s).
