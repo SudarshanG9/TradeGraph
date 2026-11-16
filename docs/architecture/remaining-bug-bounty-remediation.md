@@ -466,3 +466,28 @@ memory is explicitly O(63M), substantially larger than coordinate compression.
 P-04: FIXED CPU/rebuild behavior upon push, with documented sparse-memory tradeoff.
 Do not interpret this as a general memory reduction or unbounded scale guarantee.
 Phase 12 `f53ab3b` confirmed pushed.
+
+## Phase 14 — N-03 scoped consistent depth snapshots
+
+OrderBook already maintained level total_quantity correctly; it now keeps scoped
+instrument/side level maps and cached sorted price keys. Insert/delete invalidates
+only that side's key cache; partial fills/cancels use current aggregate values.
+Snapshots remain independent copies under the owner/admission lock, never constructed
+concurrently with mutation. The fill estimator can read existing sorted keys without
+mutating them. FIFO/pricing/STP remain unchanged.
+
+New ReplaceableWorker coalesces only queued replaceable snapshots under a small
+thread lock. In-flight retry payloads stay immutable and finish before later state.
+CacheWorker retains the newest queued version per instrument; Redis epoch/version
+stale-write protection is unchanged. Distinct-instrument backlog remains bounded
+and fails closed rather than silently dropping required state.
+
+**31 matching/cache tests and 24 native polyglot/recovery tests passed**, including
+randomized ReferenceBook comparison, partial/cancel/recreate aggregates, independent
+snapshots, coalescing and native stale Redis writes. benchmark_depth_snapshots.py
+compares pre-change f019866: 1,000 snapshot samples, 200 instruments x 10 levels,
+median 57.750us -> 0.541us; one instrument x 2,000 levels 193.791us -> 65.667us.
+Evidence depth-snapshots.json measures snapshot CPU only, excluding reservation,
+network and settlement; copies still cost O(relevant levels). N-03: FIXED upon push.
+Files: order_book.py, dispatcher.py, cache_worker.py, unit tests, benchmark/evidence.
+Phase 13 `f019866` confirmed pushed.

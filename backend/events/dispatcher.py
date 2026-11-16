@@ -1,6 +1,8 @@
 """Bounded in-process handoff; intentionally no durable outbox."""
 import asyncio
 from enum import Enum
+from threading import Lock
+from dataclasses import dataclass
 
 
 class FailureKind(str, Enum):
@@ -55,7 +57,7 @@ class DerivedWorker:
     async def run(self):
         while True:
             payload=await self.queue.get()
-            self.pending=payload
+            self.pending=payload.payload if isinstance(payload, _ReplaceableJob) else payload
             try:
                 while True:
                     job=asyncio.create_task(asyncio.to_thread(self.handler,payload))
@@ -82,3 +84,37 @@ class DerivedWorker:
             self.task.cancel()
             try: await self.task
             except asyncio.CancelledError: pass
+
+
+@dataclass(slots=True)
+class _ReplaceableJob:
+    key: object
+    payload: object
+
+
+class ReplaceableWorker(DerivedWorker):
+    """Coalesce only queued replaceable state; retain in-flight retry payloads."""
+    def __init__(self,name,handler,dispatcher,*,key,newer=lambda new,old: True):
+        self._state_handler=handler
+        self._key=key
+        self._newer=newer
+        self._queued={}
+        self._replace_lock=Lock()
+        super().__init__(name,self._handle_job,dispatcher)
+
+    def publish(self,payload):
+        key=self._key(payload)
+        with self._replace_lock:
+            existing=self._queued.get(key)
+            if existing is not None:
+                if self._newer(payload,existing.payload): existing.payload=payload
+                return
+            job=_ReplaceableJob(key,payload)
+            super().publish(job)
+            self._queued[key]=job
+
+    def _handle_job(self,job):
+        with self._replace_lock:
+            if self._queued.get(job.key) is job: self._queued.pop(job.key)
+            payload=job.payload
+        self._state_handler(payload)

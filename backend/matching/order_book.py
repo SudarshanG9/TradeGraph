@@ -82,6 +82,8 @@ class OrderBook:
         self._last_id = 0
         # (instrument_id, side, price_ticks) -> linked FIFO price level
         self._levels = {}
+        self._books = defaultdict(dict)
+        self._sorted_prices = {}
         # (instrument_id, side) -> min heap (negative for bids)
         self._heaps = defaultdict(list)
         # (instrument_id, side) -> prices already represented in heap
@@ -123,6 +125,8 @@ class OrderBook:
         if level is None:
             level = _PriceLevel()
             self._levels[key] = level
+            self._books[(order.instrument_id, order.side)][order.price_ticks] = level
+            self._sorted_prices.pop((order.instrument_id, order.side), None)
             heap_key = (order.instrument_id, order.side)
             if order.price_ticks not in self._queued_prices[heap_key]:
                 heap_price = -order.price_ticks if order.side == "BUY" else order.price_ticks
@@ -185,7 +189,7 @@ class OrderBook:
                 level.remove(maker)  # remaining == 0, so no double decrement
                 del self._by_id[maker.order.order_id]
                 if level.head is None:
-                    del self._levels[key]  # heap entry cleaned lazily
+                    self._remove_level(key)  # heap entry cleaned lazily
 
         resting = remaining > 0 and not prevented
         if resting:
@@ -202,7 +206,7 @@ class OrderBook:
         cancelled_qty = node.remaining
         level.remove(node)
         if level.head is None:
-            del self._levels[key]
+            self._remove_level(key)
         return cancelled_qty
 
     def potential_fill_count(self, instrument_id, side, price_ticks, trader_id):
@@ -214,15 +218,15 @@ class OrderBook:
         """
         self._validate(Order(1, trader_id, instrument_id, side, price_ticks, 1))
         opposite = "SELL" if side == "BUY" else "BUY"
-        levels = sorted(
-            ((price, level) for (inst, s, price), level in self._levels.items()
-             if inst == instrument_id and s == opposite and
-             (price <= price_ticks if side == "BUY" else price >= price_ticks)),
-            key=lambda item: item[0], reverse=(side == "SELL"),
-        )
+        levels = self._books.get((instrument_id, opposite), {})
+        prices = self._sorted_prices.get((instrument_id, opposite))
+        if prices is None:
+            prices = sorted(levels, reverse=(side == "SELL"))
         count = 0
-        for _, level in levels:
-            node = level.head
+        for price in prices:
+            if not (price <= price_ticks if side == "BUY" else price >= price_ticks):
+                break
+            node = levels[price].head
             while node is not None:
                 if node.order.trader_id == trader_id:
                     return count
@@ -230,16 +234,28 @@ class OrderBook:
                 node = node.next
         return count
 
+    def _remove_level(self, key):
+        del self._levels[key]
+        instrument, side, price = key
+        book_key = (instrument, side)
+        del self._books[book_key][price]
+        self._sorted_prices.pop(book_key, None)
+        if not self._books[book_key]:
+            del self._books[book_key]
+
     def depth(self, instrument_id: int, side: str):
-        """Sorted snapshot: (price_ticks, aggregate resting quantity)."""
+        """Owner-consistent snapshot; scoped levels and cached price ordering."""
         if side not in ("BUY", "SELL"):
             raise ValueError("Invalid side")
-        snapshot = [
-            (price, level.total_quantity)
-            for (inst, s, price), level in self._levels.items()
-            if inst == instrument_id and s == side
-        ]
-        return sorted(snapshot, key=lambda p: p[0], reverse=(side == "BUY"))
+        key = (instrument_id, side)
+        levels = self._books.get(key)
+        if not levels:
+            return []
+        prices = self._sorted_prices.get(key)
+        if prices is None:
+            prices = tuple(sorted(levels, reverse=(side == "BUY")))
+            self._sorted_prices[key] = prices
+        return [(price, levels[price].total_quantity) for price in prices]
 
     def assert_internal_invariants(self):
         """Slow diagnostic; never call this on a production hot path."""
@@ -263,3 +279,7 @@ class OrderBook:
             assert prev is level.tail
             assert total == level.total_quantity and total > 0
         assert observed_ids == set(self._by_id)
+        assert {(inst, side, price): level for (inst, side), levels in self._books.items()
+                for price, level in levels.items()} == self._levels
+        for key, prices in self._sorted_prices.items():
+            assert prices == tuple(sorted(self._books[key], reverse=(key[1] == 'BUY')))

@@ -237,3 +237,16 @@ def test_capacity_exact_bound_and_insufficient_bound():
     Dispatcher(2).check_capacity(estimate)
     with pytest.raises(RuntimeError, match='full'):
         Dispatcher(1).check_capacity(estimate)
+
+
+def test_depth_cache_updates_on_partial_fill_cancel_recreate_and_is_independent():
+    book=OrderBook()
+    book.submit(Order(1,'a',1,'SELL',100,5));book.submit(Order(2,'b',1,'SELL',101,3))
+    snapshot=book.depth(1,'SELL');keys=book._sorted_prices[(1,'SELL')]
+    book.submit(Order(3,'c',1,'BUY',100,2))
+    assert book.depth(1,'SELL')==[(100,3),(101,3)]
+    assert book._sorted_prices[(1,'SELL')] is keys
+    assert snapshot==[(100,5),(101,3)]
+    book.cancel(1);assert book.depth(1,'SELL')==[(101,3)]
+    book.submit(Order(4,'a',1,'SELL',100,2));assert book.depth(1,'SELL')==[(100,2),(101,3)]
+    book.assert_internal_invariants()
