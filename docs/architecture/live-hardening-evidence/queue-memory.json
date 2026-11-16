@@ -1,0 +1,10 @@
+{
+  "method": "Python tracemalloc, 100 synthetic independent live connections, fill each 128-message queue, force one overflow per connection, disconnect and collect; excludes TCP/server/runtime memory",
+  "connections": 100,
+  "messages_per_queue": 128,
+  "overflowed_connections": 100,
+  "connected_allocated_bytes": 434430,
+  "full_queues_allocated_bytes": 3761146,
+  "peak_traced_bytes": 3762050,
+  "post_cleanup_allocated_bytes": 34954
+}

@@ -101,3 +101,19 @@ def test_revocation_disconnects_an_already_connected_socket(accounts):
                     event=ws.receive_json()
                     if event['type']=='ping':ws.send_json({'type':'pong'})
         wait_until(lambda:len(client.app.state.live_bus.clients),lambda n:n==0)
+
+
+def test_blocked_heartbeat_send_is_bounded_and_releases_client(accounts,monkeypatch):
+    import asyncio
+    from starlette.websockets import WebSocket
+    original=WebSocket.send_json
+    async def blocked_ping(socket,data,*args,**kwargs):
+        if data.get('type')=='ping':await asyncio.sleep(30)
+        return await original(socket,data,*args,**kwargs)
+    monkeypatch.setattr(WebSocket,'send_json',blocked_ping)
+    users,_=accounts
+    with TestClient(create_app()) as client:
+        value,_=ticket(client,login(client,users[0]))
+        with connect(client,value) as ws:
+            with pytest.raises(WebSocketDisconnect):ws.receive_json()
+        wait_until(lambda:len(client.app.state.live_bus.clients),lambda n:n==0)

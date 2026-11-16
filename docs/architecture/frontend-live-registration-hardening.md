@@ -362,3 +362,28 @@ overflow and simulator dependency gates are regression-tested; no production Neo
 service was stopped. Native scoped Neo4j/pgvector integration and browser surveillance
 recovery passed. Default production registration remains PENDING_VERIFICATION until
 a real operator verification workflow is supplied; no KYC verification is invented.
+
+Phase 16 commit `642ac0f`, pushed.
+
+## Phase 17 — final regression and security audit
+
+Status: FIXED for measured local acceptance; deployment/scale limits remain explicit.
+Security review found heartbeat sends were not covered by the existing five-second
+event-send timeout. Applied that bound to heartbeat and acceptance, with client-slot
+cleanup on handshake failure. Added a native deliberately blocked heartbeat test.
+Final complete backend run: **392 passed**, one Starlette/httpx deprecation warning,
+117.75 seconds. Frontend: **55 passed**, zero skipped; typecheck/format passed;
+production webpack build passed. Native proxy: **2 passed**. Final Chrome recovery
+smoke against rebuilt frontend/final backend: all seven checks passed, no exceptions.
+Prior multi-user/Redis/frontend/full-stack restart acceptance reports remain retained.
+
+Tracemalloc bus measurement: 100 connections, 128 messages each, all overflow at
+the bound; full queue allocations 3,761,146 bytes, post-cleanup delta 34,954 bytes.
+This excludes socket buffers/ASGI tasks/process RSS and is not a capacity or leak
+proof. Final report and sanitized evidence: `final-fullstack-acceptance.md` and
+`live-hardening-evidence/`. Reviewed branch diff: core schema/financial procedures
+unchanged, no private env, manifest, password or token artifacts staged.
+
+The final isolated HTTP stack was cleanly stopped after acceptance. Test databases
+and dedicated Redis instances remain preserved for inspection, with private config
+under /tmp. No production service was stopped.

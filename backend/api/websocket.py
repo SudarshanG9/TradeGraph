@@ -64,7 +64,11 @@ async def live_socket(socket: WebSocket):
     except Exception:
         await socket.close(code=1008)
         return
-    await socket.accept(subprotocol='tradegraph.v1')  # never reflect the credential
+    try:
+        await asyncio.wait_for(socket.accept(subprotocol='tradegraph.v1'),timeout=5)
+    except BaseException:
+        state.live_bus.disconnect(client)
+        raise
     last_seen=time.monotonic()
     async def receive():
         nonlocal last_seen
@@ -101,7 +105,7 @@ async def live_socket(socket: WebSocket):
                     await socket.close(code=1008);return
                 if time.monotonic()-last_seen>45:
                     await socket.close(code=1001);return
-                await socket.send_json({'type':'ping'})
+                await asyncio.wait_for(socket.send_json({'type':'ping'}),timeout=5)
                 next_check=time.monotonic()+10
             try:event=await asyncio.wait_for(client.queue.get(),timeout=1)
             except asyncio.TimeoutError:continue
