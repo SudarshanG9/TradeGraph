@@ -4,6 +4,35 @@ Base: `9c4c64ded6f7129460eca8ff0e810dc60be09e84`.
 Branch: `codex/final-recovery-production-hardening`.
 Only durable recovery and production transport/stability are in scope.
 
+## Final disposition
+
+Work is committed on `codex/final-recovery-production-hardening`; `main` was not
+merged or rewritten. Committed publication/replay and measured transport/stability
+are implemented. Full automatic crash recovery is **not** declared complete.
+
+| Requirement | Final outcome |
+|---|---|
+| Durable committed-event recovery | Verified after canonical execution COMMIT; financial transaction and intent are atomic |
+| Downstream replay safety | Duplicate/retry/rebuild paths verified under known ownership; torn-lease remote-writer fencing remains BLOCKED |
+| Active-order restart | Safely refused; durable admission/fill journal and owner-generation protocol required |
+| PostgreSQL financial consistency | Verified by 424 backend tests and independent SQL accounting audits during both soaks |
+| HTTPS reverse proxy | Real Caddy validator and trusted TLS environment verified; public DNS/ACME/firewall NOT_VERIFIED |
+| WSS authentication | Real TLS ticket reuse/expiry/revocation and upstream stripping passed; origin checks also covered |
+| Secure session cookies | Verified over actual HTTPS; existing session/CSRF implementation unchanged |
+| WebSocket resource limits | 10/50/100 actual clients measured; bounded queues, reconnects, privacy and cleanup checked |
+| Sustained load | Two completed >30-minute runs, 3623.74 seconds cumulatively, 3163 executions; second included deliberate slow reader |
+| Restart/reconnection recovery | All five controlled interruptions recovered; terminal/archived startup verified; active-order and torn-lease guarantees blocked |
+| Frontend/backend regressions | 424 backend and 55 frontend tests passed; typecheck, format check and production build passed |
+| Scope preservation | No frontend/auth/session/provisioning/matching/fee/API-contract/financial-procedure/dependency redesign |
+| Git commits and pushes | Every tested phase pushed; full SHA/file ledger and final remote verification below |
+
+The remaining blockers are explicit protocol work, not permission failures:
+persist accepted admission/matching turns, ordered pending fills and STP/cancel
+progress, then fence old financial and derived writers with durable owner generations.
+Historical regime inputs/order that were never recorded remain unavailable and are
+preserved as diagnostics. No automatic cancellation, rematching, balance repair or
+health-triggered recovery is implemented.
+
 ## Phase 1: failure windows
 
 Audit covers dispatcher, settlement worker, reservation coordinator, pure matcher/book,
@@ -386,3 +415,181 @@ Full timings, resource samples, tail latency and revision limitations are in
 All test servers, browsers and the two isolated PostgreSQL/Redis stacks were
 stopped after read-only checks confirmed no active owner or unresolved orders.
 Private credentials, certificate keys and raw logs were not committed.
+
+
+## Final Git and file ledger
+
+Second-run evidence commit `ed070fe` was pushed and the remote tip was read back as
+the same full commit. All preceding phase commits are ancestors of that remote tip.
+The final documentation receipt is identified by remote HEAD and the final response.
+No force push, shared reset/rebase or merge into main was performed.
+
+| Full commit SHA | Phase/change | Push |
+|---|---|---|
+| `60dd9d8f02f4db94a491fbf1b00324a185621ceb` | test(recovery): characterize crash windows and restart invariants | Confirmed |
+| `a8449a18021d1d3190f6b58ad8434f4e0b886bab` | feat(recovery): persist committed event publication intent | Confirmed |
+| `12f55c3a989a9af834cdf16740762a88a0da04f9` | fix(recovery): make derived consumer replay safe and idempotent | Confirmed |
+| `293b35d8530f29ef23485811dc48e7e03db592eb` | test(recovery): preserve safe refusal of ambiguous active matching state | Confirmed |
+| `e10cd8d6b20e907c10dbc718e0add949687144ac` | test(recovery): verify durable replay and safe restart diagnostics | Confirmed |
+| `790e1cd8988abea0571cf181a8f45bad54e6da56` | security(deploy): validate production HTTPS and WSS proxying | Confirmed |
+| `90ee04a5d063df9b9df5011eada40e8e2fe66a77` | test(performance): verify bounded WebSocket capacity and recovery | Confirmed |
+| `63d70a4d08cecc754154ab59b584cd34c9418b93` | fix(recovery): expose durable retries and enforce restart invariants | Confirmed |
+| `f34b82da9f9e1284432c753dbbb0867837b1cd50` | fix(recovery): preserve observation order across live capture and replay | Confirmed |
+| `a08404a772ab1b0cf6774c75860b1110d2e7bee1` | test(performance): measure bounded reconnect transport recovery | Confirmed |
+| `abc94f938f6319570a56539af479aa868a308f72` | fix(recovery): preserve graph retention during historical replay | Confirmed |
+| `9c4fe6a4e6d1e8f5cbc25f2721dcdf14402ba23a` | test(stability): verify sustained multi-user operation and recovery | Confirmed |
+| `fc0826b8b59d3a21bef0dc8b27c36f8c3f9dd0bb` | test(reliability): record final regression and scope verification | Confirmed |
+| `ed070fe95f9df4c0f98ac18566559df76185640a` | test(stability): record final slow-consumer recovery measurements | Confirmed |
+
+Exact changed files for every committed phase:
+
+<details><summary>60dd9d8 — test(recovery): characterize crash windows and restart invariants</summary>
+
+- `docs/architecture/final-recovery-production-hardening.md`
+- `tests/concurrency/test_recovery_windows.py`
+
+</details>
+
+<details><summary>a8449a1 — feat(recovery): persist committed event publication intent</summary>
+
+- `backend/events/durable_outbox.py`
+- `backend/workers/outbox_worker.py`
+- `db/migrations/20261117_durable_event_outbox.sql`
+- `docs/architecture/final-recovery-production-hardening.md`
+- `scripts/migrate_recovery.py`
+- `scripts/verify_schema.py`
+- `tests/concurrency/test_durable_outbox.py`
+
+</details>
+
+<details><summary>12f55c3 — fix(recovery): make derived consumer replay safe and idempotent</summary>
+
+- `backend/api/main.py`
+- `backend/events/dispatcher.py`
+- `backend/stores/postgres.py`
+- `backend/stores/regimes.py`
+- `backend/workers/graph_worker.py`
+- `docs/architecture/final-recovery-production-hardening.md`
+- `scripts/create_test_stack.py`
+- `tests/integration/test_outbox_recovery.py`
+
+</details>
+
+<details><summary>293b35d — test(recovery): preserve safe refusal of ambiguous active matching state</summary>
+
+- `docs/architecture/final-recovery-production-hardening.md`
+- `tests/concurrency/test_active_order_restart.py`
+- `tests/integration/test_matching_restart.py`
+
+</details>
+
+<details><summary>e10cd8d — test(recovery): verify durable replay and safe restart diagnostics</summary>
+
+- `backend/api/main.py`
+- `backend/stores/postgres.py`
+- `docs/architecture/final-recovery-production-hardening.md`
+- `scripts/reconcile_restart.py`
+- `tests/integration/test_restart_diagnostics.py`
+
+</details>
+
+<details><summary>790e1cd — security(deploy): validate production HTTPS and WSS proxying</summary>
+
+- `deploy/Caddyfile.example`
+- `docs/architecture/final-recovery-production-hardening.md`
+- `scripts/production_test_app.py`
+- `scripts/production_test_stack.py`
+- `tests/integration/test_production_tls_proxy.py`
+
+</details>
+
+<details><summary>90ee04a — test(performance): verify bounded WebSocket capacity and recovery</summary>
+
+- `docs/architecture/final-recovery-production-hardening.md`
+- `docs/architecture/recovery-hardening-evidence/websocket-capacity.json`
+- `tests/benchmarks/test_websocket_capacity.py`
+
+</details>
+
+<details><summary>63d70a4 — fix(recovery): expose durable retries and enforce restart invariants</summary>
+
+- `backend/api/main.py`
+- `backend/risk/restart_safety.py`
+- `backend/stores/postgres.py`
+- `backend/workers/graph_worker.py`
+- `backend/workers/outbox_worker.py`
+- `docs/architecture/final-recovery-production-hardening.md`
+- `scripts/reconcile_restart.py`
+- `tests/concurrency/test_durable_outbox.py`
+- `tests/integration/test_database_integrity.py`
+- `tests/integration/test_restart_diagnostics.py`
+
+</details>
+
+<details><summary>f34b82d — fix(recovery): preserve observation order across live capture and replay</summary>
+
+- `backend/risk/restart_safety.py`
+- `backend/stores/postgres.py`
+- `backend/stores/regimes.py`
+- `db/migrations/20261117_regime_replay_ordering.sql`
+- `docs/architecture/final-recovery-production-hardening.md`
+- `scripts/migrate_recovery.py`
+- `tests/integration/test_outbox_recovery.py`
+
+</details>
+
+<details><summary>a08404a — test(performance): measure bounded reconnect transport recovery</summary>
+
+- `docs/architecture/final-recovery-production-hardening.md`
+- `docs/architecture/recovery-hardening-evidence/websocket-capacity-under-soak.json`
+- `tests/benchmarks/test_websocket_capacity.py`
+
+</details>
+
+<details><summary>abc94f9 — fix(recovery): preserve graph retention during historical replay</summary>
+
+- `backend/api/main.py`
+- `backend/risk/restart_safety.py`
+- `backend/stores/neo4j_graph.py`
+- `docs/architecture/final-recovery-production-hardening.md`
+- `tests/integration/test_outbox_recovery.py`
+
+</details>
+
+<details><summary>9c4fe6a — test(stability): verify sustained multi-user operation and recovery</summary>
+
+- `docs/architecture/final-recovery-production-hardening.md`
+- `docs/architecture/live-operations.md`
+- `docs/architecture/production-stability-results.md`
+- `docs/architecture/recovery-hardening-evidence/accounting-rolling-30min.json`
+- `docs/architecture/recovery-hardening-evidence/stability-rolling-30min.json`
+- `scripts/monitor_stability_accounting.py`
+- `scripts/stability_browser.mjs`
+- `scripts/stress_test_live_stack.py`
+
+</details>
+
+<details><summary>fc0826b — test(reliability): record final regression and scope verification</summary>
+
+- `docs/architecture/final-recovery-production-hardening.md`
+- `docs/architecture/recovery-hardening-evidence/regression-summary.json`
+
+</details>
+
+<details><summary>ed070fe — test(stability): record final slow-consumer recovery measurements</summary>
+
+- `docs/architecture/final-recovery-production-hardening.md`
+- `docs/architecture/production-stability-results.md`
+- `docs/architecture/recovery-hardening-evidence/accounting-final-30min.json`
+- `docs/architecture/recovery-hardening-evidence/stability-final-30min.json`
+
+</details>
+
+
+Final checks: working tree clean before this documentation receipt; branch diff
+passes `git diff main...HEAD --check`; all changed paths reviewed for the two issues.
+Final stability evidence contains synthetic metrics only. Private credentials,
+certificate keys and raw request logs remain outside Git. Both isolated native
+service stacks were stopped after owner/order safety checks. Main remains at the
+verified base commit; the final push and remote-tip equality are checked again
+after committing this report.
