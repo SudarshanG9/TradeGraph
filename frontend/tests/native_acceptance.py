@@ -150,3 +150,19 @@ def test_real_disclosure_full_text_search(accounts):
         assert row['title'] == 'Integration disclosure' and row['rank'] > 0
         assert 'body' not in row and isinstance(row['id'], str)
         assert client.get('/api/backend/admin/disclosures/search?q=').status_code == 422
+
+
+def test_real_optimizer_plans(accounts):
+    users, instrument = accounts
+    with httpx.Client(base_url=ORIGIN, timeout=40) as client:
+        assert signin(client, users[3]).status_code == 200
+        for scenario in ['price_band', 'recent_executions']:
+            r = client.get('/api/backend/admin/optimizer/compare', headers=HEADERS, params={'scenario': scenario, 'instrument_id': instrument, 'lower_ticks': 1, 'upper_ticks': 100})
+            assert r.status_code == 200
+            result = r.json()
+            assert result['scenario'] == scenario and isinstance(result['dataset_size'], str)
+            for plan in result['plans'].values():
+                assert isinstance(plan['Plan']['Node Type'], str)
+                assert plan['Execution Time'] >= 0
+                assert isinstance(plan['Plan']['Actual Rows'], str)
+        assert client.get('/api/backend/admin/optimizer/compare', headers=HEADERS, params={'scenario': 'arbitrary_sql'}).status_code == 422

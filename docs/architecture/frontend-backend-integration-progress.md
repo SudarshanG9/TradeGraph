@@ -281,3 +281,12 @@ local title matching. Query validation remains bounded and results expose only
 returned metadata. Native test passed (2.08s): an isolated disclosure matched a
 word in its body, returned positive rank and exact ID, and did not expose body
 text. Empty query was rejected. Strict TypeScript passed.
+
+## Phase 12 — actual execution plans
+
+Phase 11 remote commit: `7d2389b3cd6ba9ad2e77be9199437158c65c3764`.
+Optimizer renders real paired plans and measured query-specific timing, preserving
+recursive nodes and exact counts. No arbitrary SQL or automatic expensive query
+is exposed. Native test passed (1.69s) for price_band/recent_executions, plan shape,
+exact row/dataset counts and invalid scenario denial. Five component checks and
+strict TypeScript passed. No universal speedup claim is made.

@@ -48,7 +48,7 @@ export default function OptimizerPage() {
           </div>
         )}
         <Notice tone="warning">
-          These are mock plan timings for a specific query and dataset — they do not imply a
+          These are measured plan timings for a specific query and dataset — they do not imply a
           universal performance improvement. Aggregate output rows are distinct from matching
           execution rows.
         </Notice>
