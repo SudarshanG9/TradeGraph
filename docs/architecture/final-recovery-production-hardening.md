@@ -336,3 +336,31 @@ Private runtime files, credentials, certificate keys and raw request logs stay i
 owner-only temporary directories and are never committed. The configured source
 financial database was used only for a read-only collateral check (canonical graph
 pairs present); fault injection and financial test writes remain isolated.
+
+
+## Final regression and scope checkpoint
+
+Phase 8 evidence commit `9c4fe6a` pushed and confirmed on origin.
+After the historical-retention follow-up, the complete backend suite passed
+**424 tests in 182.63 seconds** with actual Caddy TLS/WSS and capacity enabled.
+No backend tests were skipped. The separately requested commands also passed:
+206 unit tests, 68 concurrency tests, and 141 integration tests before the final
+retention regression (which passed separately and in the final full suite).
+All 55 frontend tests passed with native isolated Redis enabled, and type checking,
+format checking and the production build passed. No frontend source was changed.
+
+The final branch diff check passes. Every changed path is recovery persistence,
+recovery consumers/startup diagnostics, the production edge, isolated verification,
+or the required reports/evidence. The diff contains no changes to frontend source,
+authentication/registration/session/CSRF implementations, trader provisioning,
+matching/FIFO/STP rules, fee or financial SQL procedures, API submission/cancel
+contracts, graph relationship types or vector feature/similarity mathematics.
+The only existing baseline test expectation changed is the additive table count.
+
+Full crash safety remains deliberately qualified: healthy-owner serialized replay
+and verified terminal restart paths are tested. Durable admission/fill journaling
+and transaction-level owner-generation fences are still required for uncommitted
+financial work and late old writers after a torn lease. Session advisory locks are
+not a distributed fence for remote writes already in flight. This limit applies
+across financial connections and derived Redis/Neo4j projection writers; it is not
+presented as fixed by the outbox. No automatic active-order recovery is enabled.

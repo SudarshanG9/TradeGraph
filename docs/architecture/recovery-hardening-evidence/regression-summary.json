@@ -1,0 +1,40 @@
+{
+  "base": "9c4c64ded6f7129460eca8ff0e810dc60be09e84",
+  "backend_all": {
+    "passed": 424,
+    "skipped": 0,
+    "seconds": 182.63,
+    "real_caddy_enabled": true
+  },
+  "unit_separate": {
+    "passed": 206,
+    "seconds": 2.11
+  },
+  "concurrency_separate": {
+    "passed": 68,
+    "seconds": 26.55
+  },
+  "integration_separate_before_retention_case": {
+    "passed": 141,
+    "seconds": 115.92
+  },
+  "retention_followup": {
+    "passed": 1,
+    "seconds": 1.2,
+    "also_in_final_full_suite": true
+  },
+  "frontend": {
+    "passed": 55,
+    "skipped": 0,
+    "typecheck": "PASS",
+    "format_check": "PASS",
+    "production_build": "PASS",
+    "native_test_redis": true
+  },
+  "scope": "No frontend/auth/session/provisioning/matching/financial procedure/dependency changes",
+  "known_limits": [
+    "Active-order admission/fill journal absent",
+    "Transaction-level and cross-epoch writer fencing not implemented",
+    "Public DNS/ACME/firewall deployment not verified"
+  ]
+}
