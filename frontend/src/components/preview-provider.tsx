@@ -214,40 +214,76 @@ export function usePreview() {
   if (!value) throw new Error('PreviewProvider required');
   return value;
 }
-export function useResource<T>(load: () => Promise<T>, deps: unknown[] = []) {
-  const { fixture, revision } = usePreview();
+export function useResource<T>(
+  load: (signal: AbortSignal) => Promise<T>,
+  deps: unknown[] = [],
+  interval = 0,
+) {
+  const { fixture, revision, mock, session } = usePreview();
   const [data, setData] = useState<T | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [nonce, setNonce] = useState(0);
+  const scope = JSON.stringify([fixture, session?.role, session?.expiresAt, ...deps]);
+  const previousScope = useRef<string | null>(null);
   const fn = useRef(load);
   fn.current = load;
   useEffect(() => {
-    let active = true;
-    setLoading(true);
+    let active = true,
+      pending = false,
+      failures = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    if (previousScope.current !== scope) {
+      setData(null);
+      setLoading(true);
+      previousScope.current = scope;
+    }
     setError('');
-    if (fixture === 'loading')
-      return () => {
-        active = false;
-      };
-    fn.current()
-      .then((value) => {
-        if (active) setData(value);
-      })
-      .catch((e) => {
+    const run = async () => {
+      if (!active || pending || !session || fixture === 'loading') return;
+      if (document.hidden && !mock) {
+        timer = setTimeout(run, Math.max(interval, 1000));
+        return;
+      }
+      pending = true;
+      try {
+        const value = await fn.current(controller.signal);
         if (active) {
-          setData(null);
-          setError(e instanceof Error ? e.message : 'Demo service unavailable');
+          setData(value);
+          setError('');
+          failures = 0;
         }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      } catch (e) {
+        if (active) {
+          setError(e instanceof Error ? e.message : 'Service unavailable');
+          failures++;
+        }
+      } finally {
+        pending = false;
+        if (active) {
+          setLoading(false);
+          if (!mock && interval > 0)
+            timer = setTimeout(run, Math.min(interval * 2 ** Math.min(failures, 4), 30000));
+        }
+      }
+    };
+    void run();
+    const visible = () => {
+      if (!document.hidden && !pending) {
+        clearTimeout(timer);
+        void run();
+      }
+    };
+    if (interval > 0 && !mock) document.addEventListener('visibilitychange', visible);
     return () => {
       active = false;
+      controller.abort();
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', visible);
     };
-  }, [fixture, revision, nonce, ...deps]); // callers supply stable primitive dependencies
-  return { data, loading, error, reload: () => setNonce((x) => x + 1) };
+  }, [fixture, revision, nonce, mock, session, interval, ...deps]);
+  return { data: session ? data : null, loading, error, reload: () => setNonce((x) => x + 1) };
 }
 export function InstrumentSelector() {
   const { instrument, setInstrument, instruments, catalogLoading } = usePreview();

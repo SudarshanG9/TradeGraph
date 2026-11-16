@@ -165,3 +165,18 @@ checks. No existing test assertions or backend files were changed.
 
 Remaining: page-specific mock wording/assumptions, polling, uncertain-action UX,
 full browser and financial acceptance. The live adapter is now selected by default.
+
+## Phase 4 — live catalog and account reads
+
+Phase 3 remote commit: `fce18cd6e5cfc7b66bccd45709b9fb8cba2f4d70`.
+Dashboard/account use authoritative account responses and active catalog metadata.
+Removed fixed Alice/ACME identity assumptions; missing catalog never invents an
+instrument. Position details resolve against current data instead of a saved row.
+Added visibility-aware, nonoverlapping resource scheduling with bounded backoff,
+cleanup and account abort signals; account/dashboard refresh every five seconds.
+Explicit action invalidation retains mounted feedback rather than resetting it.
+
+Strict TypeScript and all 28 Node tests passed. Real BFF acceptance expanded to
+catalog/account: **2 native HTTP tests passed**, exact synthetic fixture cash
+20000/escrow 0, empty positions, actual catalog ID and string tick/lot units.
+No account provisioning beyond existing scoped test fixtures or schema change.

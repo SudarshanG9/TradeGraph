@@ -39,3 +39,17 @@ def test_real_authentication_and_role_boundaries(accounts):
             assert client.post('/api/session', headers=HEADERS).status_code == 200
             assert client.get('/api/session').json() is None
             assert client.get('/api/backend/instruments').status_code == 401
+
+
+def test_live_catalog_and_account(accounts):
+    users, instrument = accounts
+    with httpx.Client(base_url=ORIGIN, timeout=40) as client:
+        assert signin(client, users[0]).status_code == 200
+        catalog = client.get('/api/backend/instruments')
+        assert catalog.status_code == 200
+        metadata = next(i for i in catalog.json()['items'] if i['id'] == instrument)
+        assert metadata['is_active'] is True
+        assert metadata['tick_size'] == '1' and metadata['lot_size'] == '1'
+        account = client.get('/api/backend/account/me')
+        assert account.status_code == 200
+        assert account.json() == {'trader_id': str(users[0]['trader_id']), 'cash_balance': '20000', 'escrow_balance': '0', 'positions': []}

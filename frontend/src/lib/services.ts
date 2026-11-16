@@ -14,7 +14,7 @@ export interface Services {
     login(request: C.LoginRequest, selected: C.AccountRole): Promise<C.PreviewSession>;
   };
   instruments: { list(): Promise<C.InstrumentCatalog> };
-  account: { get(): Promise<C.Account> };
+  account: { get(signal?: AbortSignal): Promise<C.Account> };
   orders: {
     list(query?: PageQuery): Promise<C.OwnOrders>;
     submit(order: C.NewOrder): Promise<C.AcceptedOrder>;

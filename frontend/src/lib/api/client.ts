@@ -55,7 +55,7 @@ const market = (symbol: string, suffix: string) => `market/${encodeURIComponent(
 export function createRealDataServices(): Omit<Services, 'auth'> {
   return {
     instruments: { list: () => apiRequest('instruments', 'instruments') },
-    account: { get: () => apiRequest('account', 'account/me') },
+    account: { get: (signal) => apiRequest('account', 'account/me', undefined, undefined, signal) },
     orders: {
       list: (q) => apiRequest('orders', `orders/me?${page(q)}`),
       submit: (order) => apiRequest('submit', 'orders', order, crypto.randomUUID()),
