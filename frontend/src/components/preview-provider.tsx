@@ -15,6 +15,8 @@ import type {
   PreviewSession,
   InstrumentInfo,
 } from '@/lib/contracts';
+import { LiveConnection } from './live-provider';
+import type { LiveState } from '@/lib/live/client';
 import { createAuthController, type AuthState } from '@/lib/auth-state';
 import { startPolling } from '@/lib/polling';
 import { createRealDataServices } from '@/lib/api/client';
@@ -41,6 +43,8 @@ interface Preview {
   signIn: (s: PreviewSession) => void;
   logout: (reason?: 'expired' | 'logout') => Promise<void>;
   sessionReason: 'expired' | 'logout';
+  sessionGeneration: number;
+  liveState: LiveState;
   revision: number;
   invalidate: () => void;
 }
@@ -66,6 +70,8 @@ export function PreviewProvider({
     [outcome, setOutcome] = useState<Outcome>('accepted'),
     [instrumentId, setInstrument] = useState(1),
     [revision, setRevision] = useState(0);
+  const [sessionGeneration, setSessionGeneration] = useState(0);
+  const [liveState, setLiveState] = useState<LiveState>('disconnected');
   const [sessionReason, setSessionReason] = useState<'expired' | 'logout'>('expired');
   const [instruments, setInstruments] = useState<InstrumentInfo[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -141,6 +147,7 @@ export function PreviewProvider({
   }, [mock, auth, retrySession]);
   const signIn = useCallback(
     (s: PreviewSession) => {
+      setSessionGeneration((g) => g + 1);
       setSession(s);
       channel.current?.postMessage('changed');
       try {
@@ -154,6 +161,7 @@ export function PreviewProvider({
   );
   const logout = useCallback(
     async (reason: 'expired' | 'logout' = 'logout') => {
+      setSessionGeneration((g) => g + 1);
       setSessionReason(reason);
       if (!mock && reason === 'logout') await auth.logout(liveAuth.logout);
       else setSession(null);
@@ -218,10 +226,20 @@ export function PreviewProvider({
         signIn,
         logout,
         sessionReason,
+        sessionGeneration,
+        liveState,
         revision,
         invalidate: () => setRevision((r) => r + 1),
       }}
     >
+      {session && !mock && (
+        <LiveConnection
+          key={sessionGeneration}
+          instrumentId={instruments.find((x) => x.id === instrumentId)?.id ?? instruments[0]?.id}
+          onEvent={() => setRevision((r) => r + 1)}
+          onState={setLiveState}
+        />
+      )}
       {children}
     </Context.Provider>
   );

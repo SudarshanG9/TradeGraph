@@ -186,3 +186,19 @@ BFF preservation, canonical navigation and credential stripping. Caddy is absent
 production example is NOT_VERIFIED and must be validated on deployment.
 Files: deploy/local-proxy.mjs/test, Caddy example, live-operations.md. No financial
 or DB changes. End-to-end proxy ticket connection awaits complete startup workflow.
+
+Phase 9: 2 real local proxy routing/upgrade tests passed. Commit `34730f7`, pushed.
+
+## Phase 10 — shared browser live client
+
+Status: PARTIALLY_FIXED pending authoritative snapshot synchronization (Phase 12).
+One authenticated provider owns a connection, fresh-ticket reconnect with capped
+exponential jitter, heartbeat watchdog, strict protocol decoding, per-connection
+sequence/epoch gap detection, old book-version rejection, bounded canonical trade-ID
+deduplication, explicit instrument unsubscribe/subscribe and generation-safe cleanup.
+Logout/account changes close sockets; no financial mutation retry exists here.
+Connection state stays resyncing until snapshots are acknowledged, avoiding false
+'live' claims. HTTP polling remains enabled. Files: live client/protocol, live
+provider, preview provider, live-client tests. Tests verify shared widget subscribers,
+stale/order/gap handling, instrument switch, pending-ticket logout and bounded retries.
+Frontend tests/typecheck pass; browser network failure exercise follows acceptance.
