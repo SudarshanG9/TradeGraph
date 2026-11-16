@@ -353,3 +353,17 @@ def test_owned_cancellation_status_and_repeat_refund(accounts):
         assert client.post(f'/orders/{oid}/cancel',headers=a).json()['cancelled_quantity']==0
         assert client.get('/account/me',headers=a).json()==before
         assert before['cash_balance']==20000 and before['escrow_balance']==0
+
+
+def test_readiness_distinguishes_owner_replay_worker_and_reconciliation(accounts):
+    with TestClient(create_app()) as client:
+        result=client.get('/health').json()
+        assert result['trading_ready']
+        assert result['readiness']['matching_owner'] and result['readiness']['replay_complete']
+        assert result['readiness']['financial_settlement']
+        client.app.state.service.dispatcher.failure='operator reconciliation required'
+        failed=client.get('/health').json()
+        assert not failed['trading_ready'] and failed['readiness']['reconciliation_required']
+    with TestClient(create_app(settlement=False)) as client:
+        result=client.get('/health').json()
+        assert not result['trading_ready'] and not result['readiness']['financial_settlement']

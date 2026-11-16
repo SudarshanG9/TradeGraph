@@ -295,3 +295,16 @@ def test_exact_fee_refunds_after_single_multiple_and_no_fill(accounts,side,maker
     if filled<quantity:
         assert db.cancel(subject,a['trader_id'])==0
         assert state(a)==(expected,0)
+
+
+def test_intersect_except_demonstrations_include_both_maker_and_taker(accounts):
+    users,instrument=accounts;a,b=users[:2];db=Database(Settings.from_env())
+    buy=reserve(a,instrument,'BUY',100,1);sell=reserve(b,instrument,'SELL',100,1)
+    db.settle(make_event(buy,sell,a,b,instrument,100,1))
+    buy=reserve(b,instrument,'BUY',100,1);sell=reserve(a,instrument,'SELL',100,1)
+    db.settle(make_event(buy,sell,b,a,instrument,100,1))
+    rows=db.named('maker_taker')
+    for trader in (a['trader_id'],b['trader_id']):
+        assert {'classification':'both','trader_id':trader} in rows
+        assert {'classification':'either','trader_id':trader} in rows
+        assert {'classification':'maker_only','trader_id':trader} not in rows

@@ -23,10 +23,21 @@ from backend.events.trade_event import TradeEvent
 from backend.workers.housekeeping_worker import HousekeepingWorker
 
 
+class Readiness(BaseModel):
+    matching_owner: bool
+    replay_complete: bool
+    replayed_executions: int
+    financial_settlement: bool
+    derived_ready: bool
+    reconciliation_required: bool
+    closing: bool
+
+
 class HealthResponse(BaseModel):
     status: Literal['ok','unhealthy']
     dependencies: dict[str, Literal['up','down']]
     trading_ready: bool
+    readiness: Readiness
 
 
 def create_app(settings=None, *, settlement=True):
@@ -145,8 +156,23 @@ def create_app(settings=None, *, settlement=True):
             unavailable=consumer.failed or (name=='neo4j' and not consumer.ready)
             if name not in dependencies or unavailable:
                 dependencies[name]='down' if unavailable else 'up'
-        ready = not application.state.service.dispatcher.failure and dependencies['postgres']=='up'
-        return {'status':'ok' if ready and all(v=='up' for v in dependencies.values()) else 'unhealthy','dependencies':dependencies,'trading_ready':ready}
+        service = application.state.service
+        try:
+            owner_held = bool(await asyncio.to_thread(service.verify_owner))
+        except Exception:
+            owner_held = False
+        worker = service.worker
+        financial = bool(worker and worker.task and not worker.task.done() and not service.dispatcher.failure)
+        replay_complete = application.state.replay_complete
+        derived_ready = all(value == 'up' for name,value in dependencies.items() if name != 'postgres')
+        ready = bool(owner_held and replay_complete and financial and not service.closing and dependencies['postgres']=='up')
+        return {'status':'ok' if ready and all(v=='up' for v in dependencies.values()) else 'unhealthy',
+                'dependencies':dependencies,'trading_ready':ready,
+                'readiness':{'matching_owner':owner_held,'replay_complete':replay_complete,
+                'replayed_executions':application.state.replayed_executions,'financial_settlement':financial,
+                'derived_ready':derived_ready,'reconciliation_required':bool(service.dispatcher.failure or not owner_held),
+                'closing':service.closing}}
+
 
     return application
 

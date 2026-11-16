@@ -559,3 +559,23 @@ bounded; financial history remains intentionally retained, and exact analytics
 identity state still grows. These cannot safely be deleted to create an apparent
 bound. Phase 16 `eea9760` confirmed pushed. Production maintenance policy and
 routine/index deployment remain operator actions.
+
+## Phase 18 — A-01/A-05 safe availability and SQL demonstrations
+
+main.py health preserves status/dependencies/trading_ready and adds explicit owner,
+replay completion/count, financial consumer, derived readiness, closing and
+reconciliation fields. Financial readiness requires a live settlement worker and
+held ownership, not merely PostgreSQL connectivity. Coordinator cancellation also
+verifies the owner before financial work. SERVICE_WORKERS remains exactly 1;
+controlled shutdown/replay/restart guidance makes the HA limitation explicit.
+
+New sql-demonstration-availability.md maps every named SQL asset to live authorized
+routes, internal tested demonstrations or deployment DDL. It clearly distinguishes
+SQL ten-minute VWAP from Python last-100-fill VWAP, and avoids adding unrelated
+public endpoints. Added both-role INTERSECT/EXCEPT/UNION assertions and readiness
+regressions; existing nested/correlated, HAVING, recursive rollup, FTS/vector tests
+remain. **48 native SQL integrity/pipeline tests passed**. Frontend compatibility
+checks accept the additive health fields while preserving its existing contract.
+A-05: FIXED documentation/test coverage upon push. A-01: PARTIALLY_FIXED; single-owner
+recovery/readiness and shared sessions improved, active-active HA unimplemented.
+Phase 17 `3347b7b` confirmed pushed. No live migration/deployment or worker expansion.

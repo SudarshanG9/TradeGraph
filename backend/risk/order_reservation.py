@@ -3,7 +3,7 @@ import asyncio
 import psycopg
 from datetime import datetime, timezone
 from uuid import uuid4
-from backend.events.dispatcher import Dispatcher
+from backend.events.dispatcher import Dispatcher, FailureKind
 from backend.events.trade_event import TradeEvent
 from backend.matching.engine import Engine
 from backend.matching.order_book import Order
@@ -78,6 +78,7 @@ class Coordinator:
                 await asyncio.to_thread(self.verify_owner)
             except Exception:
                 self.dispatcher.failure = 'Matching ownership connection lost; reconciliation required'
+                self.dispatcher.failure_kind = FailureKind.OWNERSHIP_LOST
                 raise RuntimeError(self.dispatcher.failure) from None
             # Each resting order can cause at most one fill in this turn.
             maximum = self.engine.book.potential_fill_count(
@@ -127,6 +128,12 @@ class Coordinator:
             if not self.worker:
                 raise RuntimeError('Settlement not installed')
             await self.worker.drain()
+            try:
+                await asyncio.to_thread(self.verify_owner)
+            except Exception:
+                self.dispatcher.failure='Matching ownership lost; reconciliation required'
+                self.dispatcher.failure_kind=FailureKind.OWNERSHIP_LOST
+                raise RuntimeError(self.dispatcher.failure) from None
             rows = await asyncio.to_thread(self.database.query,
                 'SELECT status,instrument_id FROM public."order" WHERE id=%s AND trader_id=%s UNION ALL SELECT status,instrument_id FROM order_history WHERE id=%s AND trader_id=%s',
                 (order_id,trader_id,order_id,trader_id))

@@ -346,3 +346,23 @@ test('cancellation intent survives remount and clears only after owned serialize
   await remount.cancel('account-secret', '2', async () => true);
   assert.equal(await remount.pending('account-secret', '2'), false);
 });
+
+test('health accepts additive readiness and preserves existing frontend contract', () => {
+  assert.deepEqual(
+    schemas.health({
+      status: 'ok',
+      dependencies: { postgres: 'up' },
+      trading_ready: true,
+      readiness: {
+        matching_owner: true,
+        replay_complete: true,
+        replayed_executions: 100,
+        financial_settlement: true,
+        derived_ready: false,
+        reconciliation_required: false,
+        closing: false,
+      },
+    }),
+    { status: 'ok', dependencies: { postgres: 'up' }, trading_ready: true },
+  );
+});
