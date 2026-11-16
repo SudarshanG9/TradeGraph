@@ -1,13 +1,13 @@
 'use client';
 import { ApiError } from '@/lib/api/errors';
 import Link from 'next/link';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Int, NewOrder } from '@/lib/contracts';
 import { fmt, validateOrder } from '@/lib/exact';
 import { usePreview } from '../preview-provider';
 import { Button, Card, Notice, Segmented } from '../ui';
 export function OrderForm() {
-  const { instrument, api, invalidate, outcome, mock } = usePreview();
+  const { instrument, api, invalidate, outcome, mock, session } = usePreview();
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY'),
     [price, setPrice] = useState('100'),
     [quantity, setQuantity] = useState(instrument?.lot_size ?? ''),
@@ -16,6 +16,20 @@ export function OrderForm() {
     [error, setError] = useState('');
   const pending = useRef(false);
   const [uncertain, setUncertain] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void api.orders
+      .pending()
+      .then((value) => {
+        if (active) setUncertain(value);
+      })
+      .catch(() => {
+        if (active) setUncertain(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, session]);
   if (!instrument) return null;
   const order: NewOrder = {
     instrument_id: instrument.id,
@@ -119,9 +133,54 @@ export function OrderForm() {
             <Link className="link" href="/trader/orders">
               Review persisted orders
             </Link>{' '}
-            and account reservations with your operator before clearing this tab's unresolved
-            intent.
+            and account reservations. Check the accepted outcome or retry the original saved request
+            with its original key.
           </Notice>
+        )}
+        {uncertain && (
+          <div className="toolbar">
+            <Button
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const result = await api.orders.reconcile();
+                  if (result) {
+                    setUncertain(false);
+                    setError('');
+                    setMessage(`Order #${result.order_id} accepted.`);
+                    invalidate();
+                  } else setError('Outcome remains unresolved. The original request is retained.');
+                } catch (e) {
+                  setError((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Check outcome
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const result = await api.orders.retry();
+                  setUncertain(false);
+                  setError('');
+                  setMessage(`Order #${result.order_id} accepted.`);
+                  invalidate();
+                } catch (e) {
+                  setError((e as Error).message);
+                  setUncertain(await api.orders.pending().catch(() => true));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Retry original request
+            </Button>
+          </div>
         )}
         {message && <Notice tone="success">{message}</Notice>}
         <p className="caption">

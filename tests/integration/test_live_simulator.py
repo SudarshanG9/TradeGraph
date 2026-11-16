@@ -83,6 +83,8 @@ def live_fixture(monkeypatch):
             users.append(dict(id=uid,trader_id=tid,email=spec.email))
         bot = (bot_ids[0],1_000_000,0)
     try:
+        from scripts.setup_database_identity import provision_test_traders
+        provision_test_traders([u['trader_id'] for u in users if u['trader_id']])
         yield dict(users=users, iid=iid, symbol=symbol, bot=bot, tier=tier, test_specs=test_specs)
     finally:
         from backend.config import Settings
@@ -109,12 +111,14 @@ def live_fixture(monkeypatch):
             cache.close()
         with db_connect() as conn:
             conn.execute('DELETE FROM regime_snapshot WHERE instrument_id=%s',(iid,))
+            conn.execute('DELETE FROM order_request_identity WHERE trader_id=ANY(%s)',(owned,))
             conn.execute('DELETE FROM execution WHERE instrument_id=%s',(iid,))
             for table in ('position','order_history','order','kyc_profile','margin_account','trader'):
                 key = 'id' if table == 'trader' else 'trader_id'
                 conn.execute(f'DELETE FROM public."{table}" WHERE {key}=ANY(%s)',(owned,))
             conn.execute('DELETE FROM user_account WHERE id=ANY(%s)',([u['id'] for u in users],))
             conn.execute('DELETE FROM instrument WHERE id=%s',(iid,))
+        provision_test_traders(owned,remove=True)
 
 
 def test_human_bot_native_trading_finance_derived_stores_and_safe_stop(live_fixture):
@@ -363,3 +367,29 @@ def test_live_derived_outage_preserves_sql_and_retries_real_delivery(live_fixtur
             wait_until(lambda:client.app.state.graph.run('''MATCH (a:Trader {id:$a})-[r:EXECUTED_AGAINST]->(b:Trader {id:$b})
                 RETURN r.trade_count AS n''',{'a':str(data['users'][0]['trader_id']),'b':str(data['bot'][0])}),
                 lambda r:bool(r) and r[0]['n']==1)
+
+
+def test_verified_error_recovery_preserves_terminal_bot_session_and_human_orders(live_fixture):
+    from backend.simulator.live_supervisor import SimulationState
+    users,iid=live_fixture['users'],live_fixture['iid']
+    with TestClient(create_app()) as client:
+        human,admin=login(client,users[0]),login(client,users[1])
+        supervisor=client.app.state.live_simulator;supervisor.agent_factory=proof_factory
+        assert client.post('/admin/simulator/recover',headers=human).status_code==403
+        config={'instrument_ids':[iid],'bot_count':4,'orders_per_second':5,'max_duration_seconds':30}
+        assert client.post('/admin/simulator/start',headers=admin,json=config).status_code==200
+        wait_until(lambda:client.get('/admin/simulator/status',headers=admin).json(),lambda r:r['orders_accepted']>=1)
+        oid=client.post('/orders',headers=human,json=order(iid,'BUY',50)).json()['order_id']
+        assert client.post('/admin/simulator/stop',headers=admin).json()['state']=='STOPPED'
+        old=supervisor.task
+        async def pressure_error():
+            supervisor.state=SimulationState.ERROR;supervisor.last_error='injected transient pressure after safe cleanup'
+        client.portal.call(pressure_error)
+        result=client.post('/admin/simulator/recover',headers=admin)
+        assert result.status_code==200 and result.json()['state']=='STOPPED'
+        assert supervisor.task is old and old.done()
+        assert client.get(f'/orders/{oid}',headers=human).json()['status']=='OPEN'
+        assert client.post('/admin/simulator/start',headers=admin,json=config).status_code==200
+        assert supervisor.task is not old
+        assert client.post('/admin/simulator/stop',headers=admin).json()['state']=='STOPPED'
+        assert client.post(f'/orders/{oid}/cancel',headers=human).status_code==200

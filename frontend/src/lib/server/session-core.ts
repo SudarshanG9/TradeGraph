@@ -1,4 +1,5 @@
-import { randomBytes } from 'node:crypto';
+import { applicationOrigin } from './app-origin';
+import { sharedSessionStore } from './redis-session-store';
 import type { AccountRole, LoginResponse } from '../contracts';
 import { ApiError } from '../api/errors';
 export interface ServerSession {
@@ -11,37 +12,60 @@ export interface PublicSession {
   role: AccountRole;
   expiresAt: number;
 }
-const globalSessions = globalThis as typeof globalThis & {
-  tradegraphSessions?: Map<string, ServerSession>;
-};
-const sessions = (globalSessions.tradegraphSessions ??= new Map<string, ServerSession>());
+export interface SessionStore {
+  create(session: ServerSession): Promise<string>;
+  get(id: string): Promise<ServerSession | null>;
+  delete(id: string): Promise<void>;
+}
 export const SESSION_COOKIE = 'tradegraph_session';
 export function publicSession(s: ServerSession): PublicSession {
   return { kind: 'live', role: s.role, expiresAt: s.expiresAt };
 }
-export function createSession(login: LoginResponse, now = Date.now()) {
-  for (const [id, s] of sessions) if (s.expiresAt <= now) sessions.delete(id);
-  if (sessions.size >= 1000) throw new ApiError(503, 'SESSION_CAPACITY');
-  const id = randomBytes(32).toString('base64url');
-  const s = {
+const validId = (id: string | undefined): id is string => !!id && /^[A-Za-z0-9_-]{43}$/.test(id);
+async function stored<T>(action: () => Promise<T>): Promise<T> {
+  try {
+    return await action();
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    throw new ApiError(503, 'SESSION_UNAVAILABLE');
+  }
+}
+export async function createSession(login: LoginResponse, now = Date.now(), store?: SessionStore) {
+  let expiration: number;
+  try {
+    expiration =
+      JSON.parse(Buffer.from(login.access_token.split('.')[1], 'base64url').toString()).exp * 1000;
+  } catch {
+    throw new ApiError(502, 'INVALID_BACKEND_RESPONSE');
+  }
+  const session: ServerSession = {
     token: login.access_token,
     role: login.role,
-    expiresAt: now + (login.expires_in - 1) * 1000,
+    expiresAt: Math.min(expiration, now + (login.expires_in - 1) * 1000),
   };
-  sessions.set(id, s);
-  return { id, session: publicSession(s) };
+  if (!Number.isFinite(session.expiresAt) || session.expiresAt <= now)
+    throw new ApiError(401, 'UNAUTHORIZED');
+  const id = await stored(() => (store ?? sharedSessionStore()).create(session));
+  return { id, session: publicSession(session) };
 }
-export function getSession(id: string | undefined, now = Date.now()) {
-  if (!id || !/^[A-Za-z0-9_-]{43}$/.test(id)) return null;
-  const s = sessions.get(id);
-  if (!s || s.expiresAt <= now) {
-    sessions.delete(id);
+export async function getSession(id: string | undefined, now = Date.now(), store?: SessionStore) {
+  if (!validId(id)) return null;
+  const selected = store ?? sharedSessionStore();
+  const session = await stored(() => selected.get(id));
+  if (!session) return null;
+  if (
+    !['TRADER', 'COMPLIANCE_ADMIN'].includes(session.role) ||
+    typeof session.token !== 'string' ||
+    !Number.isFinite(session.expiresAt) ||
+    session.expiresAt <= now
+  ) {
+    await stored(() => selected.delete(id));
     return null;
   }
-  return s;
+  return session;
 }
-export function deleteSession(id?: string) {
-  if (id) sessions.delete(id);
+export async function deleteSession(id?: string, store?: SessionStore) {
+  if (validId(id)) await stored(() => (store ?? sharedSessionStore()).delete(id));
 }
 export function authorize(s: ServerSession | null, role?: AccountRole) {
   if (!s || s.expiresAt <= Date.now()) throw new ApiError(401, 'UNAUTHORIZED');
@@ -49,8 +73,8 @@ export function authorize(s: ServerSession | null, role?: AccountRole) {
   return s;
 }
 /** Custom header cannot be sent by a cross-origin form; CORS is never enabled. */
-export function checkCsrf(request: Request, origin: string) {
-  const expected = new URL(origin).origin;
+export function checkCsrf(request: Request, origin: string = applicationOrigin()) {
+  const expected = applicationOrigin({ APP_ORIGIN: origin });
   const supplied = request.headers.get('origin');
   if (
     request.headers.get('x-tradegraph-request') !== '1' ||

@@ -3,21 +3,20 @@ import asyncio
 import psycopg
 from datetime import datetime, timezone
 from uuid import uuid4
-from backend.events.dispatcher import Dispatcher
+from backend.events.dispatcher import Dispatcher, FailureKind
 from backend.events.trade_event import TradeEvent
 from backend.matching.engine import Engine
 from backend.matching.order_book import Order
 
 
-class DuplicateRequest(Exception):
-    pass
+from backend.risk.request_identity import DuplicateRequest, RequestIdentityStore
 
 
 class Coordinator:
     def __init__(self, database, settings):
         self.database = database
         self.settings = settings
-        self.engine = Engine()
+        self.engine = Engine(monotonic_order_ids=True)
         self.lock = asyncio.Lock()
         self.dispatcher = Dispatcher(settings.event_queue_capacity)
         self.lease = database.acquire_owner()
@@ -27,8 +26,14 @@ class Coordinator:
         self.book_observers = []
         self.derived = {}
         self.epoch = str(uuid4())
-        self.request_keys = set()
+        self.request_identities = RequestIdentityStore(database)
         self.closing = False
+
+    def verify_owner(self):
+        row = self.lease.execute("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=pg_backend_pid() AND locktype='advisory' AND classid=((hashtext('tradegraph-matching-owner')::bigint >> 32) & 4294967295) AND objid=(hashtext('tradegraph-matching-owner')::bigint & 4294967295) AND granted) AS held").fetchone()
+        if not row['held']:
+            raise RuntimeError('Matching ownership lost; reconciliation required')
+        return True
 
     async def committed_io(self, operation, *args):
         job=asyncio.create_task(asyncio.to_thread(operation,*args))
@@ -65,24 +70,26 @@ class Coordinator:
         async with self.lock:
             if self.closing:
                 raise RuntimeError('Trading service is closing')
-            key=(str(trader_id),request_key) if request_key is not None else None
-            if key in self.request_keys:
-                raise DuplicateRequest('Duplicate request key in this process')
-            if key is not None and len(self.request_keys)>=100000:
-                raise RuntimeError('Request key capacity exhausted')
+            if request_key is not None:
+                identity = await asyncio.to_thread(self.request_identities.lookup, trader_id, request_key)
+                if identity:
+                    return self.request_identities.verify(identity, request)
             try:
-                await asyncio.to_thread(self.lease.execute, 'SELECT 1')
+                await asyncio.to_thread(self.verify_owner)
             except Exception:
                 self.dispatcher.failure = 'Matching ownership connection lost; reconciliation required'
+                self.dispatcher.failure_kind = FailureKind.OWNERSHIP_LOST
                 raise RuntimeError(self.dispatcher.failure) from None
             # Each resting order can cause at most one fill in this turn.
-            maximum = len(self.engine.book._by_id)
+            maximum = self.engine.book.potential_fill_count(
+                request.instrument_id, request.side, request.price_ticks, str(trader_id))
             self.dispatcher.check_capacity(maximum)
             if request.price_ticks > 2**53 - 1:
                 raise ValueError('Price exceeds exact Redis demo range')
             try:
-                row = await self.committed_io(self.database.reserve, trader_id, request)
-                if key is not None: self.request_keys.add(key)
+                row = await self.committed_io(self.database.reserve, trader_id, request, request_key)
+                if row.get('_replayed'):
+                    return row
             except psycopg.Error as exc:
                 if exc.sqlstate not in ('P0001','22023','22003','23514','23503'):
                     self.dispatcher.failure = 'Reservation outcome uncertain; operator reconciliation required'
@@ -121,6 +128,12 @@ class Coordinator:
             if not self.worker:
                 raise RuntimeError('Settlement not installed')
             await self.worker.drain()
+            try:
+                await asyncio.to_thread(self.verify_owner)
+            except Exception:
+                self.dispatcher.failure='Matching ownership lost; reconciliation required'
+                self.dispatcher.failure_kind=FailureKind.OWNERSHIP_LOST
+                raise RuntimeError(self.dispatcher.failure) from None
             rows = await asyncio.to_thread(self.database.query,
                 'SELECT status,instrument_id FROM public."order" WHERE id=%s AND trader_id=%s UNION ALL SELECT status,instrument_id FROM order_history WHERE id=%s AND trader_id=%s',
                 (order_id,trader_id,order_id,trader_id))

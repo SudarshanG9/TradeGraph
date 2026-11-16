@@ -1,11 +1,12 @@
 """Real HTTP BFF checks; existing scoped synthetic fixtures, no second API owner.
 Run only with one native FastAPI and one Next.js server already running.
 """
+import os
 import httpx
 import pytest
 from tests.integration.test_order_pipeline import accounts
 
-ORIGIN = 'http://127.0.0.1:3000'
+ORIGIN = os.environ.get('TRADEGRAPH_TEST_FRONTEND_ORIGIN', 'http://127.0.0.1:3000')
 HEADERS = {'Origin': ORIGIN, 'X-TradeGraph-Request': '1', 'Content-Type': 'application/json'}
 
 
@@ -79,7 +80,7 @@ def test_real_resting_partial_fill_and_cancellation(accounts):
             key = str(uuid4())
             resting = submit(seller, 'SELL', 100, 3, key)
             assert resting.status_code == 201
-            assert submit(seller, 'SELL', 100, 3, key).status_code == 409
+            assert submit(seller, 'SELL', 100, 3, key).json() == resting.json()
             assert submit(buyer, 'BUY', 1000000, 1).status_code == 409
             assert submit(buyer, 'BUY', 0, 1).status_code == 422
             book = wait_for(lambda: buyer.get(f'/api/backend/market/{symbol}/book').json(), lambda x: x.get('asks') == [{'price_ticks': '100', 'quantity': '3'}])

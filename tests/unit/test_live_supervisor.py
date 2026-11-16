@@ -49,6 +49,9 @@ class FakeCoordinator:
         self.entered = asyncio.Event()
         self.release = None
 
+    def verify_owner(self):
+        return True
+
     async def drain(self):
         pass
 
@@ -307,4 +310,31 @@ def test_decisions_do_not_recount_execution_history_on_every_tick():
         await s.status()
         assert len(counts) == 1
         await s.stop()
+    asyncio.run(run())
+
+
+def test_error_recovery_requires_finished_task_healthy_pipeline_and_terminal_orders():
+    async def run():
+        s,c,db=setup()
+        await s.start(LiveSimulationConfig((1,)))
+        await c.entered.wait();await s.stop()
+        s.state=SimulationState.ERROR;s.last_error='transient pressure'
+        old=s.task
+        assert (await s.recover())['state']=='STOPPED'
+        assert s.task is old and old.done()
+        await s.start(LiveSimulationConfig((1,)));await s.stop()
+        s.state=SimulationState.ERROR
+        s.task=asyncio.create_task(asyncio.sleep(30))
+        with pytest.raises(SimulationConflict): await s.recover()
+        s.task.cancel()
+        try: await s.task
+        except asyncio.CancelledError: pass
+        c.dispatcher.failure='unresolved financial event'
+        with pytest.raises(RuntimeError): await s.recover()
+        c.dispatcher.failure=None
+        oid=next(iter(s.accepted),None)
+        if oid:
+            db.orders[oid]['status']='OPEN'
+            with pytest.raises(SimulationConflict): await s.recover()
+        assert s.state==SimulationState.ERROR
     asyncio.run(run())

@@ -1,6 +1,6 @@
 'use client';
 import { ApiError } from '@/lib/api/errors';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { OrderSummary } from '@/lib/contracts';
 import { fmt } from '@/lib/exact';
 import { usePreview } from '../preview-provider';
@@ -19,6 +19,20 @@ export function CancelDialog({
     [error, setError] = useState('');
   const pending = useRef(false);
   const [uncertain, setUncertain] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void api.orders
+      .cancelPending(order.trader_id, order.id)
+      .then((value) => {
+        if (active) setUncertain(value);
+      })
+      .catch(() => {
+        if (active) setUncertain(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, order.trader_id, order.id]);
   return (
     <Modal
       title={`Cancel order #${order.id}?`}
@@ -33,6 +47,32 @@ export function CancelDialog({
           : 'The backend waits for pending settlement and releases eligible remaining reservations.'}
       </p>
       {error && <Notice tone="error">{error}</Notice>}
+      {uncertain && (
+        <Notice tone="warning">
+          A cancellation outcome is unresolved. Check the order before cancelling again.
+        </Notice>
+      )}
+      {uncertain && (
+        <Button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const row = await api.orders.reconcileCancel(order.trader_id, order.id);
+              setUncertain(false);
+              setError('');
+              invalidate();
+              if (row.status === 'CANCELLED' || row.status === 'FILLED') onDone();
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Check cancellation outcome
+        </Button>
+      )}
       <div className="toolbar" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
         <Button onClick={onClose} disabled={busy}>
           Keep order

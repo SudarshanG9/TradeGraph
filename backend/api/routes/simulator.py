@@ -110,3 +110,16 @@ async def status(request: Request):
     if result['config']:
         result['config']['instrument_ids'] = list(result['instrument_ids'])
     return result
+
+
+@router.post('/recover', response_model=SimulationStatus)
+async def recover(request: Request):
+    try:
+        result = await supervisor(request).recover()
+        if result['config']:
+            result['config']['instrument_ids'] = list(result['instrument_ids'])
+        return result
+    except SimulationConflict as exc:
+        raise HTTPException(409,detail=str(exc)) from None
+    except (SimulationUnavailable, RuntimeError):
+        raise HTTPException(503,detail='SIMULATOR_RECONCILIATION_REQUIRED') from None

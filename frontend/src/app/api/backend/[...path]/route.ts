@@ -34,15 +34,15 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       raw,
       request.headers.get('idempotency-key') ?? undefined,
     );
-    if (op.csrf) checkCsrf(request, process.env.APP_ORIGIN ?? 'http://127.0.0.1:3000');
-    const session = op.authenticated ? authorize(getSession(cookie), op.role) : null;
+    if (op.csrf) checkCsrf(request);
+    const session = op.authenticated ? authorize(await getSession(cookie), op.role) : null;
     const result = await requestBackend(op, session?.token, request.signal);
     if (op.kind === 'login') {
       const login = schemas.login(result);
       const selected = request.headers.get('x-tradegraph-role');
       if (selected && selected !== login.role) throw new ApiError(403, 'ROLE_MISMATCH');
-      deleteSession(cookie);
-      const created = createSession(login);
+      await deleteSession(cookie);
+      const created = await createSession(login);
       const response = NextResponse.json(created.session, {
         headers: { 'Cache-Control': 'no-store' },
       });
@@ -63,7 +63,11 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       { status: error.status, headers: { 'Cache-Control': 'no-store' } },
     );
     if (error.status === 401) {
-      deleteSession(cookie);
+      try {
+        await deleteSession(cookie);
+      } catch {
+        return NextResponse.json({ error: { code: 'SESSION_UNAVAILABLE' } }, { status: 503 });
+      }
       response.cookies.set(SESSION_COOKIE, '', { ...cookieOptions(), maxAge: 0 });
     }
     return response;

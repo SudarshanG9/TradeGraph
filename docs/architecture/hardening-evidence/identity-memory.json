@@ -1,0 +1,27 @@
+{
+  "shared_references": {
+    "full_events": {
+      "entries": 10000,
+      "retained_bytes": 1738978,
+      "peak_bytes": 1739722
+    },
+    "packed": {
+      "entries": 10000,
+      "retained_bytes": 1789499,
+      "peak_bytes": 1790238
+    }
+  },
+  "independent_row_objects": {
+    "full_events": {
+      "entries": 10000,
+      "retained_bytes": 4912244,
+      "peak_bytes": 4912444
+    },
+    "packed": {
+      "entries": 10000,
+      "retained_bytes": 1789956,
+      "peak_bytes": 1790517
+    }
+  },
+  "limitation": "Retained synthetic map only, not total engine RSS; both remain O(history). Shared-reference events can use less memory than packed bytes."
+}

@@ -9,6 +9,7 @@ from uuid import uuid4
 import psycopg
 
 from backend.api.routes.orders import NewOrder
+from backend.events.dispatcher import PipelineFull
 from backend.simulator.agents import (
     AccountState, ActiveOrder, CancelOrderAction, HoldAction, PlaceOrderAction,
     MarketMakerAgent, NoiseTraderAgent, MomentumTraderAgent, MeanReversionAgent,
@@ -150,6 +151,32 @@ class LiveMarketSupervisor:
             self.task = asyncio.create_task(self._run_loop(), name='tradegraph-live-market')
             return self._snapshot()
 
+    async def recover(self):
+        async with self.state_lock:
+            if self.state != SimulationState.ERROR or (self.task and not self.task.done()):
+                raise SimulationConflict('SIMULATOR_RECOVERY_NOT_SAFE')
+            self._ensure_available()
+            await asyncio.to_thread(self.coordinator.verify_owner)
+            if any(c.failed or not getattr(c, 'ready', True) for c in self.coordinator.derived.values()):
+                raise SimulationUnavailable('DERIVED_RECOVERY_REQUIRED')
+            await self.coordinator.worker.drain()
+            await self._reconcile(include_executions=True)
+            if self.active:
+                raise SimulationConflict('UNRESOLVED_BOT_ORDERS')
+            if self.accepted:
+                ids=list(self.accepted)
+                rows=await self._query('''SELECT count(*) AS n FROM (
+                    SELECT id,filled_quantity FROM public."order" WHERE id=ANY(%s)
+                    UNION ALL SELECT id,filled_quantity FROM order_history WHERE id=ANY(%s)
+                    ) o WHERE o.filled_quantity<>(SELECT coalesce(sum(e.quantity),0)
+                    FROM execution e WHERE e.buy_order_id=o.id OR e.sell_order_id=o.id)''', (ids,ids))
+                if rows[0]['n']:
+                    raise SimulationUnavailable('BOT_EXECUTION_RECONCILIATION_REQUIRED')
+            self._ensure_available()
+            self.last_error=None
+            self.state=SimulationState.STOPPED
+            return self._snapshot()
+
     async def stop(self):
         async with self.state_lock:
             if self.state == SimulationState.RUNNING:
@@ -286,7 +313,7 @@ class LiveMarketSupervisor:
             if exc.sqlstate not in ('P0001', '22023', '22003', '23514', '23503'):
                 raise
             self.metrics['orders_rejected'] += 1
-        except RuntimeError:
+        except PipelineFull:
             self.metrics['orders_rejected'] += 1
             if self.coordinator.dispatcher.failure:
                 raise
@@ -327,7 +354,7 @@ class LiveMarketSupervisor:
                         await self._execute_action(agent, action)
                         eligible[agent.trader_id] = time.monotonic() + agent.decision_interval()
                 # No catch-up bursts after slow I/O. Expiry uses this same stop path.
-                await self._wait(min(1 / self.config.orders_per_second,
+                await self._wait(min(min(2.0, 2**min(pressure_ticks,4) / self.config.orders_per_second),
                                      max(0, self.deadline - time.monotonic())))
         except asyncio.CancelledError:
             self.last_error = 'SIMULATOR_INTERRUPTED_RECONCILIATION_REQUIRED'

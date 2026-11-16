@@ -58,8 +58,8 @@ def main():
                    WHERE table_schema='public' AND table_type='BASE TABLE'"""
             )
             tables = {r[0] for r in cur.fetchall()}
-            assert_ok(tables == EXPECTED_TABLES,
-                      f"Exactly 13 application tables (found: {sorted(tables)})")
+            assert_ok(EXPECTED_TABLES <= tables and not tables - EXPECTED_TABLES - {'order_request_identity'},
+                      f"13 core tables plus approved supplementary persistence (found: {sorted(tables)})")
 
             cur.execute(
                 """SELECT rolname FROM pg_roles
@@ -76,14 +76,16 @@ def main():
             assert_ok({r[0] for r in cur.fetchall()} == {"vector", "pgcrypto"},
                       "vector and pgcrypto extensions")
 
-            cur.execute(
-                """SELECT tablename, policyname, roles = ARRAY['compliance_admin_role']::name[]
-                   FROM pg_policies WHERE schemaname='public'"""
-            )
-            assert_ok(
-                set(cur.fetchall()) == {(table, policy, True) for table, policy in EXPECTED_POLICIES},
-                "Two admin RLS policies",
-            )
+            cur.execute("SELECT tablename,policyname,roles FROM pg_policies WHERE schemaname='public'")
+            expected_policies={(table,policy):('compliance_admin_role',) for table,policy in EXPECTED_POLICIES}
+            if os.environ.get('DATABASE_IDENTITY_MODE')=='isolated':
+                for table in ('margin_account','order','order_history','position','order_request_identity'):
+                    expected_policies[(table,'own_trader_read')]=('trader_role',)
+                    expected_policies[(table,'financial_service_read')]=(os.environ['POSTGRES_RUNTIME_USER'],)
+                    expected_policies[(table,'compliance_financial_read')]=('compliance_admin_role',)
+                expected_policies[('order_request_identity','financial_request_insert')]=(os.environ['POSTGRES_RUNTIME_USER'],)
+            assert_ok({(table,policy):tuple(roles) for table,policy,roles in cur.fetchall()} == expected_policies,
+                      'Exact configured admin/trader/financial RLS policies')
 
             cur.execute(
                 """SELECT relname, relrowsecurity, relforcerowsecurity
@@ -119,7 +121,8 @@ def main():
                    WHERE contype='f' AND connamespace='public'::regnamespace"""
             )
             fk_count = cur.fetchone()[0]
-            assert_ok(fk_count == 18, f"18 foreign key relationships (found {fk_count})")
+            expected_fks=18+int("order_request_identity" in tables)
+            assert_ok(fk_count == expected_fks, f"{expected_fks} foreign key relationships (found {fk_count})")
 
             cur.execute(
                 """SELECT column_default FROM information_schema.columns

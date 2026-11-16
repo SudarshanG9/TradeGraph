@@ -204,8 +204,8 @@ def test_pgvector_upsert_similarity_retention_fts_and_rls(accounts):
     with db.connect() as conn:
         conn.execute('SET LOCAL ROLE trader_role');conn.execute("SET LOCAL app.role='COMPLIANCE_ADMIN'")
         with pytest.raises(InsufficientPrivilege): conn.execute('SELECT * FROM regime_snapshot')
-    with db.connect() as conn:
-        conn.execute('SET LOCAL ROLE compliance_admin_role');conn.execute("SET LOCAL app.role='TRADER'")
+    with db.admin_context() as conn:
+        conn.execute("SET LOCAL app.role='TRADER'")
         assert conn.execute('SELECT id FROM regime_snapshot WHERE instrument_id=%s',(instrument,)).fetchall()==[]
         assert conn.execute('SELECT id FROM market_disclosure WHERE instrument_id=%s',(instrument,)).fetchall()==[]
     with db.admin_context() as conn:
@@ -255,3 +255,44 @@ def test_regime_stale_snapshot_cannot_replace_newer_capture(accounts):
     second=store.capture(instrument,{'epoch':'test','version':1,'bids':[(1,1)],'asks':[]},now)
     assert second['id']==first['id']
     assert second['features']==pytest.approx(first['features'])
+
+
+def test_graph_same_pair_backlog_coalesces_to_canonical_total(accounts):
+    import asyncio
+    from backend.events.dispatcher import Dispatcher
+    from backend.workers.graph_worker import GraphWorker
+    from backend.stores.postgres import Database
+    from backend.stores.neo4j_graph import Neo4jGraph
+    from tests.concurrency.test_settlement_locks import reserve,make_event
+    users,instrument=accounts;a,b=users[:2];settings=Settings.from_env();db=Database(settings)
+    buy=reserve(a,instrument,'BUY',100,3);sell=reserve(b,instrument,'SELL',100,3)
+    events=[make_event(buy,sell,a,b,instrument,100,1) for _ in range(3)]
+    for event in events:db.settle(event)
+    graph=Neo4jGraph(settings,db)
+    graph.initialize()
+    async def exercise():
+        dispatcher=Dispatcher(1);worker=GraphWorker(graph,dispatcher)
+        for event in events+events:worker.publish(event)
+        assert worker.queue.qsize()==1 and not dispatcher.failure
+        worker.start();await worker.queue.join();await worker.stop()
+    try:
+        asyncio.run(exercise())
+        row=graph.run('MATCH (a:Trader {id:$a})-[r:EXECUTED_AGAINST]->(b:Trader {id:$b}) RETURN r.trade_count AS n,r.total_notional AS total',{'a':str(a['trader_id']),'b':str(b['trader_id'])})[0]
+        assert row=={'n':3,'total':300}
+        graph.apply(events[0]);graph.rebuild([a['trader_id'],b['trader_id']])
+        assert graph.pair(a['trader_id'],b['trader_id'])=={'trade_count':3,'total_notional':300}
+    finally:graph.close()
+
+
+def test_explicit_bounded_regime_retention_preserves_new_vector_search_and_other_instruments(accounts):
+    from backend.stores.regimes import Regimes
+    from backend.stores.postgres import Database
+    from datetime import datetime,timedelta,timezone
+    users,instrument=accounts;store=Regimes(Database(Settings.from_env()));now=datetime.now(timezone.utc)
+    for days in (100,99,98,0):store.upsert(instrument,now-timedelta(days=days),[1,0,0,0,0,0])
+    assert store.prune(now-timedelta(days=90),instrument,2)==2
+    assert len(store.similar([1,0,0,0,0,0],instrument,10))==2
+    assert store.prune(now-timedelta(days=90),instrument,2)==1
+    matches=store.similar([1,0,0,0,0,0],instrument,10)
+    assert len(matches)==1 and matches[0]['captured_at']==now
+    assert store.prune(now-timedelta(days=90),instrument,2)==0

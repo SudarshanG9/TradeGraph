@@ -10,7 +10,10 @@ def test_thirteen_tables(db_conn):
             """SELECT count(*) FROM information_schema.tables
                WHERE table_schema='public' AND table_type='BASE TABLE'"""
         )
-        assert cur.fetchone()[0] == 13
+        assert cur.fetchone()[0] == 14
+        from scripts.verify_schema import EXPECTED_TABLES
+        cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")
+        assert {r[0] for r in cur.fetchall()} == EXPECTED_TABLES | {'order_request_identity'}
 
 
 @pytest.mark.day1
@@ -256,6 +259,7 @@ def test_installer_refuses_placeholder_for_existing_runtime_identity():
     settings=Settings.from_env()
     env=os.environ.copy();env['POSTGRES_RUNTIME_USER']=settings.postgres_runtime_user
     env['POSTGRES_RUNTIME_PASSWORD']='replace_with_runtime_password'
+    env['DATABASE_IDENTITY_MODE']='legacy'
     path=Path('.env')
     before=hashlib.sha256(path.read_bytes()).hexdigest()
     result=subprocess.run(['bash','scripts/setup_backend.sh','--phase','5'],env=env,capture_output=True,text=True,timeout=30)
@@ -263,3 +267,45 @@ def test_installer_refuses_placeholder_for_existing_runtime_identity():
     assert 'requires its current password' in result.stderr
     assert hashlib.sha256(path.read_bytes()).hexdigest()==before
     assert Database(settings).query('SELECT 1 AS healthy')[0]['healthy']==1
+
+
+@pytest.mark.parametrize('side',['BUY','SELL'])
+@pytest.mark.parametrize('maker',[True,False])
+@pytest.mark.parametrize('fills', [[],[1],[1,1],[3]])
+def test_exact_fee_refunds_after_single_multiple_and_no_fill(accounts,side,maker,fills):
+    from fractions import Fraction
+    from tests.concurrency.test_settlement_locks import state
+    users,instrument=accounts;a,b=users[:2];db=Database(Settings.from_env())
+    price=500000000000001;initial=10**17;quantity=3
+    with db_conn_for_archive() as conn:
+        conn.execute('UPDATE margin_account SET cash_balance=%s WHERE trader_id=ANY(%s)',(initial,[a['trader_id'],b['trader_id']]))
+    opposite='SELL' if side=='BUY' else 'BUY'
+    if maker:
+        subject=reserve(a,instrument,side,price,quantity);other=reserve(b,instrument,opposite,price,quantity)
+    else:
+        other=reserve(b,instrument,opposite,price,quantity);subject=reserve(a,instrument,side,price,quantity)
+    for amount in fills:
+        event=make_event(subject,other,a,b,instrument,price,amount) if side=='BUY' else make_event(other,subject,b,a,instrument,price,amount)
+        db.settle(event)
+    filled=sum(fills)
+    if filled<quantity: db.cancel(subject,a['trader_id']);db.cancel(other,b['trader_id'])
+    fee=Fraction(price*filled*(1 if maker else 2),10000)
+    assessed=-(-fee.numerator//fee.denominator)
+    expected=initial+(-1 if side=='BUY' else 1)*price*filled-assessed
+    assert state(a)==(expected,0)
+    if filled<quantity:
+        assert db.cancel(subject,a['trader_id'])==0
+        assert state(a)==(expected,0)
+
+
+def test_intersect_except_demonstrations_include_both_maker_and_taker(accounts):
+    users,instrument=accounts;a,b=users[:2];db=Database(Settings.from_env())
+    buy=reserve(a,instrument,'BUY',100,1);sell=reserve(b,instrument,'SELL',100,1)
+    db.settle(make_event(buy,sell,a,b,instrument,100,1))
+    buy=reserve(b,instrument,'BUY',100,1);sell=reserve(a,instrument,'SELL',100,1)
+    db.settle(make_event(buy,sell,b,a,instrument,100,1))
+    rows=db.named('maker_taker')
+    for trader in (a['trader_id'],b['trader_id']):
+        assert {'classification':'both','trader_id':trader} in rows
+        assert {'classification':'either','trader_id':trader} in rows
+        assert {'classification':'maker_only','trader_id':trader} not in rows

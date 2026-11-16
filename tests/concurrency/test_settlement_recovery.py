@@ -1,0 +1,224 @@
+"""Fault injection around real isolated PostgreSQL transactions; no API owner."""
+import asyncio
+from dataclasses import replace
+from datetime import timedelta
+from types import SimpleNamespace
+import psycopg
+import pytest
+from backend.config import Settings
+from backend.stores.postgres import Database
+from backend.workers.settlement_worker import SettlementWorker
+from backend.events.dispatcher import Dispatcher
+from tests.integration.test_order_pipeline import accounts
+from tests.concurrency.test_settlement_locks import reserve, make_event, state
+from scripts.verify_schema import db_connect
+
+
+def fixture_event(accounts):
+    users, instrument = accounts
+    a,b = users[:2]
+    buy=reserve(a,instrument,'BUY',100,1)
+    sell=reserve(b,instrument,'SELL',100,1)
+    return a,b,make_event(buy,sell,a,b,instrument,100,1)
+
+
+def drive(db,event,callbacks=()):
+    async def run():
+        dispatcher=Dispatcher(8)
+        observed=[]
+        worker=SettlementWorker(db,SimpleNamespace(apply_settled=observed.append),dispatcher)
+        worker.after_commit=list(callbacks)
+        dispatcher.publish([event])
+        worker.start()
+        try:
+            try: await worker.drain()
+            except RuntimeError: pass
+            return worker,dispatcher,observed
+        finally: await worker.stop()
+    return asyncio.run(run())
+
+
+def assert_committed(a,b,event):
+    assert state(a)==(19899,0) and state(b)==(20099,0)
+    with db_connect() as conn:
+        assert conn.execute('SELECT count(*) FROM execution WHERE id=%s',(event.event_id,)).fetchone()==(1,)
+        assert conn.execute('SELECT filled_quantity,status FROM public."order" WHERE id=ANY(%s) ORDER BY id',([event.buy_order_id,event.sell_order_id],)).fetchall()==[(1,'FILLED'),(1,'FILLED')]
+        for user,qty in ((a,1),(b,-1)):
+            assert conn.execute('SELECT net_quantity,realized_pnl FROM position WHERE trader_id=%s AND instrument_id=%s',(user['trader_id'],event.instrument_id)).fetchone()==(qty,0)
+
+
+@pytest.mark.parametrize('error',[psycopg.errors.SerializationFailure,psycopg.errors.DeadlockDetected,psycopg.errors.QueryCanceled,psycopg.errors.LockNotAvailable])
+def test_aborted_transaction_retries_same_event(accounts,error):
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env()); original=db.settle; calls=[]
+    def injected(e):
+        calls.append(e)
+        if len(calls)==1:
+            # Real financial work including trigger, then injected transaction abort.
+            # Connection context must roll back ALL effects before retry.
+            with db.connect() as conn:
+                conn.execute("SET LOCAL app.role='TRADER'")
+                conn.execute('SELECT public.settle_execution(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                    (e.event_id,e.instrument_id,e.buy_order_id,e.sell_order_id,e.buy_trader_id,e.sell_trader_id,e.price_ticks,e.quantity,e.taker_order_id,e.occurred_at))
+                raise error('injected rollback')
+        assert state(a)==(19899,101) and state(b)==(19899,101)
+        return original(e)
+    db.settle=injected
+    worker,dispatcher,observed=drive(db,event)
+    assert len(calls)==2 and all(e is event for e in calls)
+    assert observed==[event] and worker.pending is None and dispatcher.failure is None
+    assert_committed(a,b,event)
+
+
+@pytest.mark.parametrize('outcome',['committed','absent','conflicting'])
+def test_uncertain_connection_outcome_reconciles_without_blind_retry(accounts,outcome):
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env()); original=db.settle; calls=[]
+    def lost_ack(e):
+        calls.append(e)
+        if outcome!='absent':
+            original(e if outcome=='committed' else replace(e,occurred_at=e.occurred_at+timedelta(seconds=1)))
+        raise psycopg.OperationalError('lost acknowledgement')
+    db.settle=lost_ack
+    worker,dispatcher,observed=drive(db,event)
+    assert len(calls)==1
+    if outcome=='committed':
+        assert not dispatcher.failure and observed==[event] and worker.pending is None
+        assert_committed(a,b,event)
+    else:
+        assert dispatcher.failure and worker.pending is event and observed==[]
+        if outcome=='absent':
+            assert state(a)==(19899,101) and state(b)==(19899,101)
+            with db_connect() as conn:
+                assert conn.execute('SELECT count(*) FROM execution WHERE id=%s',(event.event_id,)).fetchone()==(0,)
+        else: assert_committed(a,b,event)
+
+
+def test_retry_exhaustion_retains_immutable_pending_event(accounts):
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env()); calls=[]
+    def timeout(e):
+        calls.append(e)
+        raise psycopg.errors.QueryCanceled('injected timeout')
+    db.settle=timeout
+    worker,dispatcher,observed=drive(db,event)
+    assert calls==[event]*3 and worker.pending is event and dispatcher.failure
+    assert not observed and state(a)==(19899,101) and state(b)==(19899,101)
+
+@pytest.mark.parametrize('kind',['statement','lock'])
+def test_real_postgres_timeout_rolls_back_then_recovers(accounts,kind):
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env()); original=db.settle; calls=[]; codes=[]
+    def timeout_once(e):
+        calls.append(e)
+        if len(calls)>1: return original(e)
+        with db_connect() as locker:
+            if kind=='lock':
+                locker.execute('SELECT trader_id FROM margin_account WHERE trader_id=%s FOR UPDATE',(a['trader_id'],))
+            try:
+                with db.connect() as conn:
+                    conn.execute("SET LOCAL app.role='TRADER'")
+                    if kind=='statement':
+                        conn.execute("SET LOCAL statement_timeout='5ms'")
+                        conn.execute('SELECT pg_sleep(0.1)')
+                    else:
+                        conn.execute("SET LOCAL lock_timeout='5ms'")
+                        conn.execute('SELECT public.settle_execution(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                            (e.event_id,e.instrument_id,e.buy_order_id,e.sell_order_id,e.buy_trader_id,e.sell_trader_id,e.price_ticks,e.quantity,e.taker_order_id,e.occurred_at))
+            except psycopg.Error as exc:
+                codes.append(exc.sqlstate)
+                raise
+    db.settle=timeout_once
+    worker,dispatcher,observed=drive(db,event)
+    assert codes==['57014' if kind=='statement' else '55P03']
+    assert len(calls)==2 and observed==[event] and not dispatcher.failure
+    assert_committed(a,b,event)
+
+
+def test_postcommit_queue_overflow_is_not_financial_failure(accounts):
+    from backend.events.dispatcher import DerivedWorker
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env()); original=db.settle; calls=[]; delivered=[]
+    def record(e):
+        calls.append(e)
+        return original(e)
+    db.settle=record
+    full=DerivedWorker('neo4j',lambda e: None,Dispatcher(1))
+    full.publish('earlier immutable event')
+    worker,dispatcher,observed=drive(db,event,[full.publish,delivered.append])
+    assert calls==[event] and observed==[event] and delivered==[event]
+    assert worker.pending is event and worker.pending_committed
+    assert 'Settlement committed' in dispatcher.failure
+    with pytest.raises(RuntimeError,match='unhealthy'):
+        dispatcher.check_capacity(0)
+    assert 'backlog full' in full.dispatcher.failure
+    assert full.queue.qsize()==1
+    assert_committed(a,b,event)
+    # Canonical replay cannot apply cash/positions twice after publication failure.
+    assert not original(event)
+    assert_committed(a,b,event)
+
+
+def test_neo4j_service_failure_retries_derived_work_without_resettlement(accounts):
+    from backend.workers.graph_worker import GraphWorker
+    from neo4j.exceptions import ServiceUnavailable
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env()); original=db.settle; settlements=[]
+    def record(e):
+        settlements.append(e)
+        return original(e)
+    db.settle=record
+    async def run():
+        dispatcher=Dispatcher(8); observed=[]; attempts=[]
+        def apply(e):
+            attempts.append(e)
+            if len(attempts)==1: raise ServiceUnavailable('injected graph outage')
+        graph=GraphWorker(SimpleNamespace(apply=apply),dispatcher)
+        worker=SettlementWorker(db,SimpleNamespace(apply_settled=observed.append),dispatcher)
+        worker.after_commit=[graph.publish]
+        graph.start(); worker.start(); dispatcher.publish([event])
+        try:
+            await worker.drain()
+            # Financial commit does not wait for graph retry success.
+            assert worker.pending is None and observed==[event]
+            for _ in range(100):
+                if graph.failed: break
+                await asyncio.sleep(.001)
+            assert graph.failed and graph.pending is event
+            await asyncio.wait_for(graph.queue.join(),5)
+            assert graph.failed is None and graph.pending is None
+            assert attempts==[event,event] and not dispatcher.failure
+        finally:
+            await worker.stop(); await graph.stop()
+    asyncio.run(run())
+    assert settlements==[event]
+    assert_committed(a,b,event)
+
+
+def test_retained_committed_publication_recovers_without_resettlement(accounts):
+    from backend.events.dispatcher import DerivedWorker
+    from backend.matching.engine import Engine
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env())
+    async def run():
+        dispatcher=Dispatcher(2); engine=Engine(); delivered=[]
+        target=DerivedWorker('test-derived',delivered.append,dispatcher)
+        target.publish('earlier-1');target.publish('earlier-2')
+        worker=SettlementWorker(db,engine,dispatcher); worker.after_commit=[target.publish]
+        worker.start();dispatcher.publish([event]);await worker.task
+        assert worker.pending_committed and worker.pending_analytics_applied
+        checks=[]
+        def owner(): checks.append('verified')
+        coordinator=SimpleNamespace(lock=asyncio.Lock(),closing=False,verify_owner=owner,derived={'test':target})
+        with pytest.raises(RuntimeError,match='full'): await worker.recover_committed(coordinator)
+        assert dispatcher.failure and worker.pending is event
+        target.start();await target.queue.join()
+        assert await worker.recover_committed(coordinator)
+        await target.queue.join()
+        assert delivered==['earlier-1','earlier-2',event]
+        assert not dispatcher.failure and worker.pending is None
+        assert engine.volume[event.instrument_id].range_sum(0,2**63-1)==event.quantity
+        assert checks==['verified','verified']
+        await worker.stop();await target.stop()
+    asyncio.run(run())
+    assert_committed(a,b,event)

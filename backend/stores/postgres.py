@@ -4,6 +4,7 @@ import psycopg
 from psycopg.rows import dict_row
 from decimal import Decimal
 from backend.config import ROOT
+from backend.risk.request_identity import RequestIdentityStore, request_hash
 
 
 QUERY_FILES = {
@@ -36,10 +37,14 @@ class Database:
         self.settings = settings
 
     def connect(self, **kwargs):
+        s=self.settings
+        return self._connect_as(s.postgres_runtime_user,s.postgres_runtime_password,**kwargs)
+
+    def _connect_as(self,user,password,**kwargs):
         s = self.settings
         return psycopg.connect(host=s.postgres_host, port=s.postgres_port,
-            dbname=s.postgres_db, user=s.postgres_runtime_user,
-            password=s.postgres_runtime_password, connect_timeout=s.health_timeout_seconds,
+            dbname=s.postgres_db, user=user,
+            password=password, connect_timeout=s.health_timeout_seconds,
             options='-c statement_timeout=30000 -c lock_timeout=10000',
             row_factory=dict_row, **kwargs)
 
@@ -47,8 +52,63 @@ class Database:
         with self.connect() as conn:
             return conn.execute(sql, params).fetchall()
 
+    def archive_terminal_orders(self, cutoff, batch_size=100, trader_ids=None):
+        if (getattr(cutoff, 'tzinfo', None) is None or cutoff.utcoffset() is None or
+            type(batch_size) is not int or not 1 <= batch_size <= 10000):
+            raise ValueError('Aware cutoff and bounded batch required')
+        with self.connect() as conn:
+            return conn.execute('SELECT * FROM public.archive_terminal_orders(%s,%s,%s::uuid[])',
+                                (cutoff,batch_size,trader_ids)).fetchall()
+
+    def execution_batches(self, batch_size=1000):
+        """Server-side cursor, one read-only snapshot, bounded client materialization."""
+        if type(batch_size) is not int or not 1 <= batch_size <= 10000:
+            raise ValueError('Replay batch size must be 1..10000')
+        with self.connect() as conn:
+            conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            with conn.cursor(name='tradegraph_execution_replay') as cursor:
+                cursor.execute('SELECT * FROM public.execution ORDER BY id')
+                while rows := cursor.fetchmany(batch_size):
+                    yield rows
+
+    def iter_executions(self, batch_size=1000):
+        for batch in self.execution_batches(batch_size):
+            yield from batch
+
+    def auth_query(self, sql, params=()):
+        if self.settings.database_identity_mode=='legacy':
+            return self.query(sql,params)
+        with self._connect_as(self.settings.postgres_auth_user,self.settings.postgres_auth_password) as conn:
+            conn.execute('SET TRANSACTION READ ONLY')
+            return conn.execute(sql,params).fetchall()
+
+    @contextmanager
+    def trader_context(self,trader_id):
+        if self.settings.database_identity_mode!='isolated':
+            raise psycopg.OperationalError('Trusted trader identity mode is not configured')
+        from backend.stores.trader_identity import credentials,trader_role
+        user,password=credentials(self.settings.trader_credentials_file,trader_id)
+        with self._connect_as(user,password) as conn:
+            conn.execute('SET TRANSACTION READ ONLY')
+            conn.execute('SET LOCAL ROLE trader_role')
+            actor=conn.execute("SELECT session_user AS login,current_user AS role,rolsuper,rolcreatedb,rolcreaterole,rolbypassrls,rolinherit,pg_has_role(session_user,%s,'MEMBER') AS financial_member,pg_has_role(session_user,'compliance_admin_role','MEMBER') AS admin_member FROM pg_roles WHERE rolname=session_user",(self.settings.postgres_runtime_user,)).fetchone()
+            if (actor['login']!=trader_role(trader_id) or actor['role']!='trader_role' or
+                any(actor[key] for key in ('rolsuper','rolcreatedb','rolcreaterole','rolbypassrls','rolinherit','financial_member','admin_member'))):
+                raise psycopg.OperationalError('Database trader identity mismatch')
+            yield conn
+
+    def trader_query(self,trader_id,sql,params=()):
+        if self.settings.database_identity_mode=='legacy':
+            return self.query(sql,params)
+        with self.trader_context(trader_id) as conn:
+            return conn.execute(sql,params).fetchall()
+
+    def trader_request_identity(self,trader_id,key):
+        rows=self.trader_query(trader_id,'SELECT * FROM public.order_request_identity WHERE trader_id=%s AND request_key=%s',(trader_id,key))
+        return rows[0] if rows else None
+
     def identity(self, subject):
-        rows = self.query('SELECT u.id,u.role,t.id AS trader_id FROM user_account u LEFT JOIN trader t ON t.user_account_id=u.id WHERE u.id=%s', (subject,))
+        rows = self.auth_query('SELECT u.id,u.role,t.id AS trader_id FROM user_account u LEFT JOIN trader t ON t.user_account_id=u.id WHERE u.id=%s', (subject,))
         return rows[0] if rows else None
 
     def named(self, name, params=None):
@@ -78,12 +138,29 @@ class Database:
         count=self.query('SELECT count(*) AS n FROM execution')[0]['n']
         return {'scenario':scenario,'row_count':int(plans['automatic']['Plan']['Actual Rows']),'dataset_size':count,'plans':plans}
 
-    def reserve(self, trader_id, request):
+    def request_identity(self, trader_id, key):
+        rows = self.query('SELECT * FROM public.order_request_identity WHERE trader_id=%s AND request_key=%s',
+                          (trader_id, key))
+        return rows[0] if rows else None
+
+    def reserve(self, trader_id, request, request_key=None):
         with self.connect() as conn:
             conn.execute("SET LOCAL app.role='TRADER'")
+            if request_key is not None:
+                # Hash collisions only serialize independent keys; uniqueness and
+                # payload verification always use the full trader/key identity.
+                conn.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',
+                             (str(trader_id) + ':' + request_key,))
+                identity = conn.execute('SELECT * FROM public.order_request_identity WHERE trader_id=%s AND request_key=%s',
+                                        (trader_id, request_key)).fetchone()
+                if identity:
+                    return RequestIdentityStore.verify(identity, request)
             order_id = conn.execute('SELECT public.place_and_reserve_order(%s,%s,%s,%s,%s) AS id',
                 (trader_id, request.instrument_id, request.side, request.price_ticks, request.quantity)).fetchone()['id']
             row = conn.execute('SELECT * FROM public."order" WHERE id=%s', (order_id,)).fetchone()
+            if request_key is not None:
+                conn.execute('INSERT INTO public.order_request_identity(trader_id,request_key,request_hash,order_id,accepted_at) VALUES (%s,%s,%s,%s,%s)',
+                             (trader_id, request_key, request_hash(request), order_id, row['created_at']))
         return row  # context COMMIT completed before matcher admission
 
     def execution_ids(self, count):
@@ -105,12 +182,46 @@ class Database:
             quantity = conn.execute('SELECT public.cancel_order(%s,%s) AS quantity',(order_id,trader_id)).fetchone()['quantity']
         return quantity
 
+    def reconcile_execution(self, event):
+        """Confirm an exact canonical commit; absence is NOT permission to retry."""
+        if event.taker_order_id != max(event.buy_order_id, event.sell_order_id):
+            raise RuntimeError('Invalid execution taker; operator reconciliation required')
+        rows = self.query('SELECT * FROM public.execution WHERE id=%s', (event.event_id,))
+        if not rows:
+            raise RuntimeError('Execution commit unresolved; operator reconciliation required')
+        row = rows[0]
+        expected = {'id':event.event_id, 'instrument_id':event.instrument_id,
+            'buy_order_id':event.buy_order_id, 'sell_order_id':event.sell_order_id,
+            'buy_trader_id':event.buy_trader_id, 'sell_trader_id':event.sell_trader_id,
+            'price_ticks':event.price_ticks, 'quantity':event.quantity,
+            'executed_at':event.occurred_at}
+        if any(row[key] != value for key, value in expected.items()):
+            raise RuntimeError('Conflicting committed execution; operator reconciliation required')
+        return True
+
     def acquire_owner(self):
+        if self.settings.database_identity_mode=='isolated':
+            from backend.stores.trader_identity import verify_password_authentication
+            s=self.settings
+            for user in (s.postgres_runtime_user,s.postgres_auth_user,s.postgres_compliance_user):
+                verify_password_authentication(s.postgres_host,s.postgres_port,s.postgres_db,user)
         conn = self.connect(autocommit=True)
         try:
             row = conn.execute('SELECT rolsuper,rolcreatedb,rolcreaterole,rolbypassrls,rolinherit FROM pg_roles WHERE rolname=current_user').fetchone()
             if any(row.values()):
                 raise RuntimeError('Runtime login must be nonprivileged and NOINHERIT')
+            if self.settings.database_identity_mode=='isolated':
+                boundary=conn.execute("""SELECT pg_has_role(current_user,'compliance_admin_role','MEMBER') AS admin_member,
+                  has_column_privilege(current_user,'public.user_account','password_hash','SELECT') AS credential_read,
+                  (SELECT count(*) FROM pg_policies p JOIN pg_class c ON c.relname=p.tablename
+                    AND c.relnamespace='public'::regnamespace
+                    WHERE p.schemaname='public' AND p.tablename IN
+                      ('margin_account','order','order_history','position','order_request_identity')
+                    AND p.policyname='financial_service_read' AND p.roles=ARRAY[current_user]::name[]
+                    AND p.cmd='SELECT' AND p.qual='true' AND c.relrowsecurity AND c.relforcerowsecurity) AS protected_tables""").fetchone()
+                if boundary['admin_member'] or boundary['credential_read'] or boundary['protected_tables']!=5:
+                    raise RuntimeError('Financial database identity boundary is not installed')
+
             if not conn.execute("SELECT pg_try_advisory_lock(hashtext('tradegraph-matching-owner')) AS locked").fetchone()['locked']:
                 raise RuntimeError('Another matching owner is active')
             if conn.execute("SELECT EXISTS(SELECT 1 FROM public.\"order\" WHERE status IN ('OPEN','PARTIAL')) AS pending").fetchone()['pending']:
@@ -122,7 +233,10 @@ class Database:
 
     @contextmanager
     def admin_context(self):
-        with self.connect() as conn:
+        s=self.settings
+        connection=(self._connect_as(s.postgres_compliance_user,s.postgres_compliance_password)
+                    if s.database_identity_mode=='isolated' else self.connect())
+        with connection as conn:
             conn.execute('SET LOCAL ROLE compliance_admin_role')
             conn.execute("SET LOCAL app.role='COMPLIANCE_ADMIN'")
             yield conn

@@ -32,6 +32,8 @@ def accounts(request):
                 traders.append(tid)
             users.append({'id':uid,'email':email,'password':password,'role':role,'trader_id':tid})
     try:
+        from scripts.setup_database_identity import provision_test_traders
+        provision_test_traders(traders)
         yield users, instrument
     finally:
         from backend.stores.redis_depth import RedisDepth
@@ -46,12 +48,14 @@ def accounts(request):
         with db_connect() as conn:
             conn.execute('DELETE FROM regime_snapshot WHERE instrument_id=%s',(instrument,))
             conn.execute('DELETE FROM market_disclosure WHERE instrument_id=%s',(instrument,))
+            conn.execute('DELETE FROM order_request_identity WHERE trader_id=ANY(%s)',(traders,))
             conn.execute('DELETE FROM execution WHERE buy_trader_id=ANY(%s) OR sell_trader_id=ANY(%s)',(traders,traders))
             for table in ('position','order_history','order','margin_account','trader'):
                 key = 'id' if table=='trader' else 'trader_id'
                 conn.execute(f'DELETE FROM public."{table}" WHERE {key}=ANY(%s)',(traders,))
             conn.execute('DELETE FROM user_account WHERE id=ANY(%s)',([u['id'] for u in users],))
             conn.execute('DELETE FROM instrument WHERE id=%s',(instrument,))
+        provision_test_traders(traders,remove=True)
 
 
 def login(client, user):
@@ -200,14 +204,19 @@ def test_admin_query_role_gates_and_actual_plan(accounts):
         assert client.get('/admin/optimizer/compare?scenario=SELECT%201',headers=admin_headers).status_code==422
 
 
-def test_request_key_replay_is_process_scoped_and_precedes_reservation(accounts):
+def test_request_key_replay_is_durable_and_precedes_reservation(accounts):
     users,instrument=accounts
     with TestClient(create_app()) as client:
         headers=login(client,users[0])|{'Idempotency-Key':'same-request'}
         first=client.post('/orders',headers=headers,json=order(instrument))
         assert first.status_code==201
         repeated=client.post('/orders',headers=headers,json=order(instrument))
-        assert repeated.status_code==409 and repeated.json()['error']['code']=='DUPLICATE_REQUEST'
+        assert repeated.status_code==201 and repeated.json()==first.json()
+        conflict=client.post('/orders',headers=headers,json=order(instrument,quantity=2))
+        assert conflict.status_code==409 and conflict.json()['error']['code']=='DUPLICATE_REQUEST'
+        other=client.post('/orders',headers=login(client,users[1])|{'Idempotency-Key':'same-request'},json=order(instrument))
+        assert other.status_code==201 and other.json()['order_id']!=first.json()['order_id']
+        assert client.post('/orders/'+str(other.json()['order_id'])+'/cancel',headers=login(client,users[1])).status_code==200
         assert len(client.get('/orders/me',headers=headers).json()['items'])==1
         assert client.post('/orders/'+str(first.json()['order_id'])+'/cancel',headers=headers).status_code==200
 
@@ -283,3 +292,98 @@ def test_canceled_reservation_holds_owner_until_commit_thread_finishes(accounts)
             coordinator.close()
         with pytest.raises(RuntimeError,match='operator reconciliation'): db.acquire_owner()
     asyncio.run(exercise())
+
+
+def test_noncrossing_orders_above_queue_capacity_reserve_once(accounts):
+    from dataclasses import replace
+    users, instrument = accounts
+    settings = replace(Settings.from_env(), event_queue_capacity=1)
+    with TestClient(create_app(settings, settlement=False)) as client:
+        headers = login(client, users[0])
+        service = client.app.state.service
+        reserved = []
+        original = service.database.reserve
+        def track(*args):
+            row = original(*args)
+            reserved.append(row['id'])
+            return row
+        service.database.reserve = track
+        for _ in range(4):
+            assert client.post('/orders', headers=headers, json=order(instrument)).status_code == 201
+        assert len(reserved) == len(set(reserved)) == 4
+        assert service.dispatcher.queue.qsize() == 0
+        assert len(service.engine.book._by_id) > service.dispatcher.queue.maxsize
+        with db_connect() as conn:
+            assert conn.execute('SELECT cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s',
+                                (users[0]['trader_id'],)).fetchone() == (19596, 404)
+
+
+def test_request_outcome_is_owned_readonly_and_survives_lost_response(accounts):
+    users, instrument = accounts
+    with TestClient(create_app()) as client:
+        a, b = login(client,users[0]), login(client,users[1])
+        service = client.app.state.service
+        original = service.database.reserve
+        def lost_ack(*args):
+            original(*args)
+            import psycopg
+            raise psycopg.OperationalError('injected acknowledgement loss')
+        service.database.reserve = lost_ack
+        assert client.post('/orders',headers=a|{'Idempotency-Key':'lost-ack'},json=order(instrument)).status_code==503
+        outcome=client.get('/orders/requests/lost-ack',headers=a)
+        assert outcome.status_code==200 and outcome.json()['status']=='ACCEPTED'
+        assert client.get('/orders/requests/lost-ack',headers=b).json()['status']=='UNRESOLVED'
+        assert client.get('/orders/requests/lost-ack').status_code==401
+        service.database.reserve = original
+        replay=client.post('/orders',headers=a|{'Idempotency-Key':'lost-ack'},json=order(instrument))
+        assert replay.status_code==201 and replay.json()==outcome.json()['accepted_order']
+        assert service.dispatcher.failure
+        with db_connect() as conn:
+            assert conn.execute('SELECT count(*) FROM public."order" WHERE trader_id=%s',(users[0]['trader_id'],)).fetchone()==(1,)
+            assert conn.execute('SELECT cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s',(users[0]['trader_id'],)).fetchone()==(19899,101)
+
+
+def test_owned_cancellation_status_and_repeat_refund(accounts):
+    users, instrument=accounts
+    with TestClient(create_app()) as client:
+        a,b=login(client,users[0]),login(client,users[1])
+        oid=client.post('/orders',headers=a,json=order(instrument)).json()['order_id']
+        assert client.get(f'/orders/{oid}',headers=b).status_code==404
+        assert client.get(f'/orders/{oid}',headers=a).json()['status']=='OPEN'
+        assert client.post(f'/orders/{oid}/cancel',headers=a).json()['cancelled_quantity']==1
+        assert client.get(f'/orders/{oid}',headers=a).json()['status']=='CANCELLED'
+        before=client.get('/account/me',headers=a).json()
+        assert client.post(f'/orders/{oid}/cancel',headers=a).json()['cancelled_quantity']==0
+        assert client.get('/account/me',headers=a).json()==before
+        assert before['cash_balance']==20000 and before['escrow_balance']==0
+
+
+def test_readiness_distinguishes_owner_replay_worker_and_reconciliation(accounts):
+    with TestClient(create_app()) as client:
+        result=client.get('/health').json()
+        assert result['trading_ready']
+        assert result['readiness']['matching_owner'] and result['readiness']['replay_complete']
+        assert result['readiness']['financial_settlement']
+        client.app.state.service.dispatcher.failure='operator reconciliation required'
+        failed=client.get('/health').json()
+        assert not failed['trading_ready'] and failed['readiness']['reconciliation_required']
+    with TestClient(create_app(settlement=False)) as client:
+        result=client.get('/health').json()
+        assert not result['trading_ready'] and not result['readiness']['financial_settlement']
+
+
+def test_terminal_cancel_reconciles_after_real_commit_ack_loss_without_reset(accounts):
+    import psycopg
+    users,instrument=accounts
+    with TestClient(create_app()) as client:
+        headers=login(client,users[0])
+        oid=client.post('/orders',headers=headers,json=order(instrument)).json()['order_id']
+        service=client.app.state.service;original=service.database.cancel
+        def lost(*args): original(*args);raise psycopg.OperationalError('lost cancellation acknowledgement')
+        service.database.cancel=lost
+        assert client.post(f'/orders/{oid}/cancel',headers=headers).status_code==503
+        result=client.get(f'/orders/{oid}',headers=headers)
+        assert result.status_code==200 and result.json()['status']=='CANCELLED'
+        assert service.dispatcher.failure
+        assert client.get('/account/me',headers=headers).json()['cash_balance']==20000
+        service.database.cancel=original

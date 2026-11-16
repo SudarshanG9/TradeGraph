@@ -1,7 +1,7 @@
 -- Terminal processing is idempotent and shares account-before-order locking.
 CREATE OR REPLACE FUNCTION public.cancel_order(p_order bigint,p_trader uuid) RETURNS bigint
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
-DECLARE o public."order"%ROWTYPE; q numeric; tick integer; rate numeric; fee0 numeric; feeq numeric; release numeric; credit numeric;
+DECLARE o public."order"%ROWTYPE; q numeric; tick integer; rate numeric; fee0 numeric; feeq numeric; release numeric; credit numeric; actual_order_fee numeric;
 BEGIN
  PERFORM trader_id FROM public.margin_account WHERE trader_id=p_trader FOR UPDATE;
  SELECT * INTO o FROM public."order" WHERE id=p_order AND trader_id=p_trader FOR UPDATE;
@@ -20,8 +20,9 @@ BEGIN
  release:=o.price_ticks::numeric*tick*q+feeq;
  credit:=release;
  IF o.side='BUY' THEN
-   credit:=release-feeq+fee0-public.order_fee(p_order);
-   IF fee0<public.order_fee(p_order) THEN RAISE EXCEPTION 'BUY fee exceeds budget' USING ERRCODE='22023'; END IF;
+   actual_order_fee:=public.order_fee(p_order);
+   credit:=release-feeq+fee0-actual_order_fee;
+   IF fee0<actual_order_fee THEN RAISE EXCEPTION 'BUY fee exceeds budget' USING ERRCODE='22023'; END IF;
  END IF;
  UPDATE public.margin_account SET cash_balance=(cash_balance::numeric+credit)::bigint,
    escrow_balance=(escrow_balance::numeric-release)::bigint,updated_at=now() WHERE trader_id=p_trader;

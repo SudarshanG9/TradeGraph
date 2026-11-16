@@ -20,10 +20,12 @@ prefixes=('replace_','change_me','your_')
 runtime_secret_invalid=not values.get('POSTGRES_RUNTIME_PASSWORD','').strip() or values.get('POSTGRES_RUNTIME_PASSWORD','').lower().startswith(prefixes)
 if args.phase>=3 and (not Path('.env').is_file() or subprocess.run(['git','check-ignore','-q','.env']).returncode):
     raise SystemExit('Create an ignored .env from .env.example before runtime installation')
+if args.phase>=3 and values.get('DATABASE_IDENTITY_MODE','isolated')!='legacy':
+    raise SystemExit('Shared-role installer requires explicit legacy mode; use reviewed routine migrations and setup_database_identity.py for isolated identities')
 with db_connect() as conn:
     conn.execute("SELECT pg_advisory_xact_lock(hashtext('tradegraph-backend-install'))")
     tables = {r[0] for r in conn.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")}
-    if tables != EXPECTED_TABLES:
+    if not EXPECTED_TABLES <= tables or tables - EXPECTED_TABLES - {'order_request_identity'}:
         raise SystemExit('Expected the initialized 13-table schema; refusing installation')
     signature = 'public.place_and_reserve_order(uuid,integer,text,bigint,bigint)'
     if conn.execute('SELECT to_regprocedure(%s)', (signature,)).fetchone()[0] is None:
@@ -56,7 +58,10 @@ with db_connect() as conn:
         conn.execute(pgsql.SQL('GRANT CONNECT ON DATABASE {} TO {}').format(pgsql.Identifier(values.get('POSTGRES_DB','tradegraph')), pgsql.Identifier(user)))
         conn.execute(pgsql.SQL('GRANT USAGE ON SCHEMA public TO {}').format(pgsql.Identifier(user)))
         conn.execute(pgsql.SQL('GRANT trader_role, compliance_admin_role TO {}').format(pgsql.Identifier(user)))
-        conn.execute(pgsql.SQL('GRANT SELECT ON user_account,trader,instrument,fee_tier,margin_account,"order",order_history,execution,position,desk TO {}').format(pgsql.Identifier(user)))
+        conn.execute(pgsql.SQL('GRANT SELECT ON instrument,fee_tier,margin_account,"order",order_history,execution,position,desk TO {}').format(pgsql.Identifier(user)))
+        conn.execute(pgsql.SQL('REVOKE SELECT ON public.user_account,public.trader FROM {}').format(pgsql.Identifier(user)))
+        conn.execute(pgsql.SQL('GRANT SELECT(id,email,password_hash,role) ON public.user_account TO {}').format(pgsql.Identifier(user)))
+        conn.execute(pgsql.SQL('GRANT SELECT(id,user_account_id,desk_id,full_name) ON public.trader TO {}').format(pgsql.Identifier(user)))
         conn.execute(pgsql.SQL('GRANT USAGE ON SEQUENCE execution_id_seq TO {}').format(pgsql.Identifier(user)))
         conn.execute(pgsql.SQL('GRANT EXECUTE ON FUNCTION public.place_and_reserve_order(uuid,integer,text,bigint,bigint) TO {}').format(pgsql.Identifier(user)))
         print('Runtime identity/grants verified and installed; no user-facing role added')

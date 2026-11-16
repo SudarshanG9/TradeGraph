@@ -1,0 +1,773 @@
+# Remaining bug-bounty remediation — 16 November 2026
+
+## Baseline (Phase 0)
+
+Branch: `codex/dbms-reliability-hardening`; starting HEAD:
+`d29ae007b833963955c93aed82f14d2b4cb9184e`. Fetched and fast-forward checked;
+working tree initially clean. Preserve cdd23ad, c95c541, 1457ccd and d29ae00.
+Reviewed frontend/AGENTS.md (only repository AGENTS.md), schema, installer,
+fixtures, prior hardening report, Coordinator and financial adapters.
+
+Native PostgreSQL, Redis and Neo4j are available. Read-only checks found **three
+active orders**, no matching-owner lock, and no API listening on port 8000.
+No owner was started against that database. Existing financial data preserved.
+Owner-instantiating suites require a separate synthetic database. Redis and graph
+fixtures must retain unique instrument/trader scopes.
+
+Baseline verification:
+- Backend unit + concurrency: **225 passed**, one existing Starlette warning.
+- Frontend tests: **32 passed**; typecheck and format check passed.
+- Default Turbopack production build: **environment-blocked**, including escalated
+  retry: CSS worker port binding returns EPERM. No source workaround applied.
+- Initial sandbox-only native service checks/tests failed on connection permission;
+  native baseline above was rerun with service access.
+
+Commit/push: this section is committed as `docs(audit): establish remaining
+hardening baseline`; exact SHA and confirmed push recorded in the next ledger update.
+
+## Approval-gated persistence proposal (N-01, F-02)
+
+Proposed supplementary `order_request_identity` table: primary key
+`(trader_id, request_key)`, canonical SHA-256 request hash, reserved order ID,
+original accepted response, acceptance timestamp. Keep identities after archival;
+no cascading deletion or TTL. This is an additional table, **not yet approved or
+implemented**. Files affected: reversible migration, reservation adapter/procedure,
+Coordinator, orders routes, frontend submission state/client/allowlist/schema/form,
+concurrency/integration/transport tests.
+
+Financial invariant: acquire the key transaction lock, compare canonical validated
+fields, reserve and insert identity in one PostgreSQL transaction; neither may commit
+alone. Unique identity handles concurrent workers. Same payload returns the original
+response without matching/reserving twice; changed payload conflicts. Ownership and
+post-commit admission recovery must stay fail-closed; accepted reservation is not proof
+that in-memory admission completed. Reconciliation must distinguish these outcomes.
+Rollback: disable keyed admission/reconciliation, drain and reconcile in-flight work,
+retain the identity table read-only while any key may be replayed. Dropping identities
+is not a safe online rollback. No installer or live migration is authorized by this
+proposal. Approval is required before implementation.
+
+A crash-durable downstream outbox would be a separate approval: immutable execution
+identity plus exact regime-book snapshot and per-consumer delivery state committed
+at the correct financial boundary. Existing executions can reconstruct graph totals,
+but cannot reconstruct a lost historical order-book snapshot exactly. No memory-only
+recovery is described as lossless. Strong trader DB isolation likewise needs a trusted
+identity boundary; a caller-set app.trader_id GUC alone is insufficient.
+
+## Resolution matrix and remaining work
+
+All entries below remain unverified unless an evidence section explicitly supersedes
+them. FIXED requires focused tests, a commit and successful remote push.
+
+| ID | Initial classification | Remaining work |
+| --- | --- | --- |
+| N-02 | NOT_VERIFIED | Executable-liquidity capacity estimator and pipeline proof (Phase 1) |
+| N-01 | BLOCKED | Durable atomic request identity requires approval (Phase 2) |
+| F-02 | BLOCKED | Safe authoritative unlock depends on N-01 (Phase 3) |
+| F-03 | NOT_VERIFIED | Persist cancellation intent and reconcile owned status (Phase 4) |
+| F-01 | NOT_VERIFIED | Async shared Redis sessions and failure tests (Phase 5) |
+| F-04 | NOT_VERIFIED | Central validated origin/cookie configuration (Phase 6) |
+| I-01 | NOT_VERIFIED | Audit and reduce proven unnecessary runtime grants (Phase 7) |
+| I-02 | BLOCKED | Prove trusted trader DB identity boundary before claiming RLS isolation |
+| I-06 | PARTIALLY_FIXED | Prior financial reconciliation; derived/restart recovery remains (Phase 8) |
+| N-05 | PARTIALLY_FIXED | Prior committed-event classification; lossless recovery remains |
+| A-04 | PARTIALLY_FIXED | Safe failure retained; verified controlled recovery remains |
+| I-03 | NOT_VERIFIED | Bounded startup execution replay (Phase 9) |
+| N-06 | BLOCKED | Active-order restart needs persisted matching/publication recovery contract |
+| I-05 | NOT_VERIFIED | Bounded atomic scheduled archival (Phase 10) |
+| I-04 | NOT_VERIFIED | Verified simulator ERROR recovery (Phase 11) |
+| A-02 | NOT_VERIFIED | Bounded synthetic backoff; shared Coordinator remains |
+| P-02 | NOT_VERIFIED | Preserve arbitrary direct-book IDs and historical duplicate detection (Phase 12) |
+| P-03 | BLOCKED | Exact historical payload deduplication cannot be blindly evicted |
+| P-04 | NOT_VERIFIED | Sparse integer Fenwick plus measured CPU/memory (Phase 13) |
+| N-03 | NOT_VERIFIED | Consistent per-book depth snapshots (Phase 14) |
+| P-07 | NOT_VERIFIED | Exact transaction-local cancellation fee reuse (Phase 15) |
+| N-04 | NOT_VERIFIED | Replay-safe bounded canonical graph aggregation (Phase 16) |
+| A-03 | NOT_VERIFIED | Opt-in bounded maintenance and retention (Phase 17) |
+| A-01 | PARTIALLY_FIXED | Shared sessions, safe readiness/restart; active-active remains approval-gated |
+| A-05 | NOT_VERIFIED | Execute and document existing SQL demonstrations (Phase 18) |
+
+Final full suites, financial and browser acceptance, real performance measurements,
+and final Git/remote audit remain Phase 19. No production deployment claimed.
+
+Corrected findings remain intentional/accurate: head-of-queue STP cancels incoming
+residual; randomized ReferenceBook differential coverage already exists;
+price_level.py is an unused placeholder, not a proven runtime defect.
+
+## Phase 1 — N-02 executable-liquidity capacity
+
+Root cause: admission used every resting ID for queue capacity and sequence
+allocation. Changed `backend/matching/order_book.py` to estimate compatible
+opposite-side maker FIFOs on the requested instrument, stopping at the existing
+head-STP boundary. The estimator is read-only, ignores quantity conservatively,
+and never cleans lazy heaps. `backend/risk/order_reservation.py` uses the bound
+before reservation and again before publication under the existing global lock.
+No fee, pricing, FIFO, schema, or API change.
+
+Tests added in `tests/unit/test_matching_engine.py`: 4,000 unrelated/noncrossing
+orders, stale heap preservation, both sides, crossing/partial/multiple fills,
+head-STP, exact capacity and insufficient capacity. `tests/integration/test_order_pipeline.py`
+proves admission above total resting-order capacity with exactly one reservation
+per request and exact escrow. **29 matching tests and 12 native isolated pipeline
+tests passed** (existing Starlette warning). Isolated database is
+`tradegraph_audit_20261116`, schema-only copy plus synthetic seeds; original data
+was not copied or reset. Existing backpressure-before-reservation regression passes.
+
+Disposition: FIXED upon this commit's successful push. Phase 0 commit `182ae97`
+is confirmed pushed. Phase 1 commit is identified by subject
+`fix(admission): estimate event capacity from executable liquidity`; SHA/push
+confirmation follows in the next ledger update. Limit: upper bound may overcount
+makers when incoming quantity is small, intentionally; depth estimation scan/sort
+optimization remains Phase 14.
+
+## Phase 2 — N-01 durable request identity (approved)
+
+User approved implementation and isolated tests after reviewing the proposal.
+`db/migrations/20261116_request_identity.sql` adds the supplementary identity table,
+trader/key uniqueness, canonical hash checks, and SELECT/INSERT-only runtime grants;
+generic roles have none. Original accepted response is reconstructible exactly from
+order_id, accepted_at and constant OPEN. No order FK or TTL: archival retains identity.
+Operator must adapt the default runtime-role grant if using a custom login.
+The migration was applied **only to tradegraph_audit_20261116**.
+
+`backend/risk/request_identity.py` separates canonical hashing/verification/lookup.
+`backend/stores/postgres.py` serializes each full key using a transaction advisory
+lock, verifies payload, and commits financial reservation and identity insertion
+on the same connection/transaction. Existing reservation procedure already permits
+this outer transaction; its financial mathematics/locks are unchanged. Coordinator
+replaces the process-local 100,000-entry set with durable lookups, returning the
+original accepted row without rematching. Conflicts remain deterministic 409.
+Database errors remain fail-closed. The native simulator expectation is updated
+to require original-response replay, and only synthetic fixture identities are
+cleaned. Installer/schema verification permit the supplementary table while still
+requiring all 13 core tables.
+
+Exact affected files: migration, backend/risk/request_identity.py,
+backend/risk/order_reservation.py, backend/stores/postgres.py,
+backend/simulator/market_simulator.py, scripts/setup_backend.sh,
+scripts/verify_schema.py, tests/concurrency/test_reservation.py,
+tests/integration/test_order_pipeline.py, tests/integration/test_live_simulator.py.
+Tests: **34 reservation/pipeline tests passed**, including concurrent duplicates,
+fresh-adapter replay, conflict, independent traders, archival and injected identity
+constraint failure after financial writes (complete rollback). An additional focused
+simulator replay assertion is verified before commit.
+
+N-01: FIXED on successful push. Phase 1 `4ceb575` confirmed pushed. This phase's
+SHA/push confirmation follows next update. Limitation: no schema migration applied
+to live service. Durable acceptance proves reservation, not crash-safe completion
+of in-memory matching/publication. N-06 remains blocked; active-order startup still
+refuses unsafe reconstruction. Rollback disables new keyed traffic and INSERT grant
+while retaining identity rows for reconciliation; deleting identities online is unsafe.
+
+## Phase 3 — F-02 authoritative submission reconciliation
+
+Root cause: boolean sessionStorage gate had no authoritative resolution. Replaced
+with scoped persisted intent states, saved original payload/key/time, and explicit
+read-only reconciliation and same-key retry. No backend token enters storage.
+Legacy v1 intents are retained and may be resolved by a matching durable key;
+pre-migration unknown keys without saved payload remain operator-blocked safely.
+A failed lookup or failed replay authentication never discards the earlier intent.
+
+Changed backend/api/routes/orders.py (authenticated trader-only request outcome;
+absence is UNRESOLVED), frontend/src/lib/api/{submission,operations,schema,client}.ts,
+frontend/src/lib/{services,contracts}.ts and components/trader/order-form.tsx.
+Strict forwarding allowlist/response schemas retained. Form loads pending state,
+checks canonical outcomes, refreshes views, and offers explicit original-key/payload
+retry. It never creates a fresh key for unresolved intent.
+Tests: frontend/tests/transport.test.ts and tests/integration/test_order_pipeline.py;
+**34 frontend tests + typecheck passed**. Native pipeline tests include a real
+reservation COMMIT followed by injected lost acknowledgement: owned lookup and
+same-key replay identify exactly one reservation; pipeline failure is not reset.
+Final native result and format/build evidence recorded with commit verification.
+F-02: FIXED for post-migration durable intents upon successful push; legacy
+pre-migration unknown requests remain a documented limitation. Phase 2 `abcd4bf`
+confirmed pushed; no live migration/deployment. N-06 and durable publication remain
+separate constraints.
+
+## Phase 4 — F-03 persistent cancellation reconciliation
+
+Root cause: dialog-local uncertainty disappeared on remount. The cancellation
+tracker in frontend/src/lib/api/submission.ts persists intent before dispatch,
+with SHA-256 account scope and target ID in the key, retains unknown results and
+blocks repeat cancellation. client.ts and cancel-dialog.tsx load persisted state
+and expose a status check; account/order views refresh after verified resolution.
+services.ts, schema.ts and operations.ts include strict typed owned status lookup.
+A dedicated backend/api/routes/orders.py read-only lookup serializes behind the
+Coordinator lock and settlement drain: paginated history alone cannot establish
+that an earlier cancellation thread has completed. Missing owner/pipeline readiness
+fails closed. Only authenticated trader-owned hot/history rows are returned.
+No new schema or financial calculation. Tests in frontend/tests/transport.test.ts
+and tests/integration/test_order_pipeline.py cover timeout/remount, duplicate
+suppression, account separation, unavailable/wrong-owner status, terminal unlock,
+owned API lookup and repeated cancellation with exactly zero second refund.
+**35 frontend tests, typecheck and 14 native pipeline tests passed**. Format check
+requires formatting Next's regenerated next-env.d.ts after the supported webpack
+build; no runtime configuration change. F-03: FIXED upon push.
+
+Phase 3 `c7b2948` confirmed pushed. Its 13 native tests and formatting passed;
+`npm run build -- --webpack` compiled and generated all routes successfully.
+Default Turbopack remains environment-blocked (EPERM); webpack is an existing
+supported Next.js build option, not a production source workaround.
+
+## Phase 5 — F-01 shared encrypted sessions
+
+Replaced global session Map/cap with an asynchronous injectable SessionStore in
+frontend/src/lib/server/session-core.ts. redis-session-store.ts uses one lazy,
+reconnecting ioredis connection, bounded connection/command deadlines, no offline
+queue and no local fallback. Opaque random 32-byte session IDs remain; Redis keys
+use the dedicated frontend namespace and TTL cannot exceed actual backend JWT exp.
+AES-256-GCM encrypts stored JWTs with per-session IV and key/ID-bound authentication.
+SESSION_ENCRYPTION_KEY (32-byte hex) and REDIS_URL are mandatory server configuration;
+rotation invalidates existing encrypted sessions. Production deployments require
+Redis persistence/availability policy; Redis memory alone is not disk durability.
+
+Affected: session-core.ts, new redis-session-store.ts, app/api/session/route.ts,
+app/api/backend/[...path]/route.ts, frontend/package{,-lock}.json, .env.example,
+frontend/tests/session.test.ts. session.ts already returns the async getSession
+promise from its async readSession, so page authorization awaits shared storage.
+Login/logout and 401 cleanup await revocation; store outages return controlled 503.
+Original roles, expiry, HTTP-only browser cookie and token non-disclosure preserved.
+
+Verification: session tests with injectable store verify expiry, role, multiple
+sessions, failure behavior and revocation. **All four session tests passed with
+native Redis**, including separate connections/restart-style store construction,
+ciphertext inspection, real TTL expiration and cross-connection deletion. Full
+frontend tests/typecheck/format results recorded before commit. npm installed
+only ioredis (+8 transitive packages); audit reported zero vulnerabilities.
+Client reconnect/timeout options checked against the maintained upstream docs:
+https://github.com/redis/ioredis . F-01: FIXED upon push; production configuration
+and end-to-end login acceptance remain deployment verification. Phase 4 `dd88cef`
+confirmed pushed. No existing Redis keys deleted; only random test session keys.
+
+## Phase 6 — F-04 trusted production origin
+
+New frontend/src/lib/server/app-origin.ts validates the one origin used by cookie
+security and CSRF. Production requires explicit HTTPS; HTTP is limited to loopback
+and an explicit ALLOW_INSECURE_LOOPBACK_ORIGIN controlled-test override. Development
+may use loopback HTTP. Credentials, paths, malformed URLs, whitespace, query and
+fragment (including empty delimiters) fail closed. No incoming Host header controls
+cookie security. HTTP-only and SameSite Strict preserved.
+Changed session.ts, session-core.ts, both API routes, .env.example and session tests.
+**37 frontend tests passed, one opt-in native Redis test skipped in the service-free
+suite; typecheck and format passed**. That native session test previously passed
+when explicitly enabled. Foreign/originless CSRF regressions remain passing.
+F-04: FIXED upon push. Phase 5 `a2797f1` confirmed pushed, with full webpack build,
+typecheck and formatting passed after resolving the TypeScript status-narrowing
+check (no runtime behavior suppressed). No live configuration or service restart.
+
+## Phase 7 — I-01/I-02 authorization boundary
+
+Audit: reserve/settle/cancel use tightly scoped SECURITY DEFINER financial routines,
+with EXECUTE denied to generic trader/admin roles. Authentication needs id/email/
+password_hash/role; identity, graph and simulator need trader id/user_account_id/
+desk_id/full_name. New migration 20261116_runtime_columns.sql and setup_backend.sh
+replace broad direct identity-table SELECT with those column grants. Financial
+read grants remain necessary for current matching/startup/analytics; NOINHERIT
+and explicit transaction-local admin role remain. No trader identity GUC introduced.
+Migration applied only to the isolated database; production grants unchanged.
+
+New tests/integration/test_database_authorization.py verifies direct financial and
+identity writes denied, narrowed columns, explicit admin context, missing context
+failure, transaction-local role cleanup and generic financial EXECUTE denial.
+Original pipeline tests cover body-identity rejection and owned status denial.
+Schema regression now proves exactly the 13 original core tables plus the approved
+identity table, rather than wrongly requiring only 13 total objects.
+
+I-01: PARTIALLY_FIXED (narrower identity reads); I-02: BLOCKED for database tenant
+isolation. A compromised shared service credential can still read other traders'
+financial rows and explicitly SET ROLE compliance_admin_role. API identity filtering
+is real authorization, not proof of DB tenant isolation. Full isolation needs separate
+trusted trader/admin/financial credentials or a reviewed cryptographically bound
+stored-procedure read boundary, plus rewritten query paths and deployment secrets.
+That is a new architectural contract requiring approval; no speculative RLS policy
+or credential rotation applied. Financial/SQL compatibility results follow before
+commit. Exact affected files: migration, installer, authorization tests,
+tests/integration/test_database_integrity.py and this ledger.
+Verification: **39 isolated native authorization, pipeline and SQL integrity tests
+passed**, one existing warning. Phase 6 `5db100c` confirmed pushed. No live migration.
+
+### Phase 8 persistence boundary
+
+Full crash-durable derived delivery remains approval-gated. Existing execution rows
+reconstruct canonical graph totals, but not the original regime order-book snapshot
+or callback acknowledgement progress. A supplementary outbox would need immutable
+execution payload, original book snapshot, per-consumer acknowledgements, uniqueness
+by execution/consumer, and atomic financial/outbox COMMIT. Replay must never
+recapture a different snapshot as if original. Safe rollback retains undelivered
+outbox rows and drains them before disabling delivery. This also affects restart
+and accepted-but-unmatched order recovery; an execution outbox alone cannot solve
+N-06. No outbox table is approved, no failure reset is implemented from these claims.
+
+## Phase 8 — retained post-commit recovery (partial)
+
+backend/events/dispatcher.py now distinguishes typed backlog, post-commit,
+financial-uncertain and ownership failures, with a distinct temporary-capacity
+exception. settlement_worker.py retains analytics-applied and successful callback
+indices. Its internal recover_committed() requires the previous task terminated,
+canonical execution equality, verified owner lock, exact engine event identity,
+unchanged callbacks and healthy derived consumers. Only known atomic enqueue
+callbacks may retry; successful callbacks are skipped. No committed event is
+resettled. regime_worker.py retains the originally rejected event/snapshot tuple
+through overflow so live-process retry cannot recapture a different book.
+Coordinator.verify_owner() checks the actual advisory lock (including signed
+64-bit key halves), not only connection liveness; admission and owned-order
+reconciliation use it. No public reset endpoint or automatic failure clearing.
+
+Tests/concurrency/test_settlement_recovery.py adds full-backlog refusal followed
+by successful controlled publication with exactly one financial commit and one
+analytics application. Existing native timeout, unknown COMMIT, exact/conflicting
+replay, post-commit overflow and Neo4j outage regressions rerun with pipeline tests.
+**27 native recovery/pipeline tests passed** before commit (one existing warning).
+Initial lock-decoding defect was caught by pipeline tests and corrected; failures
+were not suppressed. Phase 7 `66d5872` confirmed pushed.
+I-06/N-05/A-04: PARTIALLY_FIXED. Retained live-process publication can recover;
+process-crash delivery and active-order restart remain persistence limitations.
+Cache snapshot overflow/admission failure is not reset by this method. Required
+regime snapshots cannot be reconstructed from executions alone. No durable-outbox
+or physical HA guarantee is claimed.
+
+## Restart operating procedure (N-06)
+
+Run `PYTHONPATH=. .venv/bin/python scripts/reconcile_restart.py` for read-only
+counts, execution-volume mismatches and actual advisory-lock ownership. Do not
+terminate an existing owner to obtain startup. Keep admissions closed while
+reconciling a retained event; never cancel human orders just to satisfy startup.
+Archive only terminal reconciled orders. A clean cold start acquires the sole
+owner before replay and stays unready until replay completes. With active orders,
+reconcile accepted reservations, FIFO, remaining quantity and outstanding matched
+events under operator control before a planned drain; the process must still refuse
+automatic reconstruction. Three existing active live orders are untouched.
+
+## Phase 9 — I-03 bounded startup history
+
+Database.execution_batches/iter_executions use a named server cursor in one
+repeatable-read, read-only snapshot with validated batch size (default 1,000).
+Startup fetches each batch off the owner loop, applies events in exact ID order on
+the owner thread, tracks replay progress, and closes the cursor on interruption.
+It no longer eagerly materializes all execution rows. Historical analytics/dedup
+state still grows (P-03); bounded transport does not claim bounded total analytics.
+
+New scripts/reconcile_restart.py is read-only and does not acquire ownership.
+New tests/concurrency/test_execution_replay.py checks batch order, concurrent-write
+snapshot exclusion, exact VWAP/volume, duplicate replay, invalid sizes and early
+cursor close. **15 native replay/pipeline tests passed**, including clean restart,
+second-owner rejection and active-order refusal. I-03: FIXED upon push; N-06 remains
+BLOCKED by accepted-but-unmatched and publication persistence/FIFO recovery.
+Phase 8 `79c75d1` confirmed pushed.
+
+Read-only live diagnostic later observed zero active orders, 547 executions,
+no volume mismatches and one owner lock (database changed externally during work).
+It correctly reports cold_start_safe=false. No live ownership/data was changed by
+this task. Unrelated auth-form.tsx changes and generated next-env.d.ts edits are
+preserved and excluded from remediation commits.
+
+## Phase 10 — I-05 bounded scheduled archival
+
+order_archive.sql now selects at most 100 terminal candidates under FOR UPDATE
+SKIP LOCKED, then preserves atomic DELETE RETURNING/INSERT and exact execution-volume
+reconciliation. New bounded_archive migration exposes a validated SECURITY DEFINER
+maintenance routine; no direct runtime financial writes granted. Dedicated Database
+archive method validates aware cutoff and bounded size. New partial updated_at/id
+index supports terminal candidate selection (separate CONCURRENTLY migration).
+Both migrations/index applied only in the isolated database.
+
+New housekeeping_worker.py runs one bounded batch per cadence off the owner loop,
+with bounded retries, metrics/failure state and shutdown that waits for database work.
+main.py owns lifecycle; config.py validates enable flag, cadence, cutoff age, batch
+size and attempts. Safe default is disabled pending operator-selected policy and
+migration deployment. No installer was run on live trading. Existing orders,
+executions, accounting and archive integrity remain preserved.
+
+Tests: tests/concurrency/test_archive_atomicity.py adds locked-row skip, batch bound,
+repeat idempotency; new tests/unit/test_housekeeping.py proves failure recovery and
+bounded scheduling. **108 focused matching/config, maintenance, archive and SQL
+integrity tests passed**, including original rollback/settlement atomicity regressions.
+I-05: FIXED in implementation upon push; production scheduling requires explicit
+MAINTENANCE_ENABLED=true and deployed routine/index. A-03 remains partial until
+retention review. Phase 9 `19374b3` confirmed pushed. Rollback disables scheduler,
+drains task, drops maintenance routine/index only; archived financial rows remain
+canonical history and are never moved back during trading.
+
+## Phase 11 — I-04/A-02 controlled simulator recovery
+
+live_supervisor.py adds explicit recover(): prior task must be done, financial
+pipeline/owner and derived consumers healthy, settlement drained, every accepted
+order owned and terminal, and filled quantities canonically reconciled. It never
+resets financial failures, cancels human orders or starts another task. An active
+or missing bot order blocks recovery. ERROR changes to STOPPED only after checks.
+Temporary capacity uses typed PipelineFull and bounded exponential scheduling
+backoff, keeping one global attempt rate and no catch-up backlog.
+
+Minimal authenticated admin /admin/simulator/recover route added; strict frontend
+allowlist/client/services and existing controls gain one Verify recovery button.
+No status-contract or layout redesign. Shared Coordinator still means contention;
+this is workload throttling, not physical isolation.
+
+Tests: **28 lifecycle unit tests, 6 existing native simulator tests, 37 frontend tests and
+typecheck passed** (one opt-in native session check skipped in service-free tests).
+The new native recovery case initially caught tuple/list response validation; it requires a corrective verified commit. Its intended assertions cover admin-only access, terminal bot history, preserved human
+resting order, previous task termination and distinct subsequent task. Existing
+native finance/polyglot stop/restart tests remain passing. Native error-recovery
+case injects ERROR after verified cleanup; prolonged pressure remains unit-tested.
+I-04: FIXED upon push; A-02: PARTIALLY_FIXED due shared resources. Phase 10 `5583c61`
+confirmed pushed. Exact files: live_supervisor.py, simulator route, frontend
+services/client/operations/controls, unit and integration simulator tests, ledger.
+
+Phase 11 verification correction: the first commit `33da60f` was pushed before the
+new recovery-test result was inspected. That test exposed strict tuple/list
+serialization in the new endpoint. The response conversion is now consistent with
+start/stop/status; **all 7 native simulator tests passed**. A separate corrective
+commit preserves history. No failed test was removed or suppressed.
+
+## Phase 12 — historical identity memory
+
+Production Coordinator already requires strictly increasing admitted PostgreSQL
+order IDs. It now explicitly constructs Engine/OrderBook in monotonic mode, which
+uses one high-water integer instead of retaining all IDs. Duplicate IDs after fills
+and cancellations remain rejected. Standalone public OrderBook/Engine defaults
+still support arbitrary IDs using the original exact history set; no caller's
+existing arbitrary-ID contract was silently changed. P-02: FIXED for the production
+owner; standalone arbitrary-ID history remains intentionally unbounded.
+
+Engine stores exact 84-byte packed execution payloads keyed by event ID instead
+of retaining complete object graphs. Integer microsecond UTC timestamps and UUID
+bytes preserve exact conflict/replay comparisons; no hash collision assumption,
+TTL, eviction, historical double-counting or matching-loop DB I/O. Recovery uses
+has_settled(). P-03: PARTIALLY_FIXED: exact all-time history is still O(executions).
+Bounded all-time verification needs a canonical lookup/replay contract before
+historical identities can safely be evicted.
+
+Files: order_book.py, engine.py, order_reservation.py, settlement_worker.py,
+tests/unit/test_order_book.py, scripts/benchmark_identity_memory.py and evidence
+identity-memory.json. **32 matching tests and 28 native recovery/replay/pipeline
+tests passed**. 10,000-event tracemalloc profile: independent database-row-like
+objects retained 4,912,244 bytes vs packed 1,789,956. Shared-reference synthetic
+events retained 1,738,978 vs packed 1,789,499 (slightly worse). These are synthetic
+map allocations, not total RSS or throughput; both scenarios and limitations are
+committed. Phase 11 corrective `5573bb1` confirmed pushed.
+
+## Phase 13 — P-04 sparse Fenwick coordinates
+
+PriceVolumeIndex preserves add/range_sum with exact integer arithmetic using a
+sparse positive-BIGINT Fenwick dictionary. New coordinates touch at most 63 nodes;
+there is no coordinate sort/rebuild or dense BIGINT allocation. Zero updates allocate
+nothing; ranges validate integer bounds. The original dense FenwickTree demonstration
+and its tests remain. Randomized dictionary-oracle tests cover dense/sparse,
+increasing/decreasing, duplicate, huge ticks, empty/invalid ranges and 3,000 prices.
+**9 Fenwick/identity tests passed**, plus repeatable benchmark regression passed.
+
+scripts/benchmark_price_volume.py loads the exact pre-change implementation from
+commit f53ab3b; tests/benchmarks/test_latency_isolation.py adds CPU/memory measurement.
+Evidence price-volume.json: 2,000 clustered insertions took 12,297.6ms before vs
+210.8ms after; retained allocations 195,064 vs 177,848 bytes. Sparse BIGINT sample:
+12,558.5ms vs 110.6ms, but 195,012 vs 4,711,776 retained bytes (5,652,932 peak).
+Timings include tracemalloc overhead and are not production throughput claims.
+For this demo's clustered prices resource use is acceptable; worst-case sparse
+memory is explicitly O(63M), substantially larger than coordinate compression.
+P-04: FIXED CPU/rebuild behavior upon push, with documented sparse-memory tradeoff.
+Do not interpret this as a general memory reduction or unbounded scale guarantee.
+Phase 12 `f53ab3b` confirmed pushed.
+
+## Phase 14 — N-03 scoped consistent depth snapshots
+
+OrderBook already maintained level total_quantity correctly; it now keeps scoped
+instrument/side level maps and cached sorted price keys. Insert/delete invalidates
+only that side's key cache; partial fills/cancels use current aggregate values.
+Snapshots remain independent copies under the owner/admission lock, never constructed
+concurrently with mutation. The fill estimator can read existing sorted keys without
+mutating them. FIFO/pricing/STP remain unchanged.
+
+New ReplaceableWorker coalesces only queued replaceable snapshots under a small
+thread lock. In-flight retry payloads stay immutable and finish before later state.
+CacheWorker retains the newest queued version per instrument; Redis epoch/version
+stale-write protection is unchanged. Distinct-instrument backlog remains bounded
+and fails closed rather than silently dropping required state.
+
+**31 matching/cache tests and 24 native polyglot/recovery tests passed**, including
+randomized ReferenceBook comparison, partial/cancel/recreate aggregates, independent
+snapshots, coalescing and native stale Redis writes. benchmark_depth_snapshots.py
+compares pre-change f019866: 1,000 snapshot samples, 200 instruments x 10 levels,
+median 57.750us -> 0.541us; one instrument x 2,000 levels 193.791us -> 65.667us.
+Evidence depth-snapshots.json measures snapshot CPU only, excluding reservation,
+network and settlement; copies still cost O(relevant levels). N-03: FIXED upon push.
+Files: order_book.py, dispatcher.py, cache_worker.py, unit tests, benchmark/evidence.
+Phase 13 `f019866` confirmed pushed.
+
+## Phase 15 — P-07 exact cancellation fee reuse
+
+cancel_order.sql computes actual_order_fee once, after existing locks and before
+financial updates, and reuses it for BUY refund/budget validation. Every rounding
+boundary and update order is unchanged. settle_execution.sql was reviewed: seller
+fees before/after INSERT and buyer cumulative refund are different values and must
+not be merged. New backward-compatible migration and owner-only down migration
+replace only cancellation; deployed/tested only in the isolated database, never
+via the full installer on live trading.
+
+Added 16 independent Fraction-based extreme-value regressions in
+integration/test_database_integrity.py: BUY/SELL, maker/taker, no/single/multiple
+partial fills, full fills, terminal cancellation and no second refund. Existing
+fee partition, VIP fractional, price improvement, concurrent financial replay,
+PnL reversal and overflow checks retained. **45 native SQL integrity/financial tests
+passed**. P-07: FIXED upon push. Exact files: cancellation procedure, up/down
+cancel_fee migrations, SQL integrity tests and ledger. Phase 14 `6bcfc1b` confirmed
+pushed. Production routine replacement still requires controlled deployment;
+no live accounting or routine was modified.
+
+## Phase 16 — N-04 bounded canonical graph aggregation (partial)
+
+GraphWorker now coalesces queued updates by counterparty pair using the same
+bounded replaceable-state worker, retaining in-flight retry payloads and a separate
+full-rebuild marker. Neo4jGraph.pair continues writing absolute canonical SQL totals,
+so repeated delivery, acknowledgement loss and out-of-order event IDs cannot
+increment totals twice. No new graph entities or persisted high-water contract.
+A covering (buy_trader_id,sell_trader_id) execution index supports the canonical
+pair query; migration is CONCURRENTLY and applied only in isolated tests.
+
+**25 native polyglot/recovery tests passed**, including six repeated deliveries
+coalesced into one queued job with exactly three canonical trades/300 notional,
+old-event replay, graph rebuild, real surveillance and outage retry regressions.
+benchmark_graph_aggregation.py uses a temporary 50,000-row execution clone:
+five before probes 1.579/0.297/0.289/0.292/0.288ms, after
+0.402/0.277/0.273/0.267/0.264ms. Plans and buffers are in graph-aggregation.json;
+warm-cache noise is substantial, no throughput claim.
+
+N-04: PARTIALLY_FIXED. Backlogged same-pair work is bounded/coalesced and indexed;
+canonical pair history is still aggregated for an isolated new delivery. Incremental
+all-time totals cannot safely assume no lower event ID will commit later under the
+existing SQL contract. Full elimination requires an approved canonical aggregation
+checkpoint/order contract or persisted state; no unsafe incremental addition adopted.
+Files: graph_worker.py, query_indexes.sql, counterparty_index migration, polyglot
+tests, benchmark/evidence and ledger. Phase 15 `5d0e8f0` confirmed pushed.
+
+## Phase 17 — A-03 opt-in bounded retention
+
+Extended housekeeping/config with validated retry delay and optional regime
+retention age/instrument scope. Default retention is zero (disabled); positive
+retention requires explicit unique valid instrument IDs and at least one day.
+Each pruning pass shares one configured batch budget across those instruments.
+Regimes.prune now validates scope/cutoff/size and materializes a bounded locked
+candidate CTE before deletion. A native test caught that a nonmaterialized IN/LIMIT
+plan could delete beyond the requested batch; the MATERIALIZED CTE corrected it.
+No financial execution history is deleted, and no live pruning/scheduler enabled.
+
+**88 maintenance/config unit tests and 18 native archive/polyglot tests passed**,
+including original archival atomicity, repeated retention, strict batch limits and
+vector search after old snapshots are removed. Only fixture-owned instrument data
+was pruned. Files: config.py, regimes.py, housekeeping_worker.py, .env.example,
+maintenance unit tests, polyglot tests and ledger.
+A-03: PARTIALLY_FIXED: hot-order maintenance/optional nonfinancial retention are
+bounded; financial history remains intentionally retained, and exact analytics
+identity state still grows. These cannot safely be deleted to create an apparent
+bound. Phase 16 `eea9760` confirmed pushed. Production maintenance policy and
+routine/index deployment remain operator actions.
+
+## Phase 18 — A-01/A-05 safe availability and SQL demonstrations
+
+main.py health preserves status/dependencies/trading_ready and adds explicit owner,
+replay completion/count, financial consumer, derived readiness, closing and
+reconciliation fields. Financial readiness requires a live settlement worker and
+held ownership, not merely PostgreSQL connectivity. Coordinator cancellation also
+verifies the owner before financial work. SERVICE_WORKERS remains exactly 1;
+controlled shutdown/replay/restart guidance makes the HA limitation explicit.
+
+New sql-demonstration-availability.md maps every named SQL asset to live authorized
+routes, internal tested demonstrations or deployment DDL. It clearly distinguishes
+SQL ten-minute VWAP from Python last-100-fill VWAP, and avoids adding unrelated
+public endpoints. Added both-role INTERSECT/EXCEPT/UNION assertions and readiness
+regressions; existing nested/correlated, HAVING, recursive rollup, FTS/vector tests
+remain. **48 native SQL integrity/pipeline tests passed**. Frontend compatibility
+checks accept the additive health fields while preserving its existing contract.
+A-05: FIXED documentation/test coverage upon push. A-01: PARTIALLY_FIXED; single-owner
+recovery/readiness and shared sessions improved, active-active HA unimplemented.
+Phase 17 `3347b7b` confirmed pushed. No live migration/deployment or worker expansion.
+
+### Acceptance-discovered cancellation reconciliation refinement
+
+A terminal owned-order lookup now returns committed CANCELLED/FILLED state even
+if an independent dispatcher failure remains closed. Active-state lookup still
+requires drain/ownership/healthy pipeline. Holding the Coordinator lock ensures the
+prior shielded cancellation thread has exited; canonical terminal status proves
+its transactional refund/outcome without resetting readiness. Added real cancellation
+COMMIT-ack-loss regression. This closes the case where committed cancellation was
+known in PostgreSQL but the reconciliation read unnecessarily remained blocked.
+Native pipeline verification: **16 passed**. Phase 18 `9111e26` confirmed pushed.
+
+## Acceptance before the approved identity extension
+
+Backend suites passed 198 unit, 54 concurrency, 106 integration and 4 benchmark
+checks; complete suite **362 passed** (one existing Starlette warning). Frontend
+**40 tests passed including native Redis sharing/TTL/outage**, typecheck/format
+passed, and the supported webpack production build generated every route. Default
+Turbopack remains EPERM-blocked. Real HTTP BFF acceptance: **8 passed**; human/bot
+BFF settlement/stop: **1 passed**. Chrome verified all five trader/six admin pages,
+real login/logout, shared sessions across two frontend processes, a real COMMIT
+response loss/reload/resolution with one order, cancellation remount reconciliation
+and one refund, simulator start/verified stop, and no uncaught browser errors.
+
+Early PostgreSQL-isolated API tests mistakenly used shared Redis database 0 for
+ACME/BETA/GAMMA startup snapshots. This touched live cache metadata. Read-only
+verification found live orders=941, active=0, executions=547, no volume mismatches,
+empty cached books and healthy trading readiness. No financial rows, live schema,
+credentials, owner or routines were changed. Remaining HTTP/Chrome acceptance was
+rerun successfully with verified-empty dedicated Redis database 15, without FLUSH.
+Generated trader UUIDs do not overlap original Neo4j trader scopes. Native browser
+and benchmark evidence is retained separately; secret fixture metadata is removed
+at shutdown. The diagnostic's pg_locks count is now database-scoped.
+
+## Phase 7 approved extension — I-01/I-02 trusted database identities
+
+User explicitly approved separate database credentials and a trusted trader-read
+boundary. Added separate financial/auth/compliance logins and per-trader UUID-named
+NOINHERIT logins. Real session_user determines forced RLS on margin_account, order,
+order_history, position and request identity. Trader API reads use those dedicated
+connections after server-side JWT/actor verification. Financial operations remain
+on their existing authoritative procedures; financial service cannot read password
+hashes or assume compliance role. Auth credential cannot read financial tables;
+compliance cannot directly change financial rows. GUC impersonation is ineffective.
+
+New secure mode is the default; absent credentials fail closed. Legacy compatibility
+requires an explicit mode and makes no tenant-isolation claim. The old shared-role
+installer refuses implicit/mixed isolated deployment. Private mode-0600 manifests
+are atomically written, database-bound, never logged, and never exposed to browsers.
+Provisioning preserves existing passwords and only creates missing approved roles.
+No relational field/table beyond the previously approved request table was added.
+
+The original cluster uses trust authentication, so policy filtering there alone
+could not prove login authentication. A separate temporary UTF8 PostgreSQL cluster
+on 127.0.0.1:55432 was created with SCRAM. Provisioning verifies wrong passwords
+are rejected for every login; startup verifies service password rejection and the
+exact financial-policy/role boundary. Network/unknown errors fail closed. The
+original cluster's authentication/configuration was not changed. The first fresh
+cluster's SQL_ASCII default was corrected by creating a separate UTF8 test database;
+no existing financial database was reset.
+
+Focused verification: **26 native authorization/pipeline tests**, **12 authorization
+checks including real SCRAM rejection and misbound financial-role startup refusal**,
+and **91 identity/config unit tests passed**. RLS rollback was executed inside a
+rolled-back transaction, restoring all 18 policies; schema verification confirms
+13 core tables plus approved identity, all 19 FKs, unchanged financial constraints.
+Full secure-mode suites and browser acceptance follow. I-01/I-02 are FIXED in the
+approved isolated mode upon successful push; production rollout remains explicitly
+undeployed. Financial/compliance service credentials remain trusted internal
+capabilities; no protection from a compromised server holding all secrets is claimed.
+
+Affected files: config.py, postgres.py, new stores/trader_identity.py, auth/orders
+routes, simulator native demo fixture, setup_backend.sh, new setup_database_identity.py
+and run_isolated.py, verify_schema.py, trader_read_isolation up/down migrations,
+.env.example, authorization/pipeline/live-fixture/config/identity tests,
+database-identity-deployment.md and recovery-persistence-proposals.md.
+The matching journal/outbox remains unapproved and unimplemented.
+
+## Final resolution matrix
+
+Classifications describe verified source/isolated behavior, not a live deployment.
+Every implementation commit below was pushed to the required branch. Tests and
+API/database implications are detailed in the corresponding phase sections.
+Implementation paths without a prefix are under backend/.
+
+| ID | Severity | Classification | Root cause, change and remaining limitation | Affected files | Verification | Pushed commit(s) |
+| --- | --- | --- | --- | --- | --- | --- |
+| P-02 | High | FIXED | Production owner uses validated monotonic high-water ID; standalone arbitrary-ID history remains intentional. | matching/order_book.py, matching/engine.py, risk/order_reservation.py | Phase 12 duplicate/fill/cancel tests; memory profile | f53ab3b |
+| P-03 | High | PARTIALLY_FIXED | Exact 84-byte payloads reduce independently loaded object retention; all-time identity map remains O(history), no unsafe eviction. | matching/engine.py, workers/settlement_worker.py | Phase 12 replay/conflict/10k-event profile | f53ab3b |
+| P-04 | Medium–High | FIXED | Sparse Fenwick avoids full coordinate rebuild; widely sparse BIGINT memory tradeoff measured. | matching/fenwick.py | Phase 13 randomized oracle + CPU/memory benchmark | f019866 |
+| P-07 | Medium–High | FIXED | Cancellation aggregated the identical BUY fee twice; reuse exact locked transaction value. | db/procedures/cancel_order.sql, db/migrations/20261116_cancel_fee*.sql | Phase 15 45 exact financial tests | 5d0e8f0 |
+| I-01 | Critical | FIXED | Shared financial/auth/admin privileges replaced by explicit separate service credentials and narrow grants; financial remains trusted cross-account service. | stores/postgres.py, config.py, scripts/setup_database_identity.py, trader_read_isolation migrations | Approved Phase 7 extension, SCRAM/grant/role denial proofs | 66d5872, 6db0bd1 |
+| I-02 | Critical | FIXED | Actual authenticated per-trader session_user binds forced RLS; forged GUC/role/session identity denied. | stores/trader_identity.py, stores/postgres.py, api/routes/orders.py, trader_read_isolation migrations | 12 native authorization checks, wrong-password proof, API scope tests | 6db0bd1 |
+| I-03 | High | FIXED | Eager fetchall replaced by bounded named-cursor replay in one read-only snapshot. | stores/postgres.py, api/main.py | Phase 9 ordered snapshot/concurrent-write/restart tests | 19374b3 |
+| I-04 | High | FIXED | ERROR recovery now verifies prior task, canonical terminal bot orders, owner and healthy pipeline before STOPPED. | simulator/live_supervisor.py, api/routes/simulator.py, frontend simulator controls | 7 native simulator + lifecycle unit tests | 33da60f, 5573bb1 |
+| I-05 | High | FIXED | Manual-only archive has bounded SKIP LOCKED routine and opt-in scheduler; deployment still required. | workers/housekeeping_worker.py, stores/postgres.py, db/queries/order_archive.sql | Phase 10 atomicity/locked-row/idempotency/rollback tests | 5583c61 |
+| I-06 | Critical | PARTIALLY_FIXED | Exact financial reconciliation and retained publication progress recover in-process; crash-durable delivery/journal unapproved. | workers/settlement_worker.py, workers/regime_worker.py, events/dispatcher.py | Phases 8/19 financial and outage/recovery tests | 79c75d1 |
+| F-01 | High | FIXED | Process-local session Map replaced by encrypted shared expiring Redis storage, no local fallback. | frontend/src/lib/server/{session-core,redis-session-store}.ts, API session/BFF routes | 40 frontend tests; native TTL/outage and two-process Chrome sharing | a2797f1 |
+| F-02 | Critical | FIXED | Saved scoped intent/key/payload and authoritative lookup or explicit original-key replay recover verified outcomes. Legacy unbound pre-migration intents stay operator-blocked. | frontend/src/lib/api/{submission,client,operations,schema}.ts, order-form.tsx, api/routes/orders.py | Real COMMIT response loss, reload, one-order Chrome/native proof | c7b2948 |
+| F-03 | High | FIXED | Cancellation uncertainty persists across remount; owned serialized active/terminal lookup verifies outcome without double refund. | frontend/src/lib/api/submission.ts, cancel-dialog.tsx, api/routes/orders.py | Native cancelled COMMIT-ack loss; Chrome remount/one refund | dd88cef, e0c97ad |
+| F-04 | High | FIXED | Trusted central origin requires production HTTPS; explicit loopback-only test exception, Strict HTTP-only cookies preserved. | frontend/src/lib/server/{app-origin,session,session-core}.ts, API routes | Origin/CSRF/cookie configuration tests | 5db100c |
+| A-01 | Medium | PARTIALLY_FIXED | Shared sessions, owner/readiness/replay/shutdown improved; matching still one owner, active-active HA requires redesign. | config.py, api/main.py, stores/postgres.py, deployment docs | Owner conflict, readiness, replay and two-frontend acceptance | a2797f1, 19374b3, 9111e26 |
+| A-02 | High | PARTIALLY_FIXED | Synthetic traffic pauses/backoffs at one global rate; it still shares Coordinator/CPU/database resources. | simulator/live_supervisor.py | Pressure/lifecycle/native human-order preservation tests | 33da60f, 5573bb1 |
+| A-03 | High | PARTIALLY_FIXED | Hot orders can archive boundedly; explicit scoped regime retention is optional. Financial execution history and exact identity analytics are retained. | workers/housekeeping_worker.py, stores/regimes.py, config.py, order_archive.sql | Bounded pruning/vector/archival/maintenance recovery tests | 5583c61, 3347b7b |
+| A-04 | Critical | PARTIALLY_FIXED | Fail-closed remains; verified retained committed publication may resume, unknown/crashed matching progress cannot be reset. | workers/settlement_worker.py, events/dispatcher.py, recovery proposal | Exact canonical replay/no second financial transfer tests | 79c75d1 |
+| A-05 | Medium | FIXED | Existing SQL demonstrations explicitly tested/documented; no unrelated public endpoints added. | stores/postgres.py QUERY_FILES, db/queries, docs/architecture/sql-demonstration-availability.md | HAVING/windows/set/nested/correlated/recursive/FTS/vector tests | 9111e26 |
+| N-01 | Critical | FIXED | Durable trader/key uniqueness and canonical payload binding commit atomically with keyed reservation; no lifetime key cap/TTL. | risk/request_identity.py, stores/postgres.py, risk/order_reservation.py, request_identity migration | Concurrent/restart/archive/conflict/rollback/lost-ack tests | abcd4bf |
+| N-02 | Critical | FIXED | Capacity counts compatible same-instrument opposite maker FIFOs rather than every resting order. | matching/order_book.py, risk/order_reservation.py | 4k unrelated/noncrossing, STP, exact capacity and escrow tests | 4ceb575 |
+| N-03 | High | FIXED | Scoped level maps, sorted-key cache and ordered replaceable snapshots reduce serialized work. | matching/order_book.py, events/dispatcher.py, workers/cache_worker.py | 31 matching/cache + 24 native tests; snapshot CPU measurements | 6bcfc1b |
+| N-04 | Medium–High | PARTIALLY_FIXED | Same-pair backlog coalesces and canonical aggregation is indexed; isolated deliveries still scan pair history. Unsafe incremental watermark assumption rejected. | workers/graph_worker.py, db/queries/query_indexes.sql, counterparty_index migration | 25 native graph/recovery tests; 50k-row query plans | eea9760 |
+| N-05 | Critical | PARTIALLY_FIXED | Committed financial outcome separated from downstream progress; original rejected regime input retained, no crash-lossless claim. | workers/settlement_worker.py, workers/regime_worker.py | Outage/overflow/known callback recovery, exact financial counts | 79c75d1 |
+| N-06 | High | BLOCKED | Active-order cold restart cannot reconstruct FIFO and accepted/matched/in-flight progress safely without approved durable journal/outbox. | stores/postgres.py acquire_owner, scripts/reconcile_restart.py, recovery-persistence-proposals.md | Unsafe active-order/second-owner startup remains refused | 19374b3, 6db0bd1 (proposal only) |
+
+Corrected findings: incoming-residual head-STP is INTENTIONAL; existing ReferenceBook differential coverage is present (NOT_A_BUG); unused price_level.py is not a demonstrated runtime defect (NOT_A_BUG).
+
+## Final acceptance and remaining operator work
+
+- Final complete regression in the separate UTF8/SCRAM cluster with forced trader
+  RLS: **371 passed**, one existing Starlette/httpx deprecation warning.
+- Final frontend: **40 passed**, including real Redis TTL/sharing/connection-refusal;
+  typecheck and format passed. Supported webpack production build passed. Default
+  Turbopack remains environment-blocked by EPERM and is not described as passing.
+- After the approved security extension, real HTTP BFF acceptance **8 passed** and
+  Chrome repeated every trader/admin page, login/logout, two-frontend shared session,
+  post-COMMIT submission loss/reload/one-order reconciliation, cancellation remount/
+  one-refund reconciliation, and simulator UI start/verified stop, without uncaught
+  browser errors. Earlier BFF human/bot settlement/stop also passed.
+- Schema/RLS rollback verified transactionally. No core table column, constraint,
+  financial pricing/FIFO/STP/fee/PnL rule or matching-worker count was removed.
+- Read-only final original-exchange snapshot: 941 orders, zero active, 547 executions,
+  zero execution-volume mismatches, zero matching-owner locks. The original API
+  was no longer listening on port 8000 at that check. It was healthy at an earlier
+  check; this work did not restart/deploy it. No cause for its later shutdown is
+  inferred. New code/config/migrations are NOT deployed to that database.
+- Temporary frontend/API fixtures are stopped after acceptance; scoped synthetic
+  fixture data/credential files are cleaned. The private temporary SCRAM cluster
+  is stopped after final measurements; its directory/manifests remain for inspection.
+  The earlier schema-only-copy test database is separate from the original exchange.
+- User edits in frontend/src/components/auth/auth-form.tsx and generated
+  frontend/next-env.d.ts are preserved and excluded from final remediation commits.
+
+Resolution: **16 FIXED, 8 PARTIALLY_FIXED, 1 BLOCKED**. The final matrix above accounts
+for every requested ID. Partial mitigations are not complete resolutions.
+
+Remaining checklist:
+1. Approve/review the durable matching journal/outbox design before adding any
+   further persisted field/table. Prove original capture visibility, atomic COMMIT,
+   accepted-but-unmatched/FIFO recovery and process-kill replay. This gates N-06 and
+   complete I-06/N-05/A-04 recovery; no memory-only durability claim is made.
+2. Complete P-03 all-time memory bounding only with exact canonical historical
+   verification/checkpoint semantics; never evict blindly or double-count analytics.
+3. Complete N-04 isolated-delivery scan elimination only with a proven canonical
+   aggregation checkpoint/order contract. Current coalescing/index mitigation and
+   its measured limits remain explicit.
+4. A-01 active-active matching and A-02 physical resource isolation require approved
+   architecture work. Single-owner recovery, throttling and shared sessions are
+   implemented, not described as distributed matching HA.
+5. A-03 financial history remains retained deliberately. Enable bounded archival
+   and optional scoped regime pruning only after choosing and deploying the policy.
+6. Operator deployment: review additive migrations, provision separate authenticated
+   DB identities/private manifest, configure shared encrypted sessions and HTTPS
+   APP_ORIGIN, reconcile/drain before starting ONE owner, then verify native health.
+   Do not run the full installer on live trading or drop durable request identities.
+7. Legacy pre-migration unbound uncertain intents require operator reconciliation;
+   no unsafe key deletion or fabricated acceptance is offered.
+
+Main phase commits (all pushed): baseline 182ae97; capacity 4ceb575; durable keys
+abcd4bf; submission c7b2948; cancellation dd88cef + e0c97ad; shared sessions a2797f1;
+origin 5db100c; first grant hardening 66d5872; recovery 79c75d1; streaming 19374b3;
+archival 5583c61; simulator 33da60f + corrective 5573bb1; identity memory f53ab3b;
+Fenwick f019866; snapshots 6bcfc1b; fee reuse 5d0e8f0; graph eea9760; retention
+3347b7b; readiness/SQL coverage 9111e26; approved DB identity boundary 6db0bd1.
+Final acceptance/test-ledger commit SHA and remote equality are recorded in the
+subsequent ledger-only pointer update. No merge, force-push or history rewrite.
+
+Final benchmark suite under SCRAM/RLS: **4 passed**; current measured admission/core,
+settlement and delayed-graph distributions are in final-latency-isolation.json.
+These are bounded native synthetic workloads, not a sustained production-capacity
+certification. Large-startup replay throughput, broad contention soak and every
+production failure/deployment transition remain NOT_VERIFIED; no speedup or HA
+claim is inferred for those scenarios. Default Turbopack remains NOT_VERIFIED due
+the recorded host permission error. The full financial regression/Chrome checks
+above passed; those limitations are not hidden by the completion of source fixes.
+
+Final acceptance commit: `4d449a6f3e1660336d506ab8a4ae6ad8ca24cb80`, confirmed
+pushed after fetch; local HEAD and origin/codex/dbms-reliability-hardening were
+identical, ahead/behind `0 / 0`. Final merge-base with origin/main:
+`29a0185644940c0557e91655287ce08a193964ee`. Both main...HEAD diff hygiene and
+working-tree diff hygiene passed; merge-base comparison includes older integration
+work already present at starting reference d29ae00, not only this remediation.
+Only the unrelated auth-form.tsx and generated next-env.d.ts workspace edits remain.
+This ledger-only pointer update is committed/pushed separately; it changes no code.

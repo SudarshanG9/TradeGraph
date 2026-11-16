@@ -1,0 +1,83 @@
+{
+  "gated_graph": {
+    "baseline_core_us": {
+      "samples": 2000,
+      "median": 2.167,
+      "p95": 2.25,
+      "p99": 2.334
+    },
+    "gated_core_us": {
+      "samples": 2000,
+      "median": 2.167,
+      "p95": 2.291,
+      "p99": 2.458
+    },
+    "downstream_completion_ms": 23.511708,
+    "core_completed_while_graph_gated": true,
+    "interpretation": "Structural independence proven; distributions may vary due to shared CPU scheduling."
+  },
+  "native_api": {
+    "baseline": {
+      "core_us": {
+        "samples": 40,
+        "median": 15.5415,
+        "p95": 20.333,
+        "p99": 31.083
+      },
+      "settlement_transaction_ms": {
+        "samples": 20,
+        "median": 10.561042,
+        "p95": 13.275083,
+        "p99": 14.082583
+      },
+      "api_pair_to_settled_ms": {
+        "samples": 20,
+        "median": 51.189729,
+        "p95": 67.14825,
+        "p99": 69.002791
+      },
+      "shutdown_derived_drain_ms": 23.244166,
+      "injected_graph_delay_ms": 0
+    },
+    "slow_graph": {
+      "core_us": {
+        "samples": 40,
+        "median": 14.792,
+        "p95": 17.167,
+        "p99": 31.916
+      },
+      "settlement_transaction_ms": {
+        "samples": 20,
+        "median": 10.2311875,
+        "p95": 11.357125,
+        "p99": 11.75975
+      },
+      "api_pair_to_settled_ms": {
+        "samples": 20,
+        "median": 47.2329795,
+        "p95": 57.589291,
+        "p99": 62.236583
+      },
+      "shutdown_derived_drain_ms": 125.143583,
+      "injected_graph_delay_ms": 50
+    },
+    "transport": "in-process ASGI HTTP plus real native services; excludes external TCP/client latency"
+  },
+  "fenwick_new_price": {
+    "before": {
+      "total_ms": 3186.48558,
+      "median_us": 3426.334,
+      "retained_bytes": 100064,
+      "peak_bytes": 116560,
+      "coordinates": 1024
+    },
+    "after": {
+      "total_ms": 132.309923,
+      "median_us": 132.458,
+      "retained_bytes": 90640,
+      "peak_bytes": 90808,
+      "coordinates": 1024
+    },
+    "note": "Measured allocations with tracemalloc; no fixed latency assertion. Sparse BIGINT memory tradeoff is documented separately."
+  }
+}

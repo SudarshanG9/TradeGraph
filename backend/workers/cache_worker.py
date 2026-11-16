@@ -1,11 +1,12 @@
-from backend.events.dispatcher import DerivedWorker
+from backend.events.dispatcher import ReplaceableWorker
 
 
-class CacheWorker(DerivedWorker):
+class CacheWorker(ReplaceableWorker):
     def __init__(self,database,store,dispatcher):
         self.database,self.store=database,store
         self.symbols={}
-        super().__init__('redis',self.handle,dispatcher)
+        super().__init__('redis',self.handle,dispatcher,key=lambda s:s['instrument_id'],
+            newer=lambda new,old:new['epoch']!=old['epoch'] or new['version']>old['version'])
 
     def handle(self,snapshot):
         instrument=snapshot['instrument_id']

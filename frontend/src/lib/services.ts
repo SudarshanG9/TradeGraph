@@ -18,7 +18,12 @@ export interface Services {
   orders: {
     list(query?: PageQuery, signal?: AbortSignal): Promise<C.OwnOrders>;
     submit(order: C.NewOrder): Promise<C.AcceptedOrder>;
+    pending(): Promise<boolean>;
+    reconcile(): Promise<C.AcceptedOrder | null>;
+    retry(): Promise<C.AcceptedOrder>;
     cancel(id: C.Int): Promise<C.CancelledOrder>;
+    cancelPending(scope: string, id: C.Int): Promise<boolean>;
+    reconcileCancel(scope: string, id: C.Int): Promise<C.OrderSummary>;
   };
   market: {
     book(symbol: string, signal?: AbortSignal): Promise<C.Book>;
@@ -47,6 +52,7 @@ export interface Services {
     status(signal?: AbortSignal): Promise<C.SimulationStatus>;
     start(config: C.SimulationStart): Promise<C.SimulationStatus>;
     stop(): Promise<C.SimulationStatus>;
+    recover(): Promise<C.SimulationStatus>;
   };
 }
 const wait = () => new Promise<void>((resolve) => setTimeout(resolve, 220));
@@ -133,6 +139,18 @@ export function createMockServices(
       },
     },
     orders: {
+      cancelPending: async () => false,
+      reconcileCancel: async (_scope, id) => {
+        await guard('TRADER');
+        const row = localOrders.find((o) => o.id === id);
+        if (!row) throw new Error('ORDER_NOT_FOUND');
+        return copy(row);
+      },
+      pending: async () => false,
+      reconcile: async () => null,
+      retry: async () => {
+        throw new Error('NO_PENDING_SUBMISSION');
+      },
       list: async (q) => {
         await guard('TRADER');
         return page(
@@ -330,6 +348,13 @@ export function createMockServices(
       },
     },
     simulator: {
+      recover: async () => {
+        await guard('COMPLIANCE_ADMIN');
+        if (sim.state !== 'ERROR' || sim.active_bot_orders !== '0')
+          throw new Error('RECONCILIATION_REQUIRED');
+        sim = { ...sim, state: 'STOPPED', last_error: null };
+        return copy(sim);
+      },
       status: async () => {
         await guard('COMPLIANCE_ADMIN');
         return copy(sim);

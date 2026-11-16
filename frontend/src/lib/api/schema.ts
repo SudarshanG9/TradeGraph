@@ -129,6 +129,19 @@ export const schemas = {
       }),
     ),
   }),
+  order: object({
+    id: positive,
+    trader_id: uuid,
+    instrument_id: id,
+    side: oneOf('BUY', 'SELL'),
+    price_ticks: price,
+    quantity: positive,
+    filled_quantity: exact(),
+    status: oneOf('OPEN', 'PARTIAL', 'FILLED', 'CANCELLED'),
+    created_at: timestamp,
+    updated_at: timestamp,
+    archived: bool,
+  }),
   orders: object({
     items: array(
       object({
@@ -148,6 +161,13 @@ export const schemas = {
     next_before_id: cursor,
   }),
   submit: object({ order_id: positive, status: oneOf('OPEN'), accepted_at: timestamp }),
+  requestOutcome: object({
+    trader_id: uuid,
+    status: oneOf('ACCEPTED', 'UNRESOLVED'),
+    accepted_order: nullable(
+      object({ order_id: positive, status: oneOf('OPEN'), accepted_at: timestamp }),
+    ),
+  }),
   cancel: object({ order_id: positive, status: oneOf('CANCELLED'), cancelled_quantity: exact() }),
   book: object({
     symbol: str,

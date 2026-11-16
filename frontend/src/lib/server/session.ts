@@ -1,4 +1,5 @@
 import 'server-only';
+import { applicationOrigin } from './app-origin';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { AccountRole } from '../contracts';
@@ -17,7 +18,7 @@ export async function requirePageRole(role: AccountRole) {
 export function cookieOptions() {
   return {
     httpOnly: true,
-    secure: new URL(process.env.APP_ORIGIN ?? 'http://127.0.0.1:3000').protocol === 'https:',
+    secure: new URL(applicationOrigin()).protocol === 'https:',
     sameSite: 'strict' as const,
     path: '/',
   };

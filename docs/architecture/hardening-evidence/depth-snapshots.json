@@ -1,0 +1,26 @@
+{
+  "many_instruments": {
+    "before": {
+      "median_us": 57.75,
+      "p95_us": 62.542,
+      "samples": 1000
+    },
+    "after": {
+      "median_us": 0.541,
+      "p95_us": 0.583,
+      "samples": 1000
+    }
+  },
+  "many_levels": {
+    "before": {
+      "median_us": 193.791,
+      "p95_us": 216.292,
+      "samples": 1000
+    },
+    "after": {
+      "median_us": 65.667,
+      "p95_us": 67.916,
+      "samples": 1000
+    }
+  }
+}

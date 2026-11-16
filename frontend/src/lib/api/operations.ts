@@ -62,6 +62,20 @@ export function operation(
       kind = 'orders';
       requiredRole = 'TRADER';
       allowed = ['limit', 'before_id'];
+    } else if (
+      method === 'GET' &&
+      segments.length === 3 &&
+      segments[0] === 'orders' &&
+      segments[1] === 'requests'
+    ) {
+      if (['.', '..'].includes(segments[2]) || !/^[A-Za-z0-9._-]{1,128}$/.test(segments[2]))
+        invalid();
+      kind = 'requestOutcome';
+      requiredRole = 'TRADER';
+    } else if (method === 'GET' && segments.length === 2 && segments[0] === 'orders') {
+      integer(segments[1]);
+      kind = 'order';
+      requiredRole = 'TRADER';
     } else if (method === 'POST' && name === 'orders') {
       const v = parseWire(raw ?? '');
       exactKeys(v, ['instrument_id', 'side', 'price_ticks', 'quantity']);
@@ -124,7 +138,11 @@ export function operation(
       csrf = true;
     } else if (method === 'GET' && name === 'admin/desks/rollup') kind = 'desks';
     else if (name === 'admin/simulator/status' && method === 'GET') kind = 'simulator';
-    else if (name === 'admin/simulator/stop' && method === 'POST') kind = 'simulator';
+    else if (
+      ['admin/simulator/stop', 'admin/simulator/recover'].includes(name) &&
+      method === 'POST'
+    )
+      kind = 'simulator';
     else if (name === 'admin/simulator/start' && method === 'POST') {
       const v = parseWire(raw ?? '');
       exactKeys(v, [

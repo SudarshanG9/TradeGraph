@@ -106,6 +106,7 @@ def test_event_missing_fields_and_non_object_json_rejected():
 def configured_env():
     # Test-only values, never live credentials.
     return {
+        "DATABASE_IDENTITY_MODE": "legacy",  # explicit pre-migration compatibility fixture
         "POSTGRES_RUNTIME_PASSWORD": "unit-runtime-password",
         "NEO4J_PASSWORD": "unit-graph-password",
         "JWT_SECRET": "unit-jwt-signing-key-with-32-or-more-characters",
@@ -164,7 +165,7 @@ def test_process_environment_overrides_file_without_global_mutation(tmp_path, mo
     values = configured_env()
     path.write_text("\n".join(f"{k}={v}" for k, v in values.items()) +
                     "\nPOSTGRES_PORT=5433\nPOSTGRES_HOST=/native/socket\n")
-    for key in (*values, "POSTGRES_RUNTIME_USER", "SERVICE_WORKERS", "POSTGRES_USER",
+    for key in (*values, "POSTGRES_HOST", "POSTGRES_RUNTIME_USER", "SERVICE_WORKERS", "POSTGRES_USER",
                 "POSTGRES_ADMIN_USER", "NEO4J_URI", "NEO4J_USER", "JWT_ALGORITHM"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("POSTGRES_PORT", "5434")
@@ -259,3 +260,21 @@ def test_partitioned_fee_budget_price_improvement_and_mixed_roles():
     # Exact calculation retains a fractional fee far beyond float precision.
     value = 500_000_000_000_000_001
     assert ceil_fraction(Fraction(value * 2, 10000)) == 100_000_000_000_001
+
+
+def test_isolated_database_credentials_require_distinct_services_and_private_trader_provider():
+    values=configured_env()|{'DATABASE_IDENTITY_MODE':'isolated','POSTGRES_AUTH_USER':'test_auth',
+        'POSTGRES_AUTH_PASSWORD':'test-auth-secret-with-length','POSTGRES_COMPLIANCE_USER':'test_compliance',
+        'POSTGRES_COMPLIANCE_PASSWORD':'test-compliance-secret-with-length','TRADER_DATABASE_CREDENTIALS_FILE':'/private/manifest.json'}
+    settings=Settings.from_env(values)
+    assert settings.database_identity_mode=='isolated'
+    assert values['POSTGRES_AUTH_PASSWORD'] not in repr(settings)
+    for extra in ({'POSTGRES_AUTH_USER':'tradegraph_runtime'},{'TRADER_DATABASE_CREDENTIALS_FILE':''},
+                  {'POSTGRES_COMPLIANCE_PASSWORD':''},{'DATABASE_IDENTITY_MODE':'unknown'}):
+        with pytest.raises(ValueError):Settings.from_env(values|extra)
+
+
+def test_database_identity_default_is_secure_without_implicit_legacy_fallback():
+    values=configured_env();values.pop('DATABASE_IDENTITY_MODE')
+    with pytest.raises(ValueError,match='Isolated identity'):
+        Settings.from_env(values)
