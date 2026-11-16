@@ -89,7 +89,7 @@ class Database:
         from backend.stores.trader_identity import credentials,trader_role
         user,password=credentials(self.settings.trader_credentials_file,trader_id)
         with self._connect_as(user,password) as conn:
-            conn.execute('SET TRANSACTION READ ONLY')
+            conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
             conn.execute('SET LOCAL ROLE trader_role')
             actor=conn.execute("SELECT session_user AS login,current_user AS role,rolsuper,rolcreatedb,rolcreaterole,rolbypassrls,rolinherit,pg_has_role(session_user,%s,'MEMBER') AS financial_member,pg_has_role(session_user,'compliance_admin_role','MEMBER') AS admin_member FROM pg_roles WHERE rolname=session_user",(self.settings.postgres_runtime_user,)).fetchone()
             if (actor['login']!=trader_role(trader_id) or actor['role']!='trader_role' or
@@ -102,6 +102,16 @@ class Database:
             return self.query(sql,params)
         with self.trader_context(trader_id) as conn:
             return conn.execute(sql,params).fetchall()
+
+    def account_snapshot(self,trader_id):
+        context=self.trader_context(trader_id) if self.settings.database_identity_mode=='isolated' else self.connect()
+        with context as conn:
+            if self.settings.database_identity_mode!='isolated':
+                conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            row=conn.execute('SELECT trader_id,cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s',(trader_id,)).fetchone()
+            if row is None:return None
+            positions=conn.execute("SELECT instrument_id,net_quantity,realized_pnl,'gross' AS pnl_basis FROM position WHERE trader_id=%s",(trader_id,)).fetchall()
+            return row | {'positions':positions}
 
     def trader_request_identity(self,trader_id,key):
         rows=self.trader_query(trader_id,'SELECT * FROM public.order_request_identity WHERE trader_id=%s AND request_key=%s',(trader_id,key))

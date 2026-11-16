@@ -37,6 +37,7 @@ export async function backendRequest(
       cache: 'no-store',
       signal,
       headers: {
+        'X-Request-ID': op.requestId ?? crypto.randomUUID(),
         Accept: 'application/json',
         ...(op.body ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -46,7 +47,7 @@ export async function backendRequest(
     text = await response.text();
   } catch {
     throw new ApiError(
-      timeout.aborted ? 504 : 502,
+      timeout.aborted ? 504 : 503,
       timeout.aborted ? 'BACKEND_TIMEOUT' : 'BACKEND_UNAVAILABLE',
       op.method === 'POST' && op.kind !== 'login',
     );

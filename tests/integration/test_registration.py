@@ -101,3 +101,12 @@ def test_provisioned_users_are_isolated_and_repeated_provision_is_safe(registrat
         assert {str(t):before[str(t)] for t in tids}=={str(t):after[str(t)] for t in tids}
     finally:
         provision_test_traders(tids,remove=True)
+
+
+def test_public_auth_role_has_no_role_creation_or_financial_write_privileges():
+    from psycopg.errors import InsufficientPrivilege
+    settings=Settings.from_env();database=Database(settings)
+    with database._connect_as(settings.postgres_auth_user,settings.postgres_auth_password) as conn:
+        row=conn.execute('SELECT rolcreaterole,rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user').fetchone()
+        assert not any(row.values())
+        with pytest.raises(InsufficientPrivilege):conn.execute('DELETE FROM margin_account WHERE false')

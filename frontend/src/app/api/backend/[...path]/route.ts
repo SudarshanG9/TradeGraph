@@ -15,6 +15,10 @@ import { cookieOptions } from '@/lib/server/session';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 async function handle(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  const correlation = crypto.randomUUID();
+  const started = performance.now();
+  let endpoint = 'unmatched';
+  let authenticatedOperation = false;
   const cookie = request.cookies.get(SESSION_COOKIE)?.value;
   try {
     const { path } = await context.params;
@@ -34,6 +38,9 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       raw,
       request.headers.get('idempotency-key') ?? undefined,
     );
+    endpoint = op.kind;
+    authenticatedOperation = op.authenticated;
+    op.requestId = correlation;
     if (op.csrf) checkCsrf(request);
     const session = op.authenticated ? authorize(await getSession(cookie), op.role) : null;
     const result = await requestBackend(op, session?.token, request.signal);
@@ -41,10 +48,10 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       const login = schemas.login(result);
       const selected = request.headers.get('x-tradegraph-role');
       if (selected && selected !== login.role) throw new ApiError(403, 'ROLE_MISMATCH');
-      await deleteSession(cookie);
       const created = await createSession(login);
+      await deleteSession(cookie);
       const response = NextResponse.json(created.session, {
-        headers: { 'Cache-Control': 'no-store' },
+        headers: { 'Cache-Control': 'no-store', 'X-Request-ID': correlation },
       });
       response.cookies.set(SESSION_COOKIE, created.id, {
         ...cookieOptions(),
@@ -54,15 +61,27 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     }
     return NextResponse.json(result, {
       status: ['submit', 'register'].includes(op.kind) ? 201 : 200,
-      headers: { 'Cache-Control': 'no-store' },
+      headers: { 'Cache-Control': 'no-store', 'X-Request-ID': correlation },
     });
   } catch (e) {
     const error = e instanceof ApiError ? e : new ApiError(500, 'INTERNAL_ERROR');
+    console.info(
+      JSON.stringify({
+        request_id: correlation,
+        endpoint,
+        status: error.status,
+        duration_ms: Math.round(performance.now() - started),
+        dependency: [502, 503, 504].includes(error.status) ? 'unavailable' : 'none',
+      }),
+    );
     const response = NextResponse.json(
       { error: { code: error.code, uncertain: error.uncertain } },
-      { status: error.status, headers: { 'Cache-Control': 'no-store' } },
+      {
+        status: error.status,
+        headers: { 'Cache-Control': 'no-store', 'X-Request-ID': correlation },
+      },
     );
-    if (error.status === 401) {
+    if (error.status === 401 && authenticatedOperation) {
       try {
         await deleteSession(cookie);
       } catch {

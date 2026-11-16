@@ -47,7 +47,17 @@ export function LiveConnection({
           (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + path,
           protocols,
         ),
-      state: (value) => state.current(value),
+      state: (value) => {
+        state.current(value);
+        console.info(
+          JSON.stringify({
+            component: 'live',
+            state: value,
+            reconnects: live.diagnostics.reconnects,
+            gaps: live.diagnostics.gaps,
+          }),
+        );
+      },
       event: (event) => {
         void synchronize(event);
       },

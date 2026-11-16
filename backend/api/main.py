@@ -22,6 +22,7 @@ from backend.workers.regime_worker import RegimeWorker
 from backend.events.trade_event import TradeEvent
 from backend.events.live_bus import LiveBus
 from backend.api import websocket
+from backend.api.diagnostics import Diagnostics
 from backend.auth.websocket_ticket import TicketStore
 from backend.workers.housekeeping_worker import HousekeepingWorker
 
@@ -117,6 +118,7 @@ def create_app(settings=None, *, settlement=True):
             app.state.service.close()
 
     application = FastAPI(title='TradeGraph', version='1.0', lifespan=lifespan)
+    application.add_middleware(Diagnostics)
     application.include_router(websocket.router)
     application.include_router(auth.router)
     application.include_router(orders.router)
@@ -127,7 +129,7 @@ def create_app(settings=None, *, settlement=True):
 
     @application.exception_handler(StarletteHTTPException)
     async def http_error(request, exc):
-        return JSONResponse({'error':{'code':str(exc.detail),'message':str(exc.detail)}}, status_code=exc.status_code)
+        return JSONResponse({'error':{'code':str(exc.detail),'message':str(exc.detail)}}, status_code=exc.status_code,headers=exc.headers)
 
     @application.exception_handler(RequestValidationError)
     async def validation_error(request, exc):

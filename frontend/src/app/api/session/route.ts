@@ -36,7 +36,13 @@ export async function POST(request: NextRequest) {
   try {
     const id = request.cookies.get(SESSION_COOKIE)?.value;
     const existing = await getSession(id);
-    if (existing) await liveOperation('liveRevoke', id!, existing);
+    if (existing) {
+      try {
+        await liveOperation('liveRevoke', id!, existing);
+      } catch (error) {
+        if (!(error instanceof ApiError) || ![401, 403].includes(error.status)) throw error;
+      }
+    }
     await deleteSession(id);
   } catch {
     return NextResponse.json(

@@ -10,13 +10,15 @@ export async function apiRequest<K extends ResponseKind>(
   key?: string,
   signal?: AbortSignal,
 ): Promise<ApiResult<K>> {
+  const timeout = AbortSignal.timeout(kind === 'optimizer' ? 40000 : 18000);
+  const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   let response: Response;
   try {
     response = await fetch(`/api/backend/${path}`, {
       method: body === undefined ? 'GET' : 'POST',
       credentials: 'same-origin',
       cache: 'no-store',
-      signal,
+      signal: combined,
       headers: {
         'Content-Type': 'application/json',
         'X-TradeGraph-Request': '1',
@@ -25,14 +27,25 @@ export async function apiRequest<K extends ResponseKind>(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(502, 'CONNECTION_UNAVAILABLE', body !== undefined && kind !== 'login');
+    if (signal?.aborted) throw signal.reason;
+    throw new ApiError(
+      timeout.aborted ? 504 : 503,
+      timeout.aborted ? 'REQUEST_TIMEOUT' : 'CONNECTION_UNAVAILABLE',
+      body !== undefined && kind !== 'login',
+    );
   }
   let value: unknown;
   try {
     value = await response.json();
   } catch {
-    throw new ApiError(502, 'INVALID_RESPONSE', body !== undefined);
+    if (signal?.aborted) throw signal.reason;
+    throw new ApiError(
+      timeout.aborted ? 504 : 502,
+      timeout.aborted ? 'REQUEST_TIMEOUT' : 'INVALID_RESPONSE',
+      body !== undefined,
+    );
   }
+  if (signal?.aborted) throw signal.reason;
   if (!response.ok) {
     if (response.status === 401 && typeof window !== 'undefined')
       window.dispatchEvent(new Event('tradegraph:expired'));
@@ -44,7 +57,11 @@ export async function apiRequest<K extends ResponseKind>(
     const uncertain = !!(e && typeof e === 'object' && 'uncertain' in e && e.uncertain === true);
     throw new ApiError(response.status, code, uncertain);
   }
-  return schemas[kind](value) as ApiResult<K>;
+  try {
+    return schemas[kind](value) as ApiResult<K>;
+  } catch {
+    throw new ApiError(502, 'INVALID_RESPONSE', body !== undefined);
+  }
 }
 const query = (values: Record<string, string | number | undefined>) => {
   const p = new URLSearchParams();

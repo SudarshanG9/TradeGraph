@@ -100,12 +100,9 @@ async def own_orders(request: Request, limit: int = Query(50, ge=1, le=100), bef
 
 @router.get('/account/me', response_model=Account)
 async def account(request: Request, identity=Depends(trader)):
-    db = request.app.state.database
-    rows = await asyncio.to_thread(db.trader_query, identity['trader_id'], 'SELECT trader_id,cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s', (identity['trader_id'],))
-    if not rows:
-        raise HTTPException(404, detail='ACCOUNT_NOT_FOUND')
-    positions = await asyncio.to_thread(db.trader_query, identity['trader_id'], "SELECT instrument_id,net_quantity,realized_pnl,'gross' AS pnl_basis FROM position WHERE trader_id=%s", (identity['trader_id'],))
-    return rows[0] | {'positions':positions}
+    snapshot=await asyncio.to_thread(request.app.state.database.account_snapshot,identity['trader_id'])
+    if snapshot is None:raise HTTPException(404,detail='ACCOUNT_NOT_FOUND')
+    return snapshot
 
 
 class RequestOutcome(BaseModel):

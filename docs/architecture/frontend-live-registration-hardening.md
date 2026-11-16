@@ -258,3 +258,28 @@ Read-only desk/surveillance/health pages use shared resource error/empty/stale U
 Files: provider and admin disclosure/optimizer/regime controls. 49 frontend tests
 passed (2 native skipped); typecheck passed. Existing UI design preserved. Catalogue
 and all admin failure-recovery browser evidence follows in acceptance.
+
+Phase 13 commit `8abc9cd`, pushed.
+
+## Phase 14 — integration classification and diagnostics
+
+Status: FIXED for tested transport/security/snapshot cases; deployment audit remains.
+Browser GETs now have bounded timeout/cancellation and typed malformed-response
+errors; transport preserves 400/401/403/404/409/422/429/503/504. Financial ambiguity
+still retains durable request keys and never automatically creates a new mutation.
+Wrong credentials on public login no longer revoke a valid existing cookie; new
+sessions are stored before deleting the old one. Logout can clear authoritatively
+expired/disabled identity while service outages remain retryable.
+
+Added safe bounded request correlation/status/duration/dependency logs using route
+names (no bodies/query strings or secrets); live logs expose only connection state,
+reconnect and gap counters. Retry-After is retained for backend rate limits.
+Account balance and positions now use one repeatable-read RLS transaction; no
+financial calculations or procedures changed. Files: backend diagnostics/main,
+orders/store, BFF/session/live routes/client/transport/operations and tests.
+
+Validation: 53 frontend passed, 2 native Redis skipped; typecheck passed. 40 native
+authorization/registration/pipeline/socket cases passed. Additional interleaved
+settlement/account snapshot regression and auth privilege checks recorded below.
+Webpack production build passed; default Turbopack had an environment worker-port
+restriction. Build regenerated Next type declaration formatting, normalized again.

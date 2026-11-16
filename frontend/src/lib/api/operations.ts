@@ -20,6 +20,7 @@ export interface Operation {
   csrf: boolean;
   body?: string;
   idempotencyKey?: string;
+  requestId?: string;
 }
 const invalid = (): never => {
   throw new ApiError(422, 'INVALID_REQUEST');
