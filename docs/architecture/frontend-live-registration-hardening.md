@@ -68,3 +68,19 @@ visibility verification reconcile tabs without storing credentials in the browse
 Existing encrypted shared Redis session storage and non-deletion on outages remain.
 Tests cover outage/recovery, absent/invalid cookies and stale completion after
 login/logout. No DB or public API contract change. Native restart evidence pending.
+
+Phase 2: 43 frontend tests passed, 2 native tests skipped; typecheck passed.
+Commit `726d5f9`, pushed.
+
+## Phase 3 — server rendering recovery
+
+Status: PARTIALLY_FIXED until native browser retry verification.
+Redis 503 from role-checking layouts previously escaped before child Retry existed.
+Both protected layouts now render `ServiceUnavailable` only for typed session 503;
+Next redirect exceptions remain untouched. Root `app/error.tsx` catches nested
+layout failures (same-segment boundaries do not). Retry refreshes server rendering.
+Files: protected layouts, server session helper, shared recovery view, root boundary.
+No protected children render on unknown authorization. Raw error messages are not
+shown. Verified against this installed Next version's error/proxy documentation,
+which uses `retry` in error boundaries. Frontend suite and typecheck pass.
+DB/API: unchanged. Server-render outage/recovery browser evidence pending.
