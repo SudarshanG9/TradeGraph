@@ -36,6 +36,10 @@ class Readiness(BaseModel):
     derived_ready: bool
     reconciliation_required: bool
     closing: bool
+    durable_publication: bool
+    outbox_pending: int
+    outbox_retrying: int
+    historical_observations_missing: int
 
 
 class HealthResponse(BaseModel):
@@ -189,16 +193,24 @@ def create_app(settings=None, *, settlement=True):
         except Exception:
             owner_held = False
         worker = service.worker
-        financial = bool(worker and worker.task and not worker.task.done() and not service.dispatcher.failure)
+        try:
+            publication = await asyncio.to_thread(application.state.database.publication_status)
+        except Exception:
+            publication = dict(installed=False,pending=0,retrying=0,observations_missing=0)
+        publication_running = all(c.task and not c.task.done() for c in application.state.outbox_workers)
+        durable = bool(publication['installed'] and (not worker or publication_running))
+        financial = bool(worker and worker.task and not worker.task.done() and not service.dispatcher.failure and durable)
         replay_complete = application.state.replay_complete
-        derived_ready = all(value == 'up' for name,value in dependencies.items() if name != 'postgres')
+        derived_ready = bool(all(value == 'up' for name,value in dependencies.items() if name != 'postgres') and durable and not publication['retrying'] and not publication['observations_missing'])
         ready = bool(owner_held and replay_complete and financial and not service.closing and dependencies['postgres']=='up')
-        return {'status':'ok' if ready and all(v=='up' for v in dependencies.values()) else 'unhealthy',
+        return {'status':'ok' if ready and derived_ready else 'unhealthy',
                 'dependencies':dependencies,'trading_ready':ready,
                 'readiness':{'matching_owner':owner_held,'replay_complete':replay_complete,
                 'replayed_executions':application.state.replayed_executions,'financial_settlement':financial,
-                'derived_ready':derived_ready,'reconciliation_required':bool(service.dispatcher.failure or not owner_held),
-                'closing':service.closing}}
+                'derived_ready':derived_ready,'reconciliation_required':bool(service.dispatcher.failure or not owner_held or not durable),
+                'closing':service.closing,'durable_publication':durable,
+                'outbox_pending':publication['pending'],'outbox_retrying':publication['retrying'],
+                'historical_observations_missing':publication['observations_missing']}}
 
 
     return application

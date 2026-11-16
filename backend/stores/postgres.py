@@ -244,6 +244,18 @@ class Database:
             raise RuntimeError('Conflicting committed execution; operator reconciliation required')
         return True
 
+    def publication_status(self):
+        with self.connect() as conn:
+            conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            row = conn.execute('''SELECT count(*) FILTER(WHERE completed_at IS NULL) AS pending,
+                count(*) FILTER(WHERE completed_at IS NULL AND last_error IS NOT NULL) AS retrying,
+                count(*) FILTER(WHERE consumer='regime' AND payload IS NULL) AS observations_missing
+                FROM public.event_outbox''').fetchone()
+            row['installed'] = conn.execute("""SELECT EXISTS(SELECT 1 FROM pg_trigger
+                WHERE tgrelid='public.execution'::regclass AND tgname='execution_publication'
+                AND tgenabled IN ('O','A')) AS installed""").fetchone()['installed']
+            return row
+
     def acquire_owner(self):
         if self.settings.database_identity_mode=='isolated':
             from backend.stores.trader_identity import verify_password_authentication
@@ -271,6 +283,12 @@ class Database:
                 raise RuntimeError('Another matching owner is active')
             if conn.execute("SELECT EXISTS(SELECT 1 FROM public.\"order\" WHERE status IN ('OPEN','PARTIAL')) AS pending").fetchone()['pending']:
                 raise RuntimeError('Unresolved active orders: operator reconciliation required')
+            installed = conn.execute("""SELECT to_regclass('public.event_outbox') IS NOT NULL
+                AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.execution'::regclass
+                  AND tgname='execution_publication' AND tgenabled IN ('O','A')) AS installed""").fetchone()['installed']
+            if not installed:
+                raise RuntimeError('Durable publication migration required before trading')
+            conn.execute('SELECT execution_id FROM public.event_outbox LIMIT 0')
             return conn
         except BaseException:
             conn.close()

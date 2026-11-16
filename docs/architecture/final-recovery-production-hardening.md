@@ -121,3 +121,22 @@ existing matching/FIFO suites remain the regression authority.
 Phase 4 verification: **40 passed** (active-order refusal, terminal restart, failure
 windows, order book and engine invariants; 3.74 seconds). This phase is a verified
 safety refusal, not a claim that active-order recovery is fixed.
+
+## Phase 5: reconciliation diagnostics and readiness
+
+Phase 4 commit `293b35d` pushed and confirmed on origin.
+`reconcile_restart.py` remains read-only by default and exposes no repair command.
+It checks current and archived order volumes, duplicate IDs across the archive,
+execution/order references, exact outstanding escrow, net positions, owner locks,
+durable consumer backlog/retries/missing observations, trigger installation and
+missing intents. It labels pre-settlement intent state unknown when active orders
+exist and gives preservation/reconciliation actions rather than automatic fixes.
+
+Startup now refuses a missing/disabled durable publication migration. Health reports
+consumer progress with additive readiness fields and never retries settlement,
+clears a failure or changes orders. Historical missing observations degrade derived
+readiness without inventing data or blocking committed financial settlement.
+Files: `scripts/reconcile_restart.py`, `backend/stores/postgres.py`,
+`backend/api/main.py`, `tests/integration/test_restart_diagnostics.py`.
+Phase 5 verification: **21 passed** (diagnostics, order API and failure windows;
+20.36 seconds). Health checks did not acknowledge outbox work or clear failures.
