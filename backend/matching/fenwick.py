@@ -1,5 +1,4 @@
-"""Executed volume indexes. New coordinate rebuilds are explicitly not O(log M)."""
-from bisect import bisect_left, bisect_right
+"""Exact executed volume with sparse Fenwick nodes over positive BIGINT ticks."""
 
 
 class FenwickTree:
@@ -38,31 +37,39 @@ class FenwickTree:
 
 
 class PriceVolumeIndex:
-    """Sparse BIGINT ticks with exact coordinate expansion, O(M log M) rebuild."""
+    """At most 63 node updates, with no coordinate sort or full rebuild.
+
+    A sparse dictionary stores only touched Fenwick nodes, never a dense BIGINT
+    array. Memory is O(M log U), at most 63 nodes per positive-volume coordinate;
+    clustered prices share most ancestors, widely sparse prices share fewer.
+    """
+    MAX_PRICE = 2**63 - 1
+
     def __init__(self):
-        self.prices = []
-        self.volumes = {}
-        self.bit = None
+        self.bit = {}
 
     def add(self, price, quantity):
-        if type(price) is not int or not 0 < price < 2**63:
+        if type(price) is not int or not 0 < price <= self.MAX_PRICE:
             raise ValueError("Invalid price")
         if type(quantity) is not int or quantity < 0:
             raise ValueError("Invalid volume")
-        new = price not in self.volumes
-        self.volumes[price] = self.volumes.get(price, 0) + quantity
-        if new:
-            self.prices = sorted(self.volumes)
-            self.bit = FenwickTree(len(self.prices))
-            for index, tick in enumerate(self.prices):
-                self.bit.point_add(index, self.volumes[tick])
-        else:
-            self.bit.point_add(bisect_left(self.prices, price), quantity)
+        if quantity == 0:
+            return
+        while price <= self.MAX_PRICE:
+            self.bit[price] = self.bit.get(price, 0) + quantity
+            price += price & -price
+
+    def _prefix(self, price):
+        price = min(price, self.MAX_PRICE)
+        result = 0
+        while price:
+            result += self.bit.get(price, 0)
+            price -= price & -price
+        return result
 
     def range_sum(self, lower, upper):
-        if lower < 0 or upper < 0:
-            raise ValueError("Negative price bound")
-        if lower > upper or self.bit is None:
+        if type(lower) is not int or type(upper) is not int or lower < 0 or upper < 0:
+            raise ValueError("Price bounds must be nonnegative integers")
+        if lower > upper:
             return 0
-        left, right = bisect_left(self.prices, lower), bisect_right(self.prices, upper)
-        return 0 if left == right else self.bit.range_sum(left, right - 1)
+        return self._prefix(upper) - self._prefix(max(0, lower - 1))

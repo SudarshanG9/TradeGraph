@@ -1,0 +1,34 @@
+{
+  "clustered": {
+    "before": {
+      "total_ms": 12297.599068,
+      "median_us": 5330.625,
+      "retained_bytes": 195064,
+      "peak_bytes": 227208,
+      "coordinates": 2000
+    },
+    "after": {
+      "total_ms": 210.765477,
+      "median_us": 107.166,
+      "retained_bytes": 177848,
+      "peak_bytes": 179568,
+      "coordinates": 2000
+    }
+  },
+  "sparse_bigint": {
+    "before": {
+      "total_ms": 12558.451926,
+      "median_us": 5451.625,
+      "retained_bytes": 195012,
+      "peak_bytes": 227156,
+      "coordinates": 2000
+    },
+    "after": {
+      "total_ms": 110.579592,
+      "median_us": 54.459,
+      "retained_bytes": 4711776,
+      "peak_bytes": 5652932,
+      "coordinates": 2000
+    }
+  }
+}

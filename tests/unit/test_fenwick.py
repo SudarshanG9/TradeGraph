@@ -31,3 +31,25 @@ def test_dynamic_coordinates_and_instrument_separation():
     assert first.range_sum(102, 200) == 0
     with pytest.raises(ValueError): first.add(-1, 4)
     with pytest.raises(ValueError): first.add(1, -1)
+
+
+@pytest.mark.parametrize('mode',['dense','sparse','increasing','decreasing'])
+def test_sparse_fenwick_randomized_reference(mode):
+    rng=Random(20261116);index=PriceVolumeIndex();reference={}
+    prices=(list(range(1,3001)) if mode!='sparse' else [rng.randrange(1,2**63) for _ in range(3000)])
+    if mode=='decreasing': prices.reverse()
+    if mode=='dense': rng.shuffle(prices)
+    for price in prices:
+        quantity=rng.randrange(10**20)
+        index.add(price,quantity);reference[price]=reference.get(price,0)+quantity
+        if rng.random()<0.05:
+            low,high=sorted((rng.randrange(2**63),rng.randrange(2**63))) if mode=='sparse' else sorted((rng.randrange(3100),rng.randrange(3100)))
+            assert index.range_sum(low,high)==sum(q for p,q in reference.items() if low<=p<=high)
+    assert index.range_sum(0,2**63+100)==sum(reference.values())
+    assert index.range_sum(2**63,2**64)==0
+    assert index.range_sum(2,1)==0
+    assert len(index.bit)<=63*len(reference)
+    before=dict(index.bit);index.add(2**63-1,0);assert index.bit==before
+    for value in (True,1.5,'1',-1):
+        with pytest.raises(ValueError):index.range_sum(value,10)
+        with pytest.raises(ValueError):index.add(value,1)

@@ -444,3 +444,25 @@ objects retained 4,912,244 bytes vs packed 1,789,956. Shared-reference synthetic
 events retained 1,738,978 vs packed 1,789,499 (slightly worse). These are synthetic
 map allocations, not total RSS or throughput; both scenarios and limitations are
 committed. Phase 11 corrective `5573bb1` confirmed pushed.
+
+## Phase 13 — P-04 sparse Fenwick coordinates
+
+PriceVolumeIndex preserves add/range_sum with exact integer arithmetic using a
+sparse positive-BIGINT Fenwick dictionary. New coordinates touch at most 63 nodes;
+there is no coordinate sort/rebuild or dense BIGINT allocation. Zero updates allocate
+nothing; ranges validate integer bounds. The original dense FenwickTree demonstration
+and its tests remain. Randomized dictionary-oracle tests cover dense/sparse,
+increasing/decreasing, duplicate, huge ticks, empty/invalid ranges and 3,000 prices.
+**9 Fenwick/identity tests passed**, plus repeatable benchmark regression passed.
+
+scripts/benchmark_price_volume.py loads the exact pre-change implementation from
+commit f53ab3b; tests/benchmarks/test_latency_isolation.py adds CPU/memory measurement.
+Evidence price-volume.json: 2,000 clustered insertions took 12,297.6ms before vs
+210.8ms after; retained allocations 195,064 vs 177,848 bytes. Sparse BIGINT sample:
+12,558.5ms vs 110.6ms, but 195,012 vs 4,711,776 retained bytes (5,652,932 peak).
+Timings include tracemalloc overhead and are not production throughput claims.
+For this demo's clustered prices resource use is acceptable; worst-case sparse
+memory is explicitly O(63M), substantially larger than coordinate compression.
+P-04: FIXED CPU/rebuild behavior upon push, with documented sparse-memory tradeoff.
+Do not interpret this as a general memory reduction or unbounded scale guarantee.
+Phase 12 `f53ab3b` confirmed pushed.

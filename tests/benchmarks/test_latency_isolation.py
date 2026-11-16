@@ -113,3 +113,12 @@ def test_native_api_settlement_latency_with_slow_graph(accounts):
                         'injected_graph_delay_ms':50 if slow else 0}
     results['transport']='in-process ASGI HTTP plus real native services; excludes external TCP/client latency'
     save('native_api',results)
+
+
+def test_new_price_fenwick_cpu_and_memory_profile():
+    from scripts.benchmark_price_volume import measure,load_baseline
+    from backend.matching.fenwick import PriceVolumeIndex
+    prices=list(range(1,1025))
+    result={'before':measure(load_baseline(),prices),'after':measure(PriceVolumeIndex,prices),
+            'note':'Measured allocations with tracemalloc; no fixed latency assertion. Sparse BIGINT memory tradeoff is documented separately.'}
+    save('fenwick_new_price',result)
