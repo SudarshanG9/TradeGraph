@@ -39,3 +39,25 @@ It removes the callable function and preserves accounts, registration state, pol
 and uniqueness. Never deploy a backend without readiness checks while pending or
 disabled registrations exist. Retained tables can be removed only by a separately
 reviewed data migration after all states have been reconciled.
+
+After synthetic registration, run the trusted operator reconciler with the same
+private identity manifest and explicit admin connection used during setup:
+
+```sh
+.venv/bin/python -m scripts.provision_registrations --database YOUR_DATABASE
+.venv/bin/python -m scripts.provision_registrations --database YOUR_DATABASE --apply
+```
+
+Run it again to recover interrupted provisioning. It locks the manifest and uses
+a database advisory lock; credentials are atomically staged (0600/fsync/rename)
+before CREATE ROLE. A crash before/after role COMMIT can use the same staged secret.
+It verifies wrong-password rejection, session_user, NOINHERIT/nonadministrative
+memberships, actual margin access and cross-user RLS before ACTIVE. Failure leaves
+FAILED_RETRYABLE and preserves the account. Never delete credential manifests to
+recover a provisioning failure. Run with an operator identity, never a public API
+identity. PENDING_VERIFICATION is deliberately ineligible; no invented verification.
+
+Per-trader roles cost one catalog entry/secret per user and a connection handshake
+per read context. Dozens are exercised; hundreds/thousands need measured connection
+capacity, role/manifest backup and serialization review. This does not replace RLS
+with browser-controlled tenant variables or claim unmeasured scale.

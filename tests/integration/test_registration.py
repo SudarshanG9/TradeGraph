@@ -78,3 +78,26 @@ def test_rejects_privilege_and_invalid_fields(changes):
     from pydantic import ValidationError
     with pytest.raises(ValidationError):
         Registration(**({'full_name':'Valid Name','email':'valid@example.test','password':'synthetic-registration-password'}|changes))
+
+
+def test_provisioned_users_are_isolated_and_repeated_provision_is_safe(registrations):
+    from backend.services.trader_provisioning import provision_trader_identity, registration_ready
+    from scripts.setup_database_identity import read_manifest, provision_test_traders
+    settings=Settings.from_env()
+    receipts=[registrations(),registrations()]
+    with db_connect() as conn:
+        tids=[row[0] for row in conn.execute('SELECT trader_id FROM registration_state WHERE user_account_id=ANY(%s)',([r['registration_id'] for r in receipts],))]
+        for tid in tids:conn.execute("UPDATE registration_state SET status='PENDING_PROVISIONING' WHERE trader_id=%s",(tid,))
+    try:
+        with ThreadPoolExecutor(2) as pool:
+            results=list(pool.map(lambda tid:provision_trader_identity(tid,settings,expected_database=settings.postgres_db),tids))
+        assert all(r['status']=='ACTIVE' for r in results)
+        before=read_manifest(settings.trader_credentials_file)['traders']
+        for tid in tids:
+            assert registration_ready(tid,settings)
+            provision_trader_identity(tid,settings,expected_database=settings.postgres_db)
+            assert Database(settings).trader_query(tid,'SELECT * FROM margin_account WHERE trader_id=%s',(next(x for x in tids if x!=tid),))==[]
+        after=read_manifest(settings.trader_credentials_file)['traders']
+        assert {str(t):before[str(t)] for t in tids}=={str(t):after[str(t)] for t in tids}
+    finally:
+        provision_test_traders(tids,remove=True)

@@ -100,3 +100,20 @@ changed. Documents: registration-operations.md. Tests: 20 concurrent distinct
 accounts, normalized concurrent duplicates, required-insert rollback, bcrypt,
 fee/funding/FKs, no fabricated verification, privilege/byte validation.
 Native result recorded below after completion. HTTP rate limits follow in Phase 6.
+
+Phase 4: 212 backend tests passed (203 unit, 9 native registration cases).
+Commit `10e327f`, pushed.
+
+## Phase 5 — database identity provisioning
+
+Status: FIXED for native two-user concurrent/repeated provisioning tests.
+New operator service and CLI reuse the private manifest installer and credential
+validation. Credentials stage durably before role creation; a manifest lock plus
+session advisory lock serializes reconciliation. Only eligible registration states
+can transition ACTIVE, after independent SCRAM/session-user/membership/RLS/account
+verification. Failure remains retryable. API never receives CREATEROLE/admin keys.
+Files: trader_provisioning service, provision_registrations CLI, registration tests,
+operations docs. No financial changes. Tests cover two parallel users, independent
+margin access, cross-user denial, readiness and stable secrets on repeated provision.
+Limitations: actual process-kill fault injection and thousand-user scale not yet
+verified; recovery ordering is explicit and tested by repeat execution.
