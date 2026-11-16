@@ -220,3 +220,24 @@ coalesced retries, cancellation, hidden views, bounded backoff/recovery and stal
 completion suppression. 49 frontend tests passed, 2 native skipped; typecheck passed.
 No financial POST is retried by polling. Resource registry prepares snapshot
 acknowledgment without declaring an open socket synchronized.
+
+Phase 11 commit `66ba2b3`, pushed.
+
+## Phase 12 — authoritative live synchronization
+
+Status: PARTIALLY_FIXED until browser two-user convergence acceptance.
+Notifications invalidate registered authenticated HTTP resources. Reconnect/gap
+resync stays delayed until successful snapshots complete; errors retain polling.
+Periodic reconciliation covers missed notifications. Connected/synchronized views
+use slower bounded polling, disconnect restores normal intervals. UI distinguishes
+verified snapshot synchronization from delayed fallback. Trade IDs remain canonical
+and bounded observed execution history remains unchanged.
+
+Depth notifications now follow successful atomic Redis apply (worker-to-loop handoff),
+preventing notification-before-cache races. HTTP book adds owner epoch and rejects
+old-owner cached depth with 503 DEPTH_RESYNC_REQUIRED. Existing global version semantics
+are preserved; version jumps across instruments are not misrepresented as missing
+per-instrument events. Files: cache/lifespan/depth/market route, live/provider hooks,
+contracts/schema/mock, terminal/shell indicators. 206 backend unit and 49 frontend
+tests passed (2 native Redis tests skipped); typecheck passed. Native polyglot,
+order-pipeline/socket regression is running. No change to financial arithmetic.

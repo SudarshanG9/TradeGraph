@@ -58,7 +58,7 @@ class RedisDepth:
         stale=not stamp or (datetime.now(timezone.utc)-datetime.fromisoformat(stamp)).total_seconds()>max_age
         return {'symbol':symbol,'bids':[{'price_ticks':int(p),'quantity':int(q)} for p,q in bids],
                 'asks':[{'price_ticks':int(p),'quantity':int(q)} for p,q in asks],
-                'as_of':stamp,'stale':bool(stale),'version':int(metadata.get('version',0))}
+                'epoch':metadata.get('epoch'),'as_of':stamp,'stale':bool(stale),'version':int(metadata.get('version',0))}
 
     def close(self):
         self.client.close()

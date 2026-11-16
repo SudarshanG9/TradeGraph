@@ -16,6 +16,7 @@ import type {
   InstrumentInfo,
 } from '@/lib/contracts';
 import { LiveConnection } from './live-provider';
+import type { LiveEvent } from '@/lib/live/protocol';
 import type { LiveState } from '@/lib/live/client';
 import { createAuthController, type AuthState } from '@/lib/auth-state';
 import { startPolling } from '@/lib/polling';
@@ -48,7 +49,7 @@ interface Preview {
   revision: number;
   invalidate: () => void;
   registerResource: (refresh: () => Promise<boolean>) => () => void;
-  refreshResources: () => Promise<boolean>;
+  refreshResources: (event?: LiveEvent) => Promise<boolean>;
 }
 const Context = createContext<Preview | null>(null);
 const key = 'tradegraph.mock-preview.v1';
@@ -253,7 +254,7 @@ export function PreviewProvider({
         <LiveConnection
           key={sessionGeneration}
           instrumentId={instruments.find((x) => x.id === instrumentId)?.id ?? instruments[0]?.id}
-          onEvent={() => setRevision((r) => r + 1)}
+          onEvent={refreshResources}
           onState={setLiveState}
         />
       )}
@@ -272,7 +273,10 @@ export function useResource<T>(
   deps: unknown[] = [],
   interval = 0,
 ) {
-  const { fixture, revision, mock, session, sessionGeneration, registerResource } = usePreview();
+  const { fixture, revision, mock, session, sessionGeneration, registerResource, liveState } =
+    usePreview();
+  const effectiveInterval =
+    !mock && liveState === 'live' && interval > 0 ? Math.min(interval * 4, 30000) : interval;
   const scope = JSON.stringify([
     fixture,
     sessionGeneration,
@@ -312,7 +316,7 @@ export function useResource<T>(
           error: error instanceof Error ? error.message : 'Service unavailable',
         })),
       settled: () => {},
-      interval: mock ? 0 : interval,
+      interval: mock ? 0 : effectiveInterval,
       hidden: () => !mock && document.hidden,
       enabled: !!session && fixture !== 'loading',
     });
@@ -328,7 +332,7 @@ export function useResource<T>(
       polling.stop();
       document.removeEventListener('visibilitychange', visible);
     };
-  }, [scope, revision, mock, session, interval, registerResource]);
+  }, [scope, revision, mock, session, effectiveInterval, registerResource]);
   const current = resource.scope === scope && !!session;
   return {
     data: current ? resource.data : null,

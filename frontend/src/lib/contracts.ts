@@ -68,6 +68,7 @@ export interface Level {
   quantity: Int;
 }
 export interface Book {
+  epoch: string | null;
   symbol: string;
   bids: Level[];
   asks: Level[];

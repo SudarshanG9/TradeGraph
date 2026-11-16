@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
+import type { LiveEvent } from '@/lib/live/protocol';
 import { createLiveClient, type LiveState } from '@/lib/live/client';
 import { schemas } from '@/lib/api/schema';
 import { ApiError } from '@/lib/api/errors';
@@ -9,7 +10,7 @@ export function LiveConnection({
   onState,
 }: {
   instrumentId?: number;
-  onEvent: () => void;
+  onEvent: (event?: LiveEvent) => Promise<boolean>;
   onState: (state: LiveState) => void;
 }) {
   const event = useRef(onEvent);
@@ -18,6 +19,14 @@ export function LiveConnection({
   state.current = onState;
   const client = useRef<ReturnType<typeof createLiveClient> | null>(null);
   useEffect(() => {
+    let active = true,
+      invalidation = 0;
+    const synchronize = async (event?: LiveEvent) => {
+      const current = ++invalidation;
+      const success = await eventRef(event);
+      if (active && current === invalidation && success) live.synchronized();
+    };
+    const eventRef = (value?: LiveEvent) => event.current(value);
     const live = createLiveClient({
       ticket: async (signal) => {
         const response = await fetch('/api/live/ticket', {
@@ -39,11 +48,18 @@ export function LiveConnection({
           protocols,
         ),
       state: (value) => state.current(value),
-      event: () => event.current(),
+      event: (event) => {
+        void synchronize(event);
+      },
     });
     client.current = live;
     live.start();
+    const resync = setInterval(() => {
+      void synchronize();
+    }, 15000);
     return () => {
+      clearInterval(resync);
+      active = false;
       client.current = null;
       live.stop();
     };

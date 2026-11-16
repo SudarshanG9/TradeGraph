@@ -15,7 +15,7 @@ import { OrderForm } from '@/components/trader/order-form';
 import { MarketMetrics } from '@/components/trader/market-metrics';
 import { ExecutionsTable } from '@/components/trader/executions-table';
 function TerminalContent({ instrument }: { instrument: InstrumentInfo }) {
-  const { api, mock } = usePreview();
+  const { api, mock, liveState } = usePreview();
   const observed = useRef<Trade[]>([]);
   const book = useResource(
     (signal) => api.market.book(instrument.symbol, signal),
@@ -48,7 +48,11 @@ function TerminalContent({ instrument }: { instrument: InstrumentInfo }) {
         </div>
         <div className="toolbar">
           <span className="caption">
-            {mock ? 'Mock market data' : 'Polling server observations · 1.5s'}
+            {mock
+              ? 'Mock market data'
+              : liveState === 'live'
+                ? 'Live notifications · HTTP snapshots'
+                : 'Updates delayed · polling fallback'}
           </span>
           <Refresh
             onClick={() => {

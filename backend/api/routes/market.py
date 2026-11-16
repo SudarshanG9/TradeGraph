@@ -15,6 +15,7 @@ class Level(BaseModel):
 
 
 class Book(BaseModel):
+    epoch: str | None
     symbol: str
     bids: list[Level]
     asks: list[Level]
@@ -59,7 +60,10 @@ async def book(symbol: str,request: Request):
     if not hasattr(request.app.state,'depth'):
         raise HTTPException(503,detail='CACHE_UNAVAILABLE')
     try:
-        return await asyncio.to_thread(request.app.state.depth.read,symbol)
+        snapshot=await asyncio.to_thread(request.app.state.depth.read,symbol)
+        if snapshot['epoch']!=request.app.state.service.epoch:
+            raise HTTPException(503,detail='DEPTH_RESYNC_REQUIRED')
+        return snapshot
     except (redis.RedisError,ValueError,TypeError):
         raise HTTPException(503,detail='CACHE_UNAVAILABLE') from None
 

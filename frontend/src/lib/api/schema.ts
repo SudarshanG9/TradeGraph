@@ -193,6 +193,7 @@ export const schemas = {
   }),
   cancel: object({ order_id: positive, status: oneOf('CANCELLED'), cancelled_quantity: exact() }),
   book: object({
+    epoch: nullable(str),
     symbol: str,
     bids: array(object({ price_ticks: price, quantity: positive })),
     asks: array(object({ price_ticks: price, quantity: positive })),

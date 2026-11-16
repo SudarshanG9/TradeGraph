@@ -53,7 +53,6 @@ def create_app(settings=None, *, settlement=True):
         app.state.live_tickets=TicketStore(app.state.settings.redis_url,app.state.settings.postgres_db)
         app.state.live_bus = LiveBus(app.state.service.epoch)
         app.state.service.live_bus = app.state.live_bus
-        app.state.service.book_observers.append(app.state.live_bus.book_changed)
         app.state.live_simulator = LiveMarketSupervisor(app.state.service, app.state.database)
         try:
             # Only settled history is rehydrated. Active orders already triggered
@@ -73,6 +72,8 @@ def create_app(settings=None, *, settlement=True):
             if settlement:
                 app.state.depth=RedisDepth(app.state.settings.redis_url,app.state.settings.health_timeout_seconds)
                 cache=CacheWorker(app.state.database,app.state.depth,app.state.service.dispatcher)
+                loop=asyncio.get_running_loop()
+                cache.after_apply=lambda snapshot:loop.call_soon_threadsafe(app.state.live_bus.book_changed,snapshot)
                 app.state.service.derived['redis']=cache
                 app.state.service.book_observers.append(cache.publish)
                 cache.start()
