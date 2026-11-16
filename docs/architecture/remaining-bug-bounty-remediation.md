@@ -579,3 +579,14 @@ checks accept the additive health fields while preserving its existing contract.
 A-05: FIXED documentation/test coverage upon push. A-01: PARTIALLY_FIXED; single-owner
 recovery/readiness and shared sessions improved, active-active HA unimplemented.
 Phase 17 `3347b7b` confirmed pushed. No live migration/deployment or worker expansion.
+
+### Acceptance-discovered cancellation reconciliation refinement
+
+A terminal owned-order lookup now returns committed CANCELLED/FILLED state even
+if an independent dispatcher failure remains closed. Active-state lookup still
+requires drain/ownership/healthy pipeline. Holding the Coordinator lock ensures the
+prior shielded cancellation thread has exited; canonical terminal status proves
+its transactional refund/outcome without resetting readiness. Added real cancellation
+COMMIT-ack-loss regression. This closes the case where committed cancellation was
+known in PostgreSQL but the reconciliation read unnecessarily remained blocked.
+Native pipeline verification: **16 passed**. Phase 18 `9111e26` confirmed pushed.

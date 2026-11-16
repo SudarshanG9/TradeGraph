@@ -367,3 +367,20 @@ def test_readiness_distinguishes_owner_replay_worker_and_reconciliation(accounts
     with TestClient(create_app(settlement=False)) as client:
         result=client.get('/health').json()
         assert not result['trading_ready'] and not result['readiness']['financial_settlement']
+
+
+def test_terminal_cancel_reconciles_after_real_commit_ack_loss_without_reset(accounts):
+    import psycopg
+    users,instrument=accounts
+    with TestClient(create_app()) as client:
+        headers=login(client,users[0])
+        oid=client.post('/orders',headers=headers,json=order(instrument)).json()['order_id']
+        service=client.app.state.service;original=service.database.cancel
+        def lost(*args): original(*args);raise psycopg.OperationalError('lost cancellation acknowledgement')
+        service.database.cancel=lost
+        assert client.post(f'/orders/{oid}/cancel',headers=headers).status_code==503
+        result=client.get(f'/orders/{oid}',headers=headers)
+        assert result.status_code==200 and result.json()['status']=='CANCELLED'
+        assert service.dispatcher.failure
+        assert client.get('/account/me',headers=headers).json()['cash_balance']==20000
+        service.database.cancel=original

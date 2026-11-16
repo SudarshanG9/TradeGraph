@@ -132,6 +132,18 @@ async def owned_order(order_id: int, request: Request, identity=Depends(trader))
     # establishes whether an active order is safe to cancel again. A bare history
     # page cannot certify that no cancellation thread is still in flight.
     async with service.lock:
+        async def read():
+            rows = await asyncio.to_thread(request.app.state.database.query,
+                'SELECT *,false AS archived FROM public."order" WHERE id=%s AND trader_id=%s UNION ALL SELECT id,trader_id,instrument_id,side,price_ticks,quantity,filled_quantity,status,created_at,updated_at,true AS archived FROM order_history WHERE id=%s AND trader_id=%s',
+                (order_id,identity['trader_id'],order_id,identity['trader_id']))
+            if len(rows) != 1:
+                raise HTTPException(404, detail='ORDER_NOT_FOUND')
+            return rows[0]
+        row = await read()
+        # Terminal canonical state certifies the financial outcome even while a
+        # separate pipeline failure remains closed. Never reset that failure here.
+        if row['status'] in ('FILLED','CANCELLED'):
+            return row
         if service.closing or service.dispatcher.failure or not service.worker:
             raise HTTPException(503, detail='TRADING_UNAVAILABLE')
         try:
@@ -139,9 +151,4 @@ async def owned_order(order_id: int, request: Request, identity=Depends(trader))
             await asyncio.to_thread(service.verify_owner)
         except Exception:
             raise HTTPException(503, detail='TRADING_UNAVAILABLE') from None
-        rows = await asyncio.to_thread(request.app.state.database.query,
-            'SELECT *,false AS archived FROM public."order" WHERE id=%s AND trader_id=%s UNION ALL SELECT id,trader_id,instrument_id,side,price_ticks,quantity,filled_quantity,status,created_at,updated_at,true AS archived FROM order_history WHERE id=%s AND trader_id=%s',
-            (order_id,identity['trader_id'],order_id,identity['trader_id']))
-        if len(rows) != 1:
-            raise HTTPException(404, detail='ORDER_NOT_FOUND')
-        return rows[0]
+        return await read()
