@@ -2,6 +2,14 @@ from backend.events.dispatcher import ReplaceableWorker
 
 
 class GraphWorker(ReplaceableWorker):
+    @property
+    def failed(self):
+        return self._worker_failure or getattr(self,'delivery_failure',None)
+
+    @failed.setter
+    def failed(self,value):
+        self._worker_failure=value
+
     def __init__(self,store,dispatcher):
         self.store=store
         self.ready=False

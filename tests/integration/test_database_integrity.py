@@ -10,7 +10,7 @@ def test_thirteen_tables(db_conn):
             """SELECT count(*) FROM information_schema.tables
                WHERE table_schema='public' AND table_type='BASE TABLE'"""
         )
-        assert cur.fetchone()[0] == 16
+        assert cur.fetchone()[0] == 17
         from scripts.verify_schema import EXPECTED_TABLES, SUPPLEMENTARY_TABLES
         cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")
         assert {r[0] for r in cur.fetchall()} == EXPECTED_TABLES | SUPPLEMENTARY_TABLES

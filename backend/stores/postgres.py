@@ -289,6 +289,13 @@ class Database:
             if not installed:
                 raise RuntimeError('Durable publication migration required before trading')
             conn.execute('SELECT execution_id FROM public.event_outbox LIMIT 0')
+            from backend.risk.restart_safety import diagnose
+            state = diagnose(self)
+            invariants = ('volume_mismatches','escrow_mismatches','position_mismatches',
+                          'duplicate_order_ids','execution_order_mismatches','missing_publication_intents')
+            failed = [key for key in invariants if state[key]]
+            if failed:
+                raise RuntimeError('Unsafe financial restart: '+', '.join(failed)+'; operator reconciliation required')
             return conn
         except BaseException:
             conn.close()

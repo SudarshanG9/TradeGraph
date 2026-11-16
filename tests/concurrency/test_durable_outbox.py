@@ -98,3 +98,25 @@ def test_outbox_not_exposed_to_trader_role(accounts):
         conn.execute('SET LOCAL ROLE trader_role')
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             conn.execute('SELECT * FROM event_outbox')
+
+
+def test_real_child_process_exit_after_commit_preserves_intent(accounts):
+    import subprocess
+    import sys
+    a,b,event=fixture_event(accounts)
+    program='''
+import os,sys
+from backend.config import Settings
+from backend.stores.postgres import Database
+from backend.events.trade_event import TradeEvent
+settings=Settings.from_env()
+assert settings.postgres_db.startswith('tradegraph_test_')
+Database(settings).settle(TradeEvent.from_json(sys.stdin.read()))
+os._exit(91)
+'''
+    result=subprocess.run([sys.executable,'-c',program],input=event.to_json(),text=True,capture_output=True,timeout=15)
+    assert result.returncode==91
+    db=Database(Settings.from_env())
+    assert len(intents(db,event))==2
+    assert_committed(a,b,event)
+    assert not db.settle(event)

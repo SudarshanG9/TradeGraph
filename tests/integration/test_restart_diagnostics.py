@@ -43,3 +43,27 @@ def test_active_diagnostic_and_health_never_clear_failures_or_orders(accounts):
             assert not health['trading_ready'] and health['readiness']['reconciliation_required']
         assert service.dispatcher.failure=='operator reconciliation required'
         assert service.database.query('SELECT status FROM public."order" WHERE id=%s',(response.json()['order_id'],))[0]['status']=='OPEN'
+
+
+def test_startup_refuses_terminal_financial_mismatch_without_repair(accounts):
+    from scripts.verify_schema import db_connect
+    _,_,event=fixture_event(accounts)
+    db=Database(Settings.from_env());db.settle(event)
+    with db_connect() as conn:
+        conn.execute('UPDATE position SET net_quantity=net_quantity+1 WHERE trader_id=%s AND instrument_id=%s',(event.buy_trader_id,event.instrument_id))
+    with pytest.raises(RuntimeError,match='position_mismatches'):
+        db.acquire_owner()
+    assert db.query('SELECT net_quantity FROM position WHERE trader_id=%s AND instrument_id=%s',(event.buy_trader_id,event.instrument_id))[0]['net_quantity']==2
+
+
+def test_startup_refuses_disabled_publication_trigger(accounts):
+    from scripts.verify_schema import db_connect
+    db=Database(Settings.from_env())
+    with db_connect() as conn:
+        conn.execute('ALTER TABLE public.execution DISABLE TRIGGER execution_publication')
+    try:
+        with pytest.raises(RuntimeError,match='migration required'):
+            db.acquire_owner()
+    finally:
+        with db_connect() as conn:
+            conn.execute('ALTER TABLE public.execution ENABLE TRIGGER execution_publication')

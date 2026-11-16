@@ -103,7 +103,7 @@ def create_app(settings=None, *, settlement=True):
                     regimes.record_book(app.state.service.book_snapshot(row['id']))
                 for name,handler in (('graph',lambda event,payload:app.state.graph.apply(event)),
                                      ('regime',app.state.regimes.apply_observation)):
-                    durable=OutboxWorker(app.state.database,name,handler)
+                    durable=OutboxWorker(app.state.database,name,handler,status_target=graph if name=='graph' else None)
                     app.state.outbox_workers.append(durable)
                     durable.start()
                 app.state.service.worker.after_commit.append(app.state.live_bus.settled)

@@ -196,3 +196,30 @@ ceilings. Database/queue measurements are snapshots, not proof of peak capacity.
 No claim is made about 1024 real connections or deployment on other hardware.
 Existing authorization, queue sizes and matching rules were not relaxed.
 Raw measured evidence: `docs/architecture/recovery-hardening-evidence/websocket-capacity.json`.
+
+## Regression findings and recovery follow-up
+
+Phase 7 commit `90ee04a` pushed and confirmed on origin.
+The first full integration run found **2 failures / 135 passed**: the old exact
+16-table expectation needed to include the additive outbox, and simulator derived
+status still looked only at the initializer's volatile worker. Fixed the expected
+17-table count and bridged persisted outbox retry status into the existing Neo4j
+worker diagnostics without changing simulator behavior or authorization.
+Focused rechecks: **8 passed** (schema, Neo4j outage, durable consumer recovery).
+
+Startup and the operator script now share read-only invariant checks in
+`backend/risk/restart_safety.py`. Startup refuses terminal volume, escrow, position,
+archive identity, execution-reference or missing-publication mismatches as well as
+active orders. It never repairs a mismatch. Additional checks cover a disabled
+publication trigger and deliberately corrupted synthetic position.
+Focused startup/API rechecks: **20 passed** (22.32 seconds).
+
+Owner caveat: a session advisory lock excludes two healthy owners, but it does not
+fence an already running financial transaction on a different connection if the
+lease is lost. A full recovery protocol needs transaction-level owner generations
+as well as durable admission/fill intents. No automatic active-order recovery or
+claim of recovery from every torn-lease boundary is made in this change.
+Follow-up verification: **12 passed** including an actual isolated child-process
+`os._exit` immediately after financial COMMIT (intents and exact financial state
+survive, duplicate settlement remains a no-op). **4 passed** for the final shared
+restart diagnostics, including canonical order/trader/instrument/maker-price checks.
