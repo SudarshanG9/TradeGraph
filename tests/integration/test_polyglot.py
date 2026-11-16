@@ -204,8 +204,8 @@ def test_pgvector_upsert_similarity_retention_fts_and_rls(accounts):
     with db.connect() as conn:
         conn.execute('SET LOCAL ROLE trader_role');conn.execute("SET LOCAL app.role='COMPLIANCE_ADMIN'")
         with pytest.raises(InsufficientPrivilege): conn.execute('SELECT * FROM regime_snapshot')
-    with db.connect() as conn:
-        conn.execute('SET LOCAL ROLE compliance_admin_role');conn.execute("SET LOCAL app.role='TRADER'")
+    with db.admin_context() as conn:
+        conn.execute("SET LOCAL app.role='TRADER'")
         assert conn.execute('SELECT id FROM regime_snapshot WHERE instrument_id=%s',(instrument,)).fetchall()==[]
         assert conn.execute('SELECT id FROM market_disclosure WHERE instrument_id=%s',(instrument,)).fetchall()==[]
     with db.admin_context() as conn:

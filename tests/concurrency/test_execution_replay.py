@@ -29,3 +29,13 @@ def test_replay_batches_snapshot_order_and_exact_analytics(accounts):
     for invalid in (0,True,10001):
         with pytest.raises(ValueError): next(db.execution_batches(invalid))
     interrupted=db.execution_batches(1);next(interrupted);interrupted.close()
+
+
+def test_restart_diagnostic_counts_only_this_database_owner(accounts):
+    from scripts.reconcile_restart import diagnose
+    db=Database(Settings.from_env());lease=db.acquire_owner()
+    try:
+        result=diagnose(db)
+        assert result['matching_owner_locks']==1 and not result['cold_start_safe']
+    finally:lease.close()
+    assert diagnose(db)['matching_owner_locks']==0

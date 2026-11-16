@@ -259,6 +259,7 @@ def test_installer_refuses_placeholder_for_existing_runtime_identity():
     settings=Settings.from_env()
     env=os.environ.copy();env['POSTGRES_RUNTIME_USER']=settings.postgres_runtime_user
     env['POSTGRES_RUNTIME_PASSWORD']='replace_with_runtime_password'
+    env['DATABASE_IDENTITY_MODE']='legacy'
     path=Path('.env')
     before=hashlib.sha256(path.read_bytes()).hexdigest()
     result=subprocess.run(['bash','scripts/setup_backend.sh','--phase','5'],env=env,capture_output=True,text=True,timeout=30)

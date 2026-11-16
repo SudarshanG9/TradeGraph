@@ -15,7 +15,7 @@ def diagnose(database):
           WHERE o.filled_quantity<>(SELECT coalesce(sum(e.quantity),0) FROM execution e
           WHERE e.buy_order_id=o.id OR e.sell_order_id=o.id)''').fetchone())
         counts.update(conn.execute("""SELECT count(*) AS matching_owner_locks FROM pg_locks
-          WHERE locktype='advisory' AND classid=((hashtext('tradegraph-matching-owner')::bigint >> 32) & 4294967295)
+          WHERE locktype='advisory' AND database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND classid=((hashtext('tradegraph-matching-owner')::bigint >> 32) & 4294967295)
           AND objid=(hashtext('tradegraph-matching-owner')::bigint & 4294967295) AND granted""").fetchone())
     safe=not any(counts[k] for k in ('active_orders','volume_mismatches','matching_owner_locks'))
     return counts | {'cold_start_safe':safe,'mode':'read_only',

@@ -1,0 +1,30 @@
+{
+  "pages": [
+    "/trader/dashboard",
+    "/trader/account",
+    "/trader/analytics",
+    "/trader/orders",
+    "/trader/terminal",
+    "/admin/overview",
+    "/admin/desks",
+    "/admin/disclosures",
+    "/admin/optimizer",
+    "/admin/regimes",
+    "/admin/surveillance"
+  ],
+  "checks": [
+    "shared session across two frontend processes",
+    "real COMMIT response loss, reload and authoritative submission unlock without duplicate",
+    "cancel transport loss, dialog remount, active-state reconciliation and one refund",
+    "admin simulator UI start/verified stop",
+    "all trader/admin pages, real login/logout, no uncaught browser errors"
+  ],
+  "database_authentication": "SCRAM",
+  "forced_trader_rls": true,
+  "api_port": 8100,
+  "frontend_ports": [
+    3100,
+    3101
+  ],
+  "depth_redis_database": 15
+}

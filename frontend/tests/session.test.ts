@@ -188,3 +188,29 @@ test('production origin requires explicit HTTPS with only an explicit local-test
     }),
   );
 });
+
+test(
+  'native Redis connection failure rejects a valid session without fallback',
+  { skip: !process.env.TRADEGRAPH_TEST_REDIS_URL },
+  async () => {
+    const { default: Redis } = await import('ioredis');
+    const { RedisSessionStore } = await import('../src/lib/server/redis-session-store');
+    const client = new Redis('redis://127.0.0.1:1/0', {
+      lazyConnect: true,
+      enableOfflineQueue: false,
+      connectTimeout: 100,
+      maxRetriesPerRequest: 0,
+      retryStrategy: () => null,
+    });
+    client.on('error', () => {});
+    const store = new RedisSessionStore(client, randomBytes(32));
+    try {
+      await assert.rejects(
+        getSession(randomBytes(32).toString('base64url'), Date.now(), store),
+        /SESSION UNAVAILABLE/,
+      );
+    } finally {
+      client.disconnect();
+    }
+  },
+);

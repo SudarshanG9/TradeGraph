@@ -4,6 +4,7 @@ written only to ignored test-results and removed after safe shutdown/cleanup.
 Create test-results/finish-browser to request cleanup.
 """
 import json
+import os
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -15,7 +16,8 @@ import uvicorn
 from backend.api.main import create_app
 from tests.integration.test_live_simulator import live_fixture, proof_factory
 
-root = Path(__file__).resolve().parents[1] / 'test-results'
+root = Path(os.environ.get('TRADEGRAPH_BROWSER_RESULTS', str(Path(__file__).resolve().parents[1] / 'test-results')))
+api_port = int(os.environ.get('TRADEGRAPH_TEST_API_PORT', '8000'))
 root.mkdir(exist_ok=True)
 finish = root / 'finish-browser'
 finish.unlink(missing_ok=True)
@@ -31,7 +33,7 @@ async def isolated(application):
         application.state.live_simulator.agent_factory = proof_factory
         yield
 app.router.lifespan_context = isolated
-server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=8000, workers=1, log_level='error', access_log=False))
+server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=api_port, workers=1, log_level='error', access_log=False))
 thread = Thread(target=server.run, daemon=True)
 try:
     thread.start()
@@ -45,7 +47,7 @@ try:
     while not finish.exists() and time.monotonic() < until: time.sleep(.2)
 finally:
     if server.started:
-        with httpx.Client(base_url='http://127.0.0.1:8000', timeout=40) as client:
+        with httpx.Client(base_url=f'http://127.0.0.1:{api_port}', timeout=40) as client:
             for index in (1, 0):
                 user = data['users'][index]
                 login = client.post('/login', json={k: user[k] for k in ('email','password')})

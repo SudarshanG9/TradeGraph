@@ -1,7 +1,9 @@
-# Approval-gated remaining contracts
+# Approved read boundary and pending recovery contract
 
-These are proposals only. The approved request-identity table is implemented and
-verified separately; neither proposal below is approved by that approval.
+The trader-read boundary was subsequently approved explicitly and implemented in
+6db0bd1; deployment is described in database-identity-deployment.md. The durable
+matching journal/outbox below remains unapproved and unimplemented. The earlier
+request-identity-table approval alone did not authorize these separate contracts.
 
 ## Trusted trader database reads (I-01/I-02)
 
@@ -23,8 +25,9 @@ boundary. Proposed minimum trusted boundary:
    analytics uses a separately authorized compliance connection. Auth lookup has
    only the fields it needs. API routes never accept a supplied trader ID.
 
-Approval is needed for separate runtime credentials, the secret-provider contract,
-role lifecycle and RLS policy migration. A shared all-trader read credential is not
+Approval was received for separate runtime credentials, the secret-provider
+contract, role lifecycle and RLS policy migration; implementation is verified in
+the separate SCRAM cluster. A shared all-trader read credential is not
 an acceptable substitute. Files: setup_backend.sh, incremental role/RLS migration,
 config.py, postgres.py connection/context methods, API dependencies/orders/admin,
 simulator read paths, authorization/concurrency tests and deployment configuration.

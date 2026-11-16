@@ -205,7 +205,9 @@ def test_failed_orders_keep_existing_error_contracts(accounts,catalog_instrument
         h=a|{'Idempotency-Key':'frontend-contract-once'}
         oid=client.post('/orders',headers=h,json=order(iid)).json()['order_id']
         r=client.post('/orders',headers=h,json=order(iid))
-        assert r.status_code==409 and r.json()['error']['code']=='DUPLICATE_REQUEST'
+        assert r.status_code==201 and r.json()['order_id']==oid
+        conflict=client.post('/orders',headers=h,json=order(iid,quantity=2))
+        assert conflict.status_code==409 and conflict.json()['error']['code']=='DUPLICATE_REQUEST'
         assert client.post(f'/orders/{oid}/cancel',headers=a).status_code==200
         client.portal.call(client.app.state.service.finish_admissions)
         r=client.post('/orders',headers=a,json=order(iid))

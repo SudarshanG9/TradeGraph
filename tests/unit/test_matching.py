@@ -165,7 +165,7 @@ def test_process_environment_overrides_file_without_global_mutation(tmp_path, mo
     values = configured_env()
     path.write_text("\n".join(f"{k}={v}" for k, v in values.items()) +
                     "\nPOSTGRES_PORT=5433\nPOSTGRES_HOST=/native/socket\n")
-    for key in (*values, "POSTGRES_RUNTIME_USER", "SERVICE_WORKERS", "POSTGRES_USER",
+    for key in (*values, "POSTGRES_HOST", "POSTGRES_RUNTIME_USER", "SERVICE_WORKERS", "POSTGRES_USER",
                 "POSTGRES_ADMIN_USER", "NEO4J_URI", "NEO4J_USER", "JWT_ALGORITHM"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("POSTGRES_PORT", "5434")

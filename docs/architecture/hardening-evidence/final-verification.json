@@ -1,0 +1,24 @@
+{
+  "backend_complete_suite": {
+    "passed": 371,
+    "warnings": 1,
+    "environment": "separate UTF8 PostgreSQL SCRAM cluster, forced RLS, dedicated Redis depth db15"
+  },
+  "frontend": {
+    "passed": 40,
+    "typecheck": "passed",
+    "format": "passed",
+    "webpack_production_build": "passed",
+    "default_turbopack": "blocked: worker EPERM"
+  },
+  "http_bff_acceptance": {
+    "passed": 8
+  },
+  "browser": "passed; see browser-acceptance.json",
+  "live_deployment": "not performed",
+  "findings": {
+    "fixed": 16,
+    "partially_fixed": 8,
+    "blocked": 1
+  }
+}

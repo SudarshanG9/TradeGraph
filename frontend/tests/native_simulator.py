@@ -2,6 +2,7 @@
 The ordinary port-8000 API must be stopped before running this module.
 """
 import time
+import os
 from contextlib import asynccontextmanager
 from threading import Thread
 from uuid import uuid4
@@ -21,7 +22,7 @@ def test_bff_human_bot_settlement_and_safe_stop(live_fixture):
             application.state.live_simulator.agent_factory = proof_factory
             yield
     app.router.lifespan_context = isolated
-    server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=8000, workers=1, log_level='error', access_log=False))
+    server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=int(os.environ.get('TRADEGRAPH_TEST_API_PORT','8000')), workers=1, log_level='error', access_log=False))
     thread = Thread(target=server.run, daemon=True)
     thread.start()
     deadline = time.monotonic() + 20
