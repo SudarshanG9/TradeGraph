@@ -11,6 +11,7 @@ export function applicationOrigin(env: Record<string, string | undefined> = proc
       url.username ||
       url.password ||
       url.pathname !== '/' ||
+      ![url.origin, `${url.origin}/`].includes(value) ||
       !['http:', 'https:'].includes(url.protocol)
     )
       throw new Error();
@@ -22,5 +23,17 @@ export function applicationOrigin(env: Record<string, string | undefined> = proc
     return url.origin;
   } catch {
     throw new ApiError(503, 'APP_ORIGIN_CONFIGURATION_INVALID');
+  }
+}
+
+/** Diagnostic only: this never expands the trusted origin set. */
+export function wrongDevelopmentOrigin(supplied: string, expected: string) {
+  try {
+    const a = new URL(supplied),
+      b = new URL(expected);
+    const loopback = (host: string) => ['localhost', '127.0.0.1', '[::1]'].includes(host);
+    return a.origin !== b.origin && loopback(a.hostname) && loopback(b.hostname);
+  } catch {
+    return false;
   }
 }

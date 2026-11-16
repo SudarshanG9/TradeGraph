@@ -142,6 +142,7 @@ export const depth = (id: number): Book => {
     })),
     as_of: asOf,
     stale: false,
+    epoch: 'mock',
     version: '14',
   };
 };

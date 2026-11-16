@@ -1,4 +1,5 @@
 import 'server-only';
+import { ApiError } from '../api/errors';
 import { applicationOrigin } from './app-origin';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -22,4 +23,8 @@ export function cookieOptions() {
     sameSite: 'strict' as const,
     path: '/',
   };
+}
+
+export function sessionUnavailable(error: unknown) {
+  return error instanceof ApiError && error.status === 503;
 }

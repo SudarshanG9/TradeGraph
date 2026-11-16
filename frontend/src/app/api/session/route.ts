@@ -1,3 +1,4 @@
+import { liveOperation } from '@/lib/server/live-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   checkCsrf,
@@ -33,7 +34,16 @@ export async function POST(request: NextRequest) {
     );
   }
   try {
-    await deleteSession(request.cookies.get(SESSION_COOKIE)?.value);
+    const id = request.cookies.get(SESSION_COOKIE)?.value;
+    const existing = await getSession(id);
+    if (existing) {
+      try {
+        await liveOperation('liveRevoke', id!, existing);
+      } catch (error) {
+        if (!(error instanceof ApiError) || ![401, 403].includes(error.status)) throw error;
+      }
+    }
+    await deleteSession(id);
   } catch {
     return NextResponse.json(
       { error: { code: 'SESSION_UNAVAILABLE' } },

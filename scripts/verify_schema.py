@@ -16,6 +16,8 @@ EXPECTED_TABLES = {
     "margin_account", "instrument", "order", "order_history", "execution",
     "position", "market_disclosure", "regime_snapshot",
 }
+SUPPLEMENTARY_TABLES = {'order_request_identity','registration_state','registration_policy'}
+
 EXPECTED_ROLES = {"trader_role", "compliance_admin_role"}
 EXPECTED_POLICIES = {
     ("market_disclosure", "disclosure_admin_only"),
@@ -58,7 +60,7 @@ def main():
                    WHERE table_schema='public' AND table_type='BASE TABLE'"""
             )
             tables = {r[0] for r in cur.fetchall()}
-            assert_ok(EXPECTED_TABLES <= tables and not tables - EXPECTED_TABLES - {'order_request_identity'},
+            assert_ok(EXPECTED_TABLES <= tables and not tables - EXPECTED_TABLES - SUPPLEMENTARY_TABLES,
                       f"13 core tables plus approved supplementary persistence (found: {sorted(tables)})")
 
             cur.execute(
@@ -121,7 +123,7 @@ def main():
                    WHERE contype='f' AND connamespace='public'::regnamespace"""
             )
             fk_count = cur.fetchone()[0]
-            expected_fks=18+int("order_request_identity" in tables)
+            expected_fks=18+int("order_request_identity" in tables)+2*int("registration_state" in tables)
             assert_ok(fk_count == expected_fks, f"{expected_fks} foreign key relationships (found {fk_count})")
 
             cur.execute(

@@ -1,0 +1,24 @@
+{
+  "backend": {
+    "passed": 392,
+    "warnings": 1,
+    "duration_seconds": 117.75
+  },
+  "frontend": {
+    "passed": 55,
+    "skipped": 0
+  },
+  "proxy": {
+    "passed": 2
+  },
+  "typecheck": "passed",
+  "format": "passed",
+  "production_build": "passed (webpack)",
+  "browser_reports": [
+    "browser-acceptance.json",
+    "browser-recovery.json",
+    "browser-restart.json",
+    "browser-final-security-smoke.json"
+  ],
+  "scope": "isolated local acceptance; production limitations in final-fullstack-acceptance.md"
+}

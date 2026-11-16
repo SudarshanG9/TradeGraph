@@ -69,6 +69,8 @@ class Settings:
     postgres_compliance_user: str = ''
     postgres_compliance_password: str = field(default='', repr=False)
     trader_credentials_file: str = ''
+    app_origin: str = 'http://127.0.0.1:3000'
+    allow_insecure_loopback_origin: bool = True
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None,
@@ -167,4 +169,6 @@ class Settings:
             postgres_auth_user=auth_user,postgres_auth_password=auth_password,
             postgres_compliance_user=compliance_user,postgres_compliance_password=compliance_password,
             trader_credentials_file=credentials_file,
+            app_origin=values.get('APP_ORIGIN','http://127.0.0.1:3000'),
+            allow_insecure_loopback_origin=values.get('ALLOW_INSECURE_LOOPBACK_ORIGIN','false')=='true',
         )

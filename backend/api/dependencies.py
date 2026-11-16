@@ -22,6 +22,9 @@ async def actor(request: Request, credentials: HTTPAuthorizationCredentials | No
     identity = await asyncio.to_thread(request.app.state.database.identity, claims['sub'])
     if not identity or identity['role'] != claims['role']:
         raise HTTPException(401, detail='UNAUTHORIZED')
+    state = await asyncio.to_thread(request.app.state.database.registration_status, identity['id'])
+    if state is not None and state != 'ACTIVE':
+        raise HTTPException(403, detail='REGISTRATION_' + state)
     return identity
 
 

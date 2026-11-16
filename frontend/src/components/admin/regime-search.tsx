@@ -126,6 +126,9 @@ export function RegimeSearch({
             {error === 'NO_MARKET_OBSERVATIONS'
               ? 'No market observations are available for the current-feature query.'
               : error}
+            <button className="link" type="submit" disabled={busy}>
+              Retry
+            </button>
           </Notice>
         )}
         <p className="caption">

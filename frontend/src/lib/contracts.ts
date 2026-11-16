@@ -68,6 +68,7 @@ export interface Level {
   quantity: Int;
 }
 export interface Book {
+  epoch: string | null;
   symbol: string;
   bids: Level[];
   asks: Level[];
@@ -205,4 +206,14 @@ export interface RequestOutcome {
   trader_id: string;
   status: 'ACCEPTED' | 'UNRESOLVED';
   accepted_order: AcceptedOrder | null;
+}
+
+export interface RegistrationRequest {
+  full_name: string;
+  email: string;
+  password: string;
+}
+export interface RegistrationReceipt {
+  registration_id: string;
+  status: 'PENDING_VERIFICATION' | 'PENDING_PROVISIONING' | 'ACTIVE';
 }

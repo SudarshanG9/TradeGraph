@@ -116,7 +116,14 @@ export function OptimizerControls({
             Instrument and price parameters are unused.
           </p>
         )}
-        {error && <Notice tone="error">{error}</Notice>}
+        {error && (
+          <Notice tone="error">
+            {error}{' '}
+            <button className="link" type="submit" disabled={busy}>
+              Retry
+            </button>
+          </Notice>
+        )}
       </form>
     </Card>
   );

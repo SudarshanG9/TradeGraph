@@ -88,6 +88,7 @@ async def start(body: SimulationStart, request: Request):
         raise HTTPException(422, detail='INVALID_SIMULATION_CONFIG') from None
     # Dataclass tuples are converted to the public JSON list contract.
     result['config']['instrument_ids'] = list(body.instrument_ids)
+    request.app.state.live_bus.publish('simulator.changed',admin=True)
     return result
 
 
@@ -96,6 +97,7 @@ async def stop(request: Request):
     result = await supervisor(request).stop()
     if result['config']:
         result['config']['instrument_ids'] = list(result['instrument_ids'])
+    request.app.state.live_bus.publish('simulator.changed',admin=True)
     return result
 
 
@@ -118,6 +120,7 @@ async def recover(request: Request):
         result = await supervisor(request).recover()
         if result['config']:
             result['config']['instrument_ids'] = list(result['instrument_ids'])
+        request.app.state.live_bus.publish('simulator.changed',admin=True)
         return result
     except SimulationConflict as exc:
         raise HTTPException(409,detail=str(exc)) from None

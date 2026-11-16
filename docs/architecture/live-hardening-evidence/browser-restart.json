@@ -1,0 +1,8 @@
+{
+  "checks": [
+    "safe full-stack shutdown/restart changes owner epoch, existing browser reconnects and resynchronizes without login or navigation",
+    "account snapshot unchanged, empty authoritative book rebuilt, no second owner"
+  ],
+  "errors": [],
+  "status": "passed"
+}

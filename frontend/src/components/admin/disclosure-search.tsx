@@ -65,7 +65,14 @@ export function DisclosureSearch({
           {busy ? 'Searching…' : 'Search'}
         </Button>
       </div>
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && (
+        <Notice tone="error">
+          {error}{' '}
+          <button className="link" type="submit" disabled={busy}>
+            Retry
+          </button>
+        </Notice>
+      )}
     </form>
   );
 }

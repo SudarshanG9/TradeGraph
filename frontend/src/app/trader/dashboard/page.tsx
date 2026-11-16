@@ -8,47 +8,54 @@ import { RecentOrders } from '@/components/trader/recent-orders';
 import { ExecutionsTable } from '@/components/trader/executions-table';
 export default function Dashboard() {
   const { api, instrument } = usePreview();
-  const r = useResource(
-    async (signal) => {
-      const [account, orders, trades] = await Promise.all([
-        api.account.get(signal),
-        api.orders.list({ limit: 3 }, signal),
-        instrument
-          ? api.market.trades(instrument.symbol, { limit: 2 }, signal)
-          : Promise.resolve({ items: [], next_before_id: null }),
-      ]);
-      return { account, orders, trades };
-    },
+  const account = useResource((signal) => api.account.get(signal), [], 5000);
+  const orders = useResource((signal) => api.orders.list({ limit: 3 }, signal), [], 5000);
+  const trades = useResource(
+    (signal) =>
+      instrument
+        ? api.market.trades(instrument.symbol, { limit: 2 }, signal)
+        : Promise.resolve({ items: [], next_before_id: null }),
     [instrument?.id],
     5000,
   );
+  const reload = () => {
+    account.reload();
+    orders.reload();
+    trades.reload();
+  };
   return (
     <>
       <Heading
         title="Dashboard"
         description="Your available funds, settled positions and recent orders."
       >
-        <Refresh onClick={r.reload} loading={r.loading} />
+        <Refresh onClick={reload} />
       </Heading>
-      <DataState {...r} retry={r.reload}>
-        {r.data && (
-          <div className="stack">
-            <AccountSummary account={r.data.account} />
-            <div className="dashboard-tables">
-              <PositionsTable positions={r.data.account.positions} />
-              <RecentOrders orders={r.data.orders.items} />
-            </div>
+      <div className="stack">
+        <DataState {...account} retry={account.reload}>
+          {account.data && (
+            <>
+              <AccountSummary account={account.data} />
+              <PositionsTable positions={account.data.positions} />
+            </>
+          )}
+        </DataState>
+        <DataState {...orders} retry={orders.reload}>
+          {orders.data && <RecentOrders orders={orders.data.items} />}
+        </DataState>
+        <DataState {...trades} retry={trades.reload}>
+          {trades.data && (
             <ExecutionsTable
-              trades={r.data.trades.items}
+              trades={trades.data.items}
               action={
                 <Link className="link" href="/trader/terminal">
                   Open Trading Terminal →
                 </Link>
               }
             />
-          </div>
-        )}
-      </DataState>
+          )}
+        </DataState>
+      </div>
     </>
   );
 }

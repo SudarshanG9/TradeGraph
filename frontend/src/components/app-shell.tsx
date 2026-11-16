@@ -55,7 +55,7 @@ export function Brand() {
 export function AppShell({ role, children }: { role: AccountRole; children: ReactNode }) {
   const pathname = usePathname(),
     router = useRouter();
-  const { mock, logout, fixture, setFixture, outcome, setOutcome } = usePreview();
+  const { mock, liveState, logout, fixture, setFixture, outcome, setOutcome } = usePreview();
   const [open, setOpen] = useState(false);
   const isTrader = role === 'TRADER',
     nav = isTrader ? traderNav : adminNav,
@@ -82,7 +82,11 @@ export function AppShell({ role, children }: { role: AccountRole; children: Reac
         <div className="topbar-right">
           <span className="preview-status">
             <i />
-            {mock ? 'Mock preview' : 'Backend connected mode'}
+            {mock
+              ? 'Mock preview'
+              : liveState === 'live'
+                ? 'Live notifications · snapshots verified'
+                : 'Updates delayed · polling fallback'}
           </span>
           <Badge tone={isTrader ? 'green' : 'blue'}>
             {isTrader ? <User size={12} /> : <Shield size={12} />}{' '}

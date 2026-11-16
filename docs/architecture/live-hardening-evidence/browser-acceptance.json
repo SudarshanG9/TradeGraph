@@ -1,0 +1,44 @@
+{
+  "checks": [
+    "5 independent UI signups + 15 BFF registrations, 20 operator-verified ACTIVE RLS identities",
+    "5 independent browser logins resolve their new trader identity",
+    "real same-origin ticket/upgrade/HTTP snapshot synchronization",
+    "two real order forms cross, SQL settles once, own balances/positions/orders and screens agree",
+    "open dashboard monitors converge automatically without navigation or manual refresh",
+    "60 additional crossing pairs, periodic interrupted receiver and instrument changes, SQL/screen recovery, no resting residuals",
+    "trades 503 preserves account widget and independent Retry recovers",
+    "session 503 hides protected content without login redirect, retry restores session",
+    "catalogue 503 disables order form and Retry catalogue restores selection",
+    "browser disconnect/reconnect restores authoritative snapshot synchronization",
+    "actual dedicated Redis stop/restart: login/session 503, no cookie deletion or false redirect, server-layout Retry recovers",
+    "same encrypted session works across a second frontend instance and its process restart",
+    "foreign/wrong-origin mutations rejected, logout isolated from other browser session",
+    "all 11 trader/admin pages load without browser exceptions"
+  ],
+  "pages": [
+    "/trader/dashboard",
+    "/trader/account",
+    "/trader/orders",
+    "/trader/analytics",
+    "/trader/terminal",
+    "/admin/overview",
+    "/admin/desks",
+    "/admin/disclosures",
+    "/admin/optimizer",
+    "/admin/regimes",
+    "/admin/surveillance"
+  ],
+  "metrics": {
+    "first_trade_to_verified_screen_ms": 1024,
+    "controlled_activity_ms": 95953,
+    "controlled_executions": 61,
+    "live_frames": 2313,
+    "notification_latency_ms": {
+      "median": 5,
+      "p95": 25,
+      "max": 518
+    }
+  },
+  "errors": [],
+  "status": "passed"
+}

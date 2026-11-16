@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import type { AccountRole, PreviewSession } from '@/lib/contracts';
 import { usePreview } from '../preview-provider';
+import * as liveAuth from '@/lib/api/auth-client';
+import type { RegistrationReceipt } from '@/lib/contracts';
 import { Button, Notice } from '../ui';
 export function PasswordField({
   label,
@@ -81,7 +83,15 @@ export function SignInForm({
           required
           maxLength={255}
           autoComplete="username"
-          placeholder={role === 'TRADER' ? 'alice@tradegraph.sim' : 'admin@tradegraph.sim'}
+          placeholder={
+            mock
+              ? role === 'TRADER'
+                ? 'alice@tradegraph.sim'
+                : 'admin@tradegraph.sim'
+              : role === 'TRADER'
+                ? 'alice@tradegraph.test'
+                : 'admin@tradegraph.test'
+          }
         />
       </label>
       <PasswordField name="password" label="Password" />
@@ -100,64 +110,89 @@ export function SignInForm({
   );
 }
 export function SignUpForm({ role, onReturn }: { role: AccountRole; onReturn: () => void }) {
-  const [error, setError] = useState(''),
-    [submitted, setSubmitted] = useState(false);
+  const { mock } = usePreview();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [receipt, setReceipt] = useState<RegistrationReceipt | null>(null);
+  if (role === 'COMPLIANCE_ADMIN')
+    return (
+      <Notice>
+        Administrator access requires approved administrative provisioning.{' '}
+        <button className="link" onClick={onReturn}>
+          Return to Sign In
+        </button>
+      </Notice>
+    );
   return (
     <form
       className="auth-form"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         const form = new FormData(e.currentTarget);
-        if (String(form.get('name')).trim().length < 2) {
-          setError('Enter your full name.');
-          return;
-        }
-        if (form.get('password') !== form.get('confirm')) {
+        const password = String(form.get('password'));
+        setError('');
+        if (password !== form.get('confirm')) {
           setError('Passwords do not match.');
           return;
         }
-        setError('');
-        setSubmitted(true);
-        e.currentTarget.reset();
+        if (new TextEncoder().encode(password).length > 72) {
+          setError('Password must fit within 72 UTF-8 bytes.');
+          return;
+        }
+        if (mock) {
+          setError('Registration requires the live application. No account was created.');
+          return;
+        }
+        setBusy(true);
+        try {
+          setReceipt(
+            await liveAuth.register({
+              full_name: String(form.get('name')).trim(),
+              email: String(form.get('email')).trim().toLowerCase(),
+              password,
+            }),
+          );
+        } catch (error) {
+          setError((error as Error).message);
+        } finally {
+          setBusy(false);
+        }
       }}
     >
       <label className="field">
         Full name
-        <input name="name" autoComplete="name" required minLength={2} maxLength={120} />
+        <input name="name" autoComplete="name" required minLength={2} maxLength={150} />
       </label>
       <label className="field">
         Email address
         <input name="email" autoComplete="email" type="email" required maxLength={255} />
       </label>
-      <PasswordField name="password" label="Password" minLength={8} autoComplete="new-password" />
+      <PasswordField name="password" label="Password" minLength={12} autoComplete="new-password" />
       <PasswordField
         name="confirm"
         label="Confirm password"
-        minLength={8}
+        minLength={12}
         autoComplete="new-password"
       />
       <p className="auth-hint">
-        Account type: {role === 'TRADER' ? 'Trader' : 'Administrator'}.{' '}
-        {role === 'COMPLIANCE_ADMIN'
-          ? 'Administrator access requires an approved invitation or administrative provisioning.'
-          : 'Trader registration requires a future approved backend service.'}
+        Account type: Trader. Access begins after verification and database provisioning.
       </p>
       {error && <Notice tone="error">{error}</Notice>}
-      {submitted && (
-        <Notice>
-          Registration is not connected. No account was created and no credentials were saved.
-          Contact your project administrator for a provisioned demo identity.{' '}
+      {receipt && (
+        <Notice tone={receipt.status === 'ACTIVE' ? 'success' : 'info'}>
+          {receipt.status === 'ACTIVE'
+            ? 'Your account is active. You can sign in.'
+            : receipt.status === 'PENDING_VERIFICATION'
+              ? 'Account created, awaiting verification. No verification email has been sent. Contact the operator.'
+              : 'Account created, awaiting database provisioning. Sign in after the operator activates it.'}{' '}
           <button type="button" className="link" onClick={onReturn}>
             Return to Sign In
           </button>
         </Notice>
       )}
-      <Button type="submit" variant="primary">
-        Preview account request
+      <Button type="submit" variant="primary" disabled={busy || !!receipt}>
+        {busy ? 'Creating account…' : 'Create trader account'}
       </Button>
-      <p className="auth-hint">
-        UI preview only. No registration or password-reset endpoint exists.
-      </p>
     </form>
   );
 }

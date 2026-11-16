@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "**/api/backend/account/me: independent 503, unaffected content, Retry recovery",
+    "**/api/backend/orders/me*: independent 503, unaffected content, Retry recovery",
+    "**/api/backend/market/*/book: independent 503, unaffected content, Retry recovery",
+    "15 rapid instrument changes converge to the selected book",
+    "**/api/backend/admin/surveillance/cycles*: injected failure and real backend Retry recovery",
+    "**/api/backend/admin/optimizer/compare*: injected failure and real backend Retry recovery",
+    "invalid session returns authoritative null and protected navigation redirects"
+  ],
+  "errors": [],
+  "status": "passed"
+}

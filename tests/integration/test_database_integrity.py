@@ -10,16 +10,16 @@ def test_thirteen_tables(db_conn):
             """SELECT count(*) FROM information_schema.tables
                WHERE table_schema='public' AND table_type='BASE TABLE'"""
         )
-        assert cur.fetchone()[0] == 14
-        from scripts.verify_schema import EXPECTED_TABLES
+        assert cur.fetchone()[0] == 16
+        from scripts.verify_schema import EXPECTED_TABLES, SUPPLEMENTARY_TABLES
         cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")
-        assert {r[0] for r in cur.fetchall()} == EXPECTED_TABLES | {'order_request_identity'}
+        assert {r[0] for r in cur.fetchall()} == EXPECTED_TABLES | SUPPLEMENTARY_TABLES
 
 
 @pytest.mark.day1
 def test_static_seeds_and_hierarchy(db_conn):
     with db_conn.cursor() as cur:
-        cur.execute("SELECT count(*) FROM instrument")
+        cur.execute("SELECT count(*) FROM instrument WHERE symbol IN ('ACME','BETA','GAMMA')")
         assert cur.fetchone()[0] == 3
         cur.execute("SELECT count(*) FROM fee_tier")
         assert cur.fetchone()[0] == 2

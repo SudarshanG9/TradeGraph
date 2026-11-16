@@ -1,0 +1,13 @@
+# Production example. Replace the hostname; configure DNS/TLS before starting.
+tradegraph.example {
+    @live path /live/ws
+    handle @live {
+        reverse_proxy 127.0.0.1:8000 {
+            header_up -Cookie
+            header_up -Authorization
+        }
+    }
+    handle {
+        reverse_proxy 127.0.0.1:3001
+    }
+}

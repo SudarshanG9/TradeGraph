@@ -20,6 +20,10 @@ from backend.workers.graph_worker import GraphWorker
 from backend.stores.regimes import Regimes
 from backend.workers.regime_worker import RegimeWorker
 from backend.events.trade_event import TradeEvent
+from backend.events.live_bus import LiveBus
+from backend.api import websocket
+from backend.api.diagnostics import Diagnostics
+from backend.auth.websocket_ticket import TicketStore
 from backend.workers.housekeeping_worker import HousekeepingWorker
 
 
@@ -46,6 +50,10 @@ def create_app(settings=None, *, settlement=True):
         app.state.settings = settings or Settings.from_env()
         app.state.database = Database(app.state.settings)
         app.state.service = Coordinator(app.state.database, app.state.settings)
+        app.state.live_socket_tasks=set()
+        app.state.live_tickets=TicketStore(app.state.settings.redis_url,app.state.settings.postgres_db)
+        app.state.live_bus = LiveBus(app.state.service.epoch)
+        app.state.service.live_bus = app.state.live_bus
         app.state.live_simulator = LiveMarketSupervisor(app.state.service, app.state.database)
         try:
             # Only settled history is rehydrated. Active orders already triggered
@@ -65,6 +73,8 @@ def create_app(settings=None, *, settlement=True):
             if settlement:
                 app.state.depth=RedisDepth(app.state.settings.redis_url,app.state.settings.health_timeout_seconds)
                 cache=CacheWorker(app.state.database,app.state.depth,app.state.service.dispatcher)
+                loop=asyncio.get_running_loop()
+                cache.after_apply=lambda snapshot:loop.call_soon_threadsafe(app.state.live_bus.book_changed,snapshot)
                 app.state.service.derived['redis']=cache
                 app.state.service.book_observers.append(cache.publish)
                 cache.start()
@@ -83,12 +93,16 @@ def create_app(settings=None, *, settlement=True):
                 app.state.service.book_observers.append(regimes.record_book)
                 regimes.start()
                 app.state.service.worker.after_commit.append(regimes.publish_settled)
+                app.state.service.worker.after_commit.append(app.state.live_bus.settled)
                 app.state.service.worker.start()
             app.state.housekeeping = HousekeepingWorker(app.state.database, app.state.settings)
             if app.state.settings.maintenance_enabled:
                 app.state.housekeeping.start()
             yield
         finally:
+            for task in app.state.live_socket_tasks: task.cancel()
+            await asyncio.gather(*app.state.live_socket_tasks,return_exceptions=True)
+            await app.state.live_tickets.close()
             if hasattr(app.state, 'housekeeping'):
                 await app.state.housekeeping.stop()
             await app.state.live_simulator.shutdown()
@@ -104,6 +118,8 @@ def create_app(settings=None, *, settlement=True):
             app.state.service.close()
 
     application = FastAPI(title='TradeGraph', version='1.0', lifespan=lifespan)
+    application.add_middleware(Diagnostics)
+    application.include_router(websocket.router)
     application.include_router(auth.router)
     application.include_router(orders.router)
     application.include_router(admin.router)
@@ -113,7 +129,7 @@ def create_app(settings=None, *, settlement=True):
 
     @application.exception_handler(StarletteHTTPException)
     async def http_error(request, exc):
-        return JSONResponse({'error':{'code':str(exc.detail),'message':str(exc.detail)}}, status_code=exc.status_code)
+        return JSONResponse({'error':{'code':str(exc.detail),'message':str(exc.detail)}}, status_code=exc.status_code,headers=exc.headers)
 
     @application.exception_handler(RequestValidationError)
     async def validation_error(request, exc):

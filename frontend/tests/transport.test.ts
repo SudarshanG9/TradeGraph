@@ -24,7 +24,7 @@ test('transport validates response, no-store, bearer header and no token leakage
   assert.equal(JSON.stringify(value).includes('test-token'), false);
   assert.deepEqual(value, { status: 'ok', dependencies: { postgres: 'up' }, trading_ready: true });
 });
-for (const status of [401, 403, 409, 422, 503])
+for (const status of [400, 401, 403, 404, 409, 422, 429, 503, 504])
   test(`transport preserves backend ${status}`, async () => {
     await assert.rejects(
       backendRequest(health, 'test-token', {

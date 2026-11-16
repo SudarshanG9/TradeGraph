@@ -115,6 +115,9 @@ class Coordinator:
                     else:
                         await self.worker.drain()
                         await self.committed_io(self.database.cancel,row['id'],trader_id)
+                if hasattr(self, 'live_bus'):
+                    self.live_bus.publish('order.changed', trader_ids=(trader_id,), instrument_id=row['instrument_id'])
+                    self.live_bus.publish('account.changed', trader_ids=(trader_id,))
                 self.notify_book(row['instrument_id'])
                 return row
             except BaseException:
@@ -148,6 +151,9 @@ class Coordinator:
                 self.dispatcher.failure = 'Cancellation outcome uncertain; reconciliation required'
                 raise
             self.version += 1
+            if hasattr(self, 'live_bus'):
+                self.live_bus.publish('order.changed', trader_ids=(trader_id,), instrument_id=rows[0]['instrument_id'])
+                self.live_bus.publish('account.changed', trader_ids=(trader_id,))
             self.notify_book(rows[0]['instrument_id'])
             return quantity
 
