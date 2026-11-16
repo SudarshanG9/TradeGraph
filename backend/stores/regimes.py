@@ -50,6 +50,21 @@ class Regimes:
               ON CONFLICT(instrument_id,captured_at) DO UPDATE SET features=EXCLUDED.features RETURNING id""",
               (instrument,captured_at,json.dumps(features,allow_nan=False))).fetchone()['id']
 
+    def apply_observation(self,event,payload):
+        """Replay persisted observations, never manufacture historical depth.
+
+        Called under the durable regime consumer's advisory transaction lock.
+        A delayed retry must not overwrite a later observation in the same minute.
+        """
+        newer = self.database.query('''SELECT 1 FROM public.event_outbox o
+            JOIN public.execution e ON e.id=o.execution_id
+            WHERE o.consumer='regime' AND o.completed_at IS NOT NULL
+              AND e.instrument_id=%s AND o.payload->>'captured_at'=%s
+              AND (o.payload->>'observed_at',o.execution_id)>(%s,%s) LIMIT 1''',
+            (event.instrument_id,payload['captured_at'],payload['observed_at'],event.event_id))
+        if not newer and payload['features'] is not None:
+            self.upsert(event.instrument_id,datetime.fromisoformat(payload['captured_at']),payload['features'])
+
     def capture(self,instrument,snapshot,as_of=None):
         with self.capture_locks.setdefault(instrument,Lock()):
             version=(snapshot.get('epoch'),snapshot.get('version',0))

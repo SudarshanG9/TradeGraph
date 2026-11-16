@@ -35,6 +35,9 @@ def json_units(value):
 class Database:
     def __init__(self, settings):
         self.settings = settings
+        # Installed by startup on the owner loop. Snapshots are replaced, never
+        # mutated; a settlement thread takes one immutable observation reference.
+        self.regime_books = None
 
     def connect(self, **kwargs):
         s=self.settings
@@ -188,7 +191,35 @@ class Database:
             applied = conn.execute('SELECT public.settle_execution(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS applied',
                 (event.event_id,event.instrument_id,event.buy_order_id,event.sell_order_id,event.buy_trader_id,
                  event.sell_trader_id,event.price_ticks,event.quantity,event.taker_order_id,event.occurred_at)).fetchone()['applied']
+            if applied and self.regime_books is not None:
+                self.persist_regime_observation(conn, event)
         return applied  # financial acknowledgement only after COMMIT
+
+    def persist_regime_observation(self, conn, event):
+        """Persist the existing feature function's output inside settlement COMMIT.
+
+        Historical executions without this observation are never reconstructed
+        using today's book. A failed metadata write rolls back settlement too.
+        """
+        from datetime import datetime, timedelta, timezone
+        from psycopg.types.json import Jsonb
+        from backend.stores.regimes import market_features
+        snapshot = self.regime_books.get(event.instrument_id)
+        if snapshot is None:
+            raise RuntimeError('Verified book observation required before settlement')
+        now = datetime.now(timezone.utc)
+        recent = conn.execute('SELECT price_ticks,quantity,executed_at FROM execution WHERE instrument_id=%s AND executed_at BETWEEN %s AND %s ORDER BY executed_at,id',
+                              (event.instrument_id, now-timedelta(seconds=60), now)).fetchall()
+        history = list(reversed(conn.execute('SELECT price_ticks,quantity FROM execution WHERE instrument_id=%s ORDER BY id DESC LIMIT 100',
+                                             (event.instrument_id,)).fetchall()))
+        features = market_features(snapshot['bids'], snapshot['asks'], recent, history)
+        payload = {'features': features, 'observed_at': now.isoformat(),
+                   'captured_at': now.replace(second=0, microsecond=0).isoformat(),
+                   'book': snapshot}
+        changed = conn.execute("UPDATE public.event_outbox SET payload=%s WHERE execution_id=%s AND consumer='regime' AND payload IS NULL RETURNING execution_id",
+                               (Jsonb(payload), event.event_id)).fetchone()
+        if changed is None:
+            raise RuntimeError('Atomic regime publication intent missing')
 
     def cancel(self, order_id, trader_id):
         with self.connect() as conn:

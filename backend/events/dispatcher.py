@@ -1,4 +1,4 @@
-"""Bounded in-process handoff; intentionally no durable outbox."""
+"""Bounded pre-settlement handoff; committed publication uses the SQL outbox."""
 import asyncio
 from enum import Enum
 from threading import Lock

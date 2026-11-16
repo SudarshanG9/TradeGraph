@@ -65,6 +65,9 @@ def main():
         run([commands['psql'],'-X','-h','127.0.0.1','-p',str(args.pg_port),'-U',getpass.getuser(),'-d',args.database,'-v','ON_ERROR_STOP=1','-f',file],env)
     run([sys.executable,'-m','scripts.seed_live_bots','--apply'],env)
     run([sys.executable,'-m','scripts.setup_database_identity','--database',args.database,'--manifest',str(root/'identities.json'),'--apply'],env)
+    from scripts.setup_database_identity import environment
+    runtime_role=environment(root/'identities.json')['POSTGRES_RUNTIME_USER']
+    run([sys.executable,'-m','scripts.migrate_recovery','--database',args.database,'--runtime-role',runtime_role,'--apply'],env)
     run([sys.executable,'-m','scripts.migrate_registration','--database',args.database,'--auth-role','tradegraph_auth','--apply','--synthetic-demo','--starter-cash','20000'],env)
     run([commands['redis-server'],'--bind','127.0.0.1','--port',str(args.redis_port),'--dir',str(root),'--appendonly','yes','--daemonize','yes','--pidfile',str(root/'redis.pid'),'--logfile',str(root/'redis.log')])
     from scripts.setup_database_identity import environment

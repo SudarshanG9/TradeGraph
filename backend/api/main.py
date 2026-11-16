@@ -25,6 +25,7 @@ from backend.api import websocket
 from backend.api.diagnostics import Diagnostics
 from backend.auth.websocket_ticket import TicketStore
 from backend.workers.housekeeping_worker import HousekeepingWorker
+from backend.workers.outbox_worker import OutboxWorker
 
 
 class Readiness(BaseModel):
@@ -55,6 +56,7 @@ def create_app(settings=None, *, settlement=True):
         app.state.live_bus = LiveBus(app.state.service.epoch)
         app.state.service.live_bus = app.state.live_bus
         app.state.live_simulator = LiveMarketSupervisor(app.state.service, app.state.database)
+        app.state.outbox_workers = []
         try:
             # Only settled history is rehydrated. Active orders already triggered
             # a fail-closed reconciliation stop in acquire_owner().
@@ -86,13 +88,20 @@ def create_app(settings=None, *, settlement=True):
                 app.state.service.derived['neo4j']=graph
                 graph.start()
                 graph.publish(None)
-                app.state.service.worker.after_commit.append(graph.publish)
                 app.state.regimes=Regimes(app.state.database)
                 regimes=RegimeWorker(app.state.regimes,app.state.service.dispatcher)
                 app.state.service.derived['regimes']=regimes
                 app.state.service.book_observers.append(regimes.record_book)
-                regimes.start()
-                app.state.service.worker.after_commit.append(regimes.publish_settled)
+                # Keep the owner-loop observation recorder, but durable consumers
+                # replace volatile graph/regime publication queues.
+                app.state.database.regime_books = regimes.books
+                for row in await asyncio.to_thread(app.state.database.query,'SELECT id FROM instrument'):
+                    regimes.record_book(app.state.service.book_snapshot(row['id']))
+                for name,handler in (('graph',lambda event,payload:app.state.graph.apply(event)),
+                                     ('regime',app.state.regimes.apply_observation)):
+                    durable=OutboxWorker(app.state.database,name,handler)
+                    app.state.outbox_workers.append(durable)
+                    durable.start()
                 app.state.service.worker.after_commit.append(app.state.live_bus.settled)
                 app.state.service.worker.start()
             app.state.housekeeping = HousekeepingWorker(app.state.database, app.state.settings)
@@ -109,6 +118,8 @@ def create_app(settings=None, *, settlement=True):
             await app.state.service.finish_admissions()
             if app.state.service.worker:
                 await app.state.service.worker.stop()
+            for consumer in app.state.outbox_workers:
+                await consumer.stop()
             for consumer in app.state.service.derived.values():
                 await consumer.stop()
             if hasattr(app.state,'depth'):

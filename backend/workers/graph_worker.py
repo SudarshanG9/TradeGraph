@@ -10,9 +10,13 @@ class GraphWorker(ReplaceableWorker):
 
     def handle(self,event):
         if event is None:
-            self.store.initialize()
-            self.store.rebuild()
-            self.store.retention()
+            # Rebuild and durable pair updates share one projection writer lock.
+            # Otherwise a slow startup rebuild could replace a newer aggregate.
+            with self.store.database.connect() as conn:
+                conn.execute('SELECT pg_advisory_xact_lock(hashtext(%s))',('tradegraph-outbox-graph',))
+                self.store.initialize()
+                self.store.rebuild()
+                self.store.retention()
             self.ready=True
         else:
             self.store.apply(event)

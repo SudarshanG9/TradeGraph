@@ -64,3 +64,35 @@ Phase 2 verification: **32 passed**, durable outbox + settlement recovery + sett
 lock/fee invariants (15.43 seconds). Initial test run exposed a test deployment grant
 mistake (legacy runtime name versus isolated `tradegraph_financial`); corrected the
 isolated migration grant and reran all checks. No test result was suppressed.
+
+## Phase 3: derived replay
+
+Phase 2 commit `a8449a1` pushed and confirmed on origin.
+Startup installs durable graph/regime consumers instead of volatile callbacks.
+Settlement still uses the exact existing SQL routine; its connection now persists
+regime features, capture/observation time and original depth/epoch/version before
+COMMIT. Feature mathematics and VECTOR(6) similarity are unchanged. No current book
+is used to invent a historical observation during replay. A metadata failure rolls
+back the financial transaction and preserves fail-closed handling.
+
+Graph replay uses existing absolute PostgreSQL pair aggregates. Startup rebuild and
+outbox application share a projection writer advisory lock, preventing stale writes
+from concurrent read-before-write. Regime upsert retains its existing unique minute
+key, and delayed retries cannot overwrite an already delivered newer observation.
+Legacy SQL-only executions retain missing-observation diagnostics; exact historic
+regime recovery for those is **blocked**, since their depth was never persisted.
+
+Redis retains owner epochs and monotonic per-epoch version checks. Startup still
+rebuilds only a verified empty active book; active-order recovery remains blocked.
+Cache notifications occur only after successful atomic Redis application. WebSocket
+notifications stay best effort; browser reconnect uses existing HTTP snapshots.
+No durable notification acknowledgment waits on a browser.
+
+Files: `backend/api/main.py`, `backend/stores/postgres.py`,
+`backend/stores/regimes.py`, `backend/workers/graph_worker.py`, dispatcher docstring,
+`tests/integration/test_outbox_recovery.py`, isolated-stack migration wiring.
+Verification: **40 passed** (outbox recovery, full order pipeline, polyglot consumers,
+and concurrent outbox tests; 33.64 seconds). Frontend production build passed;
+its incidental generated next-env change was discarded to preserve scope.
+Additional phase 3 verification: **6 passed** including delayed regime retry ordering
+(3.78 seconds). No skipped observations were treated as delivered.
