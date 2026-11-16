@@ -102,3 +102,24 @@ Full unchanged backend rerun: **284 passed**, one existing Starlette/httpx
 warning, 59.04s. The initial authentication failure did not reproduce; its cause
 is unconfirmed and is retained above rather than concealed. Frontend checks all
 passed. Phase 0 changes are this audit document only; no runtime behavior changed.
+
+## Phase 1 — native runtime verified
+
+Phase 0 remote commit: `f9c05903304c13591f7629985daf1919fcdf313f`.
+Initial push encountered a connection reset; ordinary retry succeeded and remote
+HEAD matched. No force push was used.
+
+The existing schema verifier passed: 13 tables, 18 foreign keys, vector/pgcrypto,
+RLS, grants, indexes and demo associations. Bot dry run validated all eight
+existing identities without changes. No installation, migration or provisioning
+was needed. After all native tests finished, one Uvicorn worker was started on
+127.0.0.1:8000. Readiness checker exited 0: PostgreSQL/Redis/Neo4j and derived
+workers up, three active instruments, eight valid bots, zero active orders,
+trading_ready=true, overall_health=ok, no warnings or failures. OpenAPI/catalog
+and simulator registration checks passed. No account or financial rows were
+changed by readiness verification.
+
+Runtime command: `.venv/bin/uvicorn backend.api.main:app --host 127.0.0.1 --port 8000 --workers 1`.
+Stop this owner before native tests that instantiate another coordinator. The
+frontend BFF will use private FASTAPI_BASE_URL=http://127.0.0.1:8000. Preserve
+existing ignored backend environment; never copy credentials into frontend code.
