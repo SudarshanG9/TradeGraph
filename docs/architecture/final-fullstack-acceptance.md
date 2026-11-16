@@ -233,3 +233,10 @@ the living report and Git history.
 | `4e76001add136e5a2931990e727403c98aec247f` | fix(integration): standardize API failure handling and diagnostics |
 | `b064bc88c5cba79094c571ba39cb25b7e112ca44` | infra(dev): provide reproducible full-stack startup and configuration checks |
 | `642ac0f52d695f29a1029ad9d4e6b6a5b6ad0cb7` | test(e2e): verify multi-user registration and resilient live trading |
+| `729d3a602a4b421c6f06d8a97af57a7bf26e2358` | Final regression, bounded-heartbeat security fix and acceptance report |
+
+All eighteen implementation/acceptance commits above were pushed successfully.
+Local and remote tracking tips matched at `729d3a602a4b421c6f06d8a97af57a7bf26e2358`;
+working tree and `git diff main...HEAD --check` were clean. This documentation-only
+receipt is the subsequent commit; its identifier is available from `git log -1`.
+No merge or force-push was performed.
