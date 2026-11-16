@@ -1,0 +1,116 @@
+{
+  "10": {
+    "clients": 10,
+    "connect_ms": {
+      "count": 20,
+      "p50": 129.73504100227728,
+      "p95": 145.3066670219414,
+      "max": 145.3066670219414
+    },
+    "notification_ms": {
+      "count": 385,
+      "p50": 0.5720000000000001,
+      "p95": 34.27,
+      "max": 3205.212
+    },
+    "bff_order_ms": {
+      "count": 20,
+      "p50": 33.76829199260101,
+      "p95": 38.97508402587846,
+      "max": 38.97508402587846
+    },
+    "settlement_ms": {
+      "count": 10,
+      "p50": 11.748042015824467,
+      "p95": 12.905041978228837,
+      "max": 12.905041978228837
+    },
+    "peak_observed_queue": 0,
+    "dropped": 0,
+    "database_connections": 5,
+    "process_usage": [
+      "96852 109872  83.6",
+      "96873 148288   9.1",
+      "96876  49792   9.0"
+    ],
+    "reconnect_success": 10,
+    "accepted_socket_tasks_after_disconnect": 0,
+    "credential_setup": "test-issued signed JWTs; real internal ticket endpoint and full WSS identity validation"
+  },
+  "50": {
+    "clients": 50,
+    "connect_ms": {
+      "count": 100,
+      "p50": 143.04554200498387,
+      "p95": 190.1618749834597,
+      "max": 218.5486670350656
+    },
+    "notification_ms": {
+      "count": 1665,
+      "p50": 1.951,
+      "p95": 202.452,
+      "max": 3181.7859999999996
+    },
+    "bff_order_ms": {
+      "count": 20,
+      "p50": 36.442624987103045,
+      "p95": 39.85104203457013,
+      "max": 39.85104203457013
+    },
+    "settlement_ms": {
+      "count": 10,
+      "p50": 12.764292012434453,
+      "p95": 14.365417009685189,
+      "max": 14.365417009685189
+    },
+    "peak_observed_queue": 0,
+    "dropped": 0,
+    "database_connections": 3,
+    "process_usage": [
+      "97346 114176  91.8",
+      "97368 148496  12.1",
+      "97371  55664   7.9"
+    ],
+    "reconnect_success": 50,
+    "accepted_socket_tasks_after_disconnect": 0,
+    "credential_setup": "test-issued signed JWTs; real internal ticket endpoint and full WSS identity validation"
+  },
+  "100": {
+    "clients": 100,
+    "connect_ms": {
+      "count": 200,
+      "p50": 125.62312500085682,
+      "p95": 154.52404198003933,
+      "max": 178.41287498595193
+    },
+    "notification_ms": {
+      "count": 3265,
+      "p50": 2.96,
+      "p95": 282.223,
+      "max": 3184.932
+    },
+    "bff_order_ms": {
+      "count": 20,
+      "p50": 35.90650000842288,
+      "p95": 40.71762500097975,
+      "max": 40.71762500097975
+    },
+    "settlement_ms": {
+      "count": 10,
+      "p50": 12.227458006236702,
+      "p95": 14.321583963464946,
+      "max": 14.321583963464946
+    },
+    "peak_observed_queue": 0,
+    "dropped": 0,
+    "database_connections": 2,
+    "process_usage": [
+      "98404 105456  80.5",
+      "98425 137904  10.8",
+      "98429  63568  11.1"
+    ],
+    "reconnect_success": 100,
+    "accepted_socket_tasks_after_disconnect": 0,
+    "credential_setup": "test-issued signed JWTs; real internal ticket endpoint and full WSS identity validation"
+  }
+}

@@ -169,3 +169,30 @@ HTTP redirect, foreign CSRF rejection, authenticated WSS, single-use ticket,
 invalid/expired ticket, live logout revocation, BFF routing and observed upstream
 credential stripping. Ticket values and injected credential canaries absent in logs.
 Development proxy, authentication and frontend sources were not changed.
+
+## Phase 7: measured capacity and bounds
+
+Phase 6 commit `790e1cd` pushed and confirmed on origin.
+`tests/benchmarks/test_websocket_capacity.py`: **4 passed**, 23.97 seconds.
+Actual authenticated WSS clients at 10/50/100 connections, fresh-ticket reconnect
+bursts, invalid-ticket attempts, slow receivers, crossing orders via the BFF,
+private-event isolation and task release were exercised. Capacity credentials use
+test-issued signed JWTs through the real internal ticket endpoint; signature,
+single-use ticket, identity, origin and per-user validation remain active.
+The separate TLS suite covers actual password login and browser cookies.
+
+| Clients | Connect p95 ms | Notification p95 ms | Settlement p95 ms | Sample DB connections | Reconnect successes | Tasks after disconnect |
+|---|---:|---:|---:|---:|---:|---:|
+| 10 | 145.31 | 34.27 | 12.91 | 5 | 10 | 0 |
+| 50 | 190.16 | 202.45 | 14.37 | 3 | 50 | 0 |
+| 100 | 154.52 | 282.22 | 14.32 | 2 | 100 | 0 |
+
+Includes intentionally slow receivers (max observed notification delay ~3.2 sec).
+No dropped notifications in these short real-network cases. Deterministic 10,000-event
+fanout overflow independently verifies the 128-item bound and fail-fast resync path.
+Process RSS at measurement: backend ~103–112 MiB, Next ~135–145 MiB,
+Caddy ~49–62 MiB. CPU samples include startup/bcrypt cost and are not sustained CPU
+ceilings. Database/queue measurements are snapshots, not proof of peak capacity.
+No claim is made about 1024 real connections or deployment on other hardware.
+Existing authorization, queue sizes and matching rules were not relaxed.
+Raw measured evidence: `docs/architecture/recovery-hardening-evidence/websocket-capacity.json`.
