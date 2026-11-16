@@ -155,3 +155,23 @@ def test_unknown_historical_observation_is_preserved_and_replay_stays_pending(ac
     with db.admin_context() as conn:
         row=conn.execute('SELECT features::text AS features,observed_at FROM regime_snapshot WHERE instrument_id=%s',(event.instrument_id,)).fetchone()
     assert row=={'features':'[1,0,0,0,0,0]','observed_at':None}
+
+
+def test_historical_graph_replay_preserves_existing_inactivity_retention(accounts):
+    from dataclasses import replace
+    _,_,event=fixture_event(accounts)
+    event=replace(event,occurred_at=datetime.now(timezone.utc)-timedelta(days=95))
+    db=Database(Settings.from_env());db.settle(event)
+    graph=Neo4jGraph(Settings.from_env(),db)
+    try:
+        drain(db,'graph',lambda e,p:graph.apply_committed(e))
+        rows=graph.run('MATCH (a:Trader {id:$a})-[r:EXECUTED_AGAINST]->(b:Trader {id:$b}) RETURN count(r) AS n',
+                       {'a':str(event.buy_trader_id),'b':str(event.sell_trader_id)})
+        assert rows[0]['n']==0
+        assert db.query('SELECT id FROM execution WHERE id=%s',(event.event_id,))
+        _,_,recent=fixture_event(accounts)
+        db.settle(recent)
+        # Replaying the old ID still includes all notional if the pair is active.
+        assert graph.apply_committed(event)=={'trade_count':2,'total_notional':200}
+        assert graph.apply_committed(event)=={'trade_count':2,'total_notional':200}
+    finally:graph.close()

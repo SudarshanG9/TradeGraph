@@ -101,7 +101,7 @@ def create_app(settings=None, *, settlement=True):
                 app.state.database.regime_books = regimes.books
                 for row in await asyncio.to_thread(app.state.database.query,'SELECT id FROM instrument'):
                     regimes.record_book(app.state.service.book_snapshot(row['id']))
-                for name,handler in (('graph',lambda event,payload:app.state.graph.apply(event)),
+                for name,handler in (('graph',lambda event,payload:app.state.graph.apply_committed(event)),
                                      ('regime',app.state.regimes.apply_observation)):
                     durable=OutboxWorker(app.state.database,name,handler,status_target=graph if name=='graph' else None)
                     app.state.outbox_workers.append(durable)

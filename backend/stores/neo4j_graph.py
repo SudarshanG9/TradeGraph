@@ -34,11 +34,11 @@ class Neo4jGraph:
     def initialize(self):
         self.run((ROOT/'db/neo4j/constraints.cypher').read_text())
 
-    def pair(self,buyer,seller):
+    def pair(self,buyer,seller,*,retention_cutoff=None):
         rows=self.database.query('''SELECT count(*) AS trade_count,coalesce(sum(e.price_ticks::numeric*i.tick_size*e.quantity),0) AS total_notional,
           max(e.executed_at) AS last_traded_at FROM execution e JOIN instrument i ON i.id=e.instrument_id WHERE e.buy_trader_id=%s AND e.sell_trader_id=%s''',(buyer,seller))
         row=rows[0]
-        if not row['trade_count']:
+        if not row['trade_count'] or (retention_cutoff is not None and row['last_traded_at']<retention_cutoff):
             self.run('MATCH (a:Trader {id:$a})-[r:EXECUTED_AGAINST]->(b:Trader {id:$b}) DELETE r',{'a':str(buyer),'b':str(seller)})
             return None
         total=int(row['total_notional'])
@@ -52,6 +52,14 @@ class Neo4jGraph:
 
     def apply(self,event):
         return self.pair(event.buy_trader_id,event.sell_trader_id)
+
+    def apply_committed(self,event):
+        # Historical outbox backfill must not resurrect relationships removed by
+        # the existing 90-day inactivity policy. Recent live delivery is unchanged.
+        cutoff=datetime.now(timezone.utc)-timedelta(days=90)
+        if event.occurred_at<cutoff:
+            return self.pair(event.buy_trader_id,event.sell_trader_id,retention_cutoff=cutoff)
+        return self.apply(event)
 
     def rebuild(self,trader_ids=None):
         scope=trader_ids if trader_ids is not None else [r['id'] for r in self.database.query('SELECT id FROM trader')]

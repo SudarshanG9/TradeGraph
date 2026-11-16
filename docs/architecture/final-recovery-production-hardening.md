@@ -265,3 +265,45 @@ no transport retries in that run. Connect p95: 151.17/349.77/348.24 ms at 10/50/
 settlement p95: 38.25/22.46/24.12 ms. Higher latency than the initial measurement
 illustrates shared-host load, not a guaranteed production ceiling. Raw second-run
 evidence: `recovery-hardening-evidence/websocket-capacity-under-soak.json`.
+
+## Final regression (phase 9, verification in progress)
+
+Reconnect test commit `a08404a` pushed and confirmed on origin.
+Final complete backend run: **423 passed**, 182.64 seconds, with actual Caddy TLS/WSS
+and 10/50/100-client tests enabled. No skipped backend tests. The only warning is
+an existing Starlette/httpx deprecation; dependencies were not changed.
+Frontend `npm test`: **55 passed, zero skipped** with a dedicated isolated Redis
+logical database. A first attempt at enabling those native tests was denied
+loopback access by the tool sandbox (EPERM); rerunning with authorized network
+access passed without source changes. `npm run typecheck`, `npm run format:check`
+and `npm run build` all passed. Frontend source changes remain zero.
+
+Additional ownership failure boundary: if an owner lease disappears while a
+reservation is still uncommitted on a different connection, a new process may see
+no active row yet. Current advisory ownership and snapshot checks cannot prove that
+old transaction will never commit. This pre-settlement/torn-lease case remains
+**unsafe/blocked**, not a verified automatic recovery guarantee. Implementing a
+transaction-level owner fence and admission/fill journal is the precise wider
+protocol work required. This branch does not enable active-order recovery.
+Redis scope is also precise: existing version rejection is within an owner epoch.
+A durable monotonic fence against an old writer after a torn lease requires the
+same owner-generation protocol. Healthy ownership/shutdown and verified cold-start
+paths are covered; cross-epoch torn-lease safety is not claimed by the cache alone.
+Final separate commands so far: **206 unit tests passed** (2.11 seconds),
+**141 integration tests passed** (115.92 seconds, real TLS enabled).
+The remaining standalone concurrency command is running on the same final code.
+Standalone concurrency completed: **68 passed**, 26.55 seconds. All four requested
+backend regression commands and frontend verification have now been executed.
+
+## Historical graph retention follow-up
+
+Historical outbox delivery now explicitly preserves the existing 90-day inactivity
+policy. It checks the canonical pair's latest trade before creating a relationship,
+so backfill cannot recreate an expired pair after the startup retention pass.
+Recent live delivery and the original `apply`/aggregate semantics are unchanged.
+Focused checks: **22 passed** (durable recovery and all polyglot tests, 15.13 sec).
+The test also checks that an old replay includes the exact all-history aggregate
+when a newer canonical trade makes that pair active again.
+Files: `backend/api/main.py`, `backend/stores/neo4j_graph.py`,
+`tests/integration/test_outbox_recovery.py`; trailing blank line removed from the
+new shared diagnostic module to satisfy the final branch diff check.

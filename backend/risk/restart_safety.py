@@ -75,4 +75,3 @@ def diagnose(database):
         'durable_publication_installed':bool(installed and trigger),
         'pending_financial_operations':'unknown pre-settlement matching intents' if counts['active_orders'] else 'no active orders; committed-state checks only',
         'limitation':'No durable pre-settlement matching/admission journal; active orders require operator reconciliation, never automatic cancellation'}
-
