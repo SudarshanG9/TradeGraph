@@ -46,6 +46,7 @@ def accounts(request):
         with db_connect() as conn:
             conn.execute('DELETE FROM regime_snapshot WHERE instrument_id=%s',(instrument,))
             conn.execute('DELETE FROM market_disclosure WHERE instrument_id=%s',(instrument,))
+            conn.execute('DELETE FROM order_request_identity WHERE trader_id=ANY(%s)',(traders,))
             conn.execute('DELETE FROM execution WHERE buy_trader_id=ANY(%s) OR sell_trader_id=ANY(%s)',(traders,traders))
             for table in ('position','order_history','order','margin_account','trader'):
                 key = 'id' if table=='trader' else 'trader_id'
@@ -200,14 +201,19 @@ def test_admin_query_role_gates_and_actual_plan(accounts):
         assert client.get('/admin/optimizer/compare?scenario=SELECT%201',headers=admin_headers).status_code==422
 
 
-def test_request_key_replay_is_process_scoped_and_precedes_reservation(accounts):
+def test_request_key_replay_is_durable_and_precedes_reservation(accounts):
     users,instrument=accounts
     with TestClient(create_app()) as client:
         headers=login(client,users[0])|{'Idempotency-Key':'same-request'}
         first=client.post('/orders',headers=headers,json=order(instrument))
         assert first.status_code==201
         repeated=client.post('/orders',headers=headers,json=order(instrument))
-        assert repeated.status_code==409 and repeated.json()['error']['code']=='DUPLICATE_REQUEST'
+        assert repeated.status_code==201 and repeated.json()==first.json()
+        conflict=client.post('/orders',headers=headers,json=order(instrument,quantity=2))
+        assert conflict.status_code==409 and conflict.json()['error']['code']=='DUPLICATE_REQUEST'
+        other=client.post('/orders',headers=login(client,users[1])|{'Idempotency-Key':'same-request'},json=order(instrument))
+        assert other.status_code==201 and other.json()['order_id']!=first.json()['order_id']
+        assert client.post('/orders/'+str(other.json()['order_id'])+'/cancel',headers=login(client,users[1])).status_code==200
         assert len(client.get('/orders/me',headers=headers).json()['items'])==1
         assert client.post('/orders/'+str(first.json()['order_id'])+'/cancel',headers=headers).status_code==200
 

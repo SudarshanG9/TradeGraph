@@ -109,6 +109,7 @@ def live_fixture(monkeypatch):
             cache.close()
         with db_connect() as conn:
             conn.execute('DELETE FROM regime_snapshot WHERE instrument_id=%s',(iid,))
+            conn.execute('DELETE FROM order_request_identity WHERE trader_id=ANY(%s)',(owned,))
             conn.execute('DELETE FROM execution WHERE instrument_id=%s',(iid,))
             for table in ('position','order_history','order','kyc_profile','margin_account','trader'):
                 key = 'id' if table == 'trader' else 'trader_id'

@@ -4,6 +4,7 @@ import psycopg
 from psycopg.rows import dict_row
 from decimal import Decimal
 from backend.config import ROOT
+from backend.risk.request_identity import RequestIdentityStore, request_hash
 
 
 QUERY_FILES = {
@@ -78,12 +79,29 @@ class Database:
         count=self.query('SELECT count(*) AS n FROM execution')[0]['n']
         return {'scenario':scenario,'row_count':int(plans['automatic']['Plan']['Actual Rows']),'dataset_size':count,'plans':plans}
 
-    def reserve(self, trader_id, request):
+    def request_identity(self, trader_id, key):
+        rows = self.query('SELECT * FROM public.order_request_identity WHERE trader_id=%s AND request_key=%s',
+                          (trader_id, key))
+        return rows[0] if rows else None
+
+    def reserve(self, trader_id, request, request_key=None):
         with self.connect() as conn:
             conn.execute("SET LOCAL app.role='TRADER'")
+            if request_key is not None:
+                # Hash collisions only serialize independent keys; uniqueness and
+                # payload verification always use the full trader/key identity.
+                conn.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',
+                             (str(trader_id) + ':' + request_key,))
+                identity = conn.execute('SELECT * FROM public.order_request_identity WHERE trader_id=%s AND request_key=%s',
+                                        (trader_id, request_key)).fetchone()
+                if identity:
+                    return RequestIdentityStore.verify(identity, request)
             order_id = conn.execute('SELECT public.place_and_reserve_order(%s,%s,%s,%s,%s) AS id',
                 (trader_id, request.instrument_id, request.side, request.price_ticks, request.quantity)).fetchone()['id']
             row = conn.execute('SELECT * FROM public."order" WHERE id=%s', (order_id,)).fetchone()
+            if request_key is not None:
+                conn.execute('INSERT INTO public.order_request_identity(trader_id,request_key,request_hash,order_id,accepted_at) VALUES (%s,%s,%s,%s,%s)',
+                             (trader_id, request_key, request_hash(request), order_id, row['created_at']))
         return row  # context COMMIT completed before matcher admission
 
     def execution_ids(self, count):

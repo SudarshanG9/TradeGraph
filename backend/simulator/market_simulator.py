@@ -105,6 +105,7 @@ class DemoData:
             if external: raise RuntimeError('Unexpected external counterparty: operator reconciliation required; cleanup refused')
             conn.execute('DELETE FROM regime_snapshot WHERE instrument_id=ANY(%s)',(iids,))
             conn.execute('DELETE FROM market_disclosure WHERE instrument_id=ANY(%s)',(iids,))
+            conn.execute('DELETE FROM order_request_identity WHERE trader_id=ANY(%s)',(tids,))
             conn.execute('DELETE FROM execution WHERE buy_trader_id=ANY(%s) OR sell_trader_id=ANY(%s)',(tids,tids))
             for table in ('position','order_history','order','kyc_profile','margin_account','trader'):
                 key='id' if table=='trader' else 'trader_id'
@@ -182,7 +183,7 @@ def run(seed=20261115):
             a,b,c,inactive=data.instruments
             first=submit(0,a,'BUY',100,100,key='first-order')
             submit(1,a,'SELL',100,100);expected+=1;bounded(filled,lambda n:n==expected)
-            submit(0,a,'BUY',100,100,key='first-order',status=409)
+            assert submit(0,a,'BUY',100,100,key='first-order')==first
             cross(1,2,a,100,10);cross(2,0,a,100,10)
             partial=submit(0,a,'BUY',110,10)['order_id'];submit(1,a,'SELL',105,4);expected+=1
             cancel(0,partial);bounded(filled,lambda n:n==expected)
@@ -247,7 +248,7 @@ def run(seed=20261115):
             report.update({'executions':expected,'financial':financial,'cycles':cycles['candidates'],'vectors':vectors,
                            'fts_result_id':doc,'rollup':rollup,'optimizer':optimizer,'archive_count':len(archived),
                            'race_accepted':3,'race_rejected':5,'negative_cases':negatives,
-                           'same_event_replay':'no-op','conflicting_replay':'rejected','request_key_replay':'409'})
+                           'same_event_replay':'no-op','conflicting_replay':'rejected','request_key_replay':'original acceptance without reservation'})
         # A cold clean restart reloads settled statistics, never rematches orders.
         with TestClient(create_app(data.settings)) as restarted:
             user=data.users[0]

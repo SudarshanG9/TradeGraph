@@ -118,3 +118,42 @@ is confirmed pushed. Phase 1 commit is identified by subject
 confirmation follows in the next ledger update. Limit: upper bound may overcount
 makers when incoming quantity is small, intentionally; depth estimation scan/sort
 optimization remains Phase 14.
+
+## Phase 2 — N-01 durable request identity (approved)
+
+User approved implementation and isolated tests after reviewing the proposal.
+`db/migrations/20261116_request_identity.sql` adds the supplementary identity table,
+trader/key uniqueness, canonical hash checks, and SELECT/INSERT-only runtime grants;
+generic roles have none. Original accepted response is reconstructible exactly from
+order_id, accepted_at and constant OPEN. No order FK or TTL: archival retains identity.
+Operator must adapt the default runtime-role grant if using a custom login.
+The migration was applied **only to tradegraph_audit_20261116**.
+
+`backend/risk/request_identity.py` separates canonical hashing/verification/lookup.
+`backend/stores/postgres.py` serializes each full key using a transaction advisory
+lock, verifies payload, and commits financial reservation and identity insertion
+on the same connection/transaction. Existing reservation procedure already permits
+this outer transaction; its financial mathematics/locks are unchanged. Coordinator
+replaces the process-local 100,000-entry set with durable lookups, returning the
+original accepted row without rematching. Conflicts remain deterministic 409.
+Database errors remain fail-closed. The native simulator expectation is updated
+to require original-response replay, and only synthetic fixture identities are
+cleaned. Installer/schema verification permit the supplementary table while still
+requiring all 13 core tables.
+
+Exact affected files: migration, backend/risk/request_identity.py,
+backend/risk/order_reservation.py, backend/stores/postgres.py,
+backend/simulator/market_simulator.py, scripts/setup_backend.sh,
+scripts/verify_schema.py, tests/concurrency/test_reservation.py,
+tests/integration/test_order_pipeline.py, tests/integration/test_live_simulator.py.
+Tests: **34 reservation/pipeline tests passed**, including concurrent duplicates,
+fresh-adapter replay, conflict, independent traders, archival and injected identity
+constraint failure after financial writes (complete rollback). An additional focused
+simulator replay assertion is verified before commit.
+
+N-01: FIXED on successful push. Phase 1 `4ceb575` confirmed pushed. This phase's
+SHA/push confirmation follows next update. Limitation: no schema migration applied
+to live service. Durable acceptance proves reservation, not crash-safe completion
+of in-memory matching/publication. N-06 remains blocked; active-order startup still
+refuses unsafe reconstruction. Rollback disables new keyed traffic and INSERT grant
+while retaining identity rows for reconciliation; deleting identities online is unsafe.

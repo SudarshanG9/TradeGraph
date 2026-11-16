@@ -58,8 +58,8 @@ def main():
                    WHERE table_schema='public' AND table_type='BASE TABLE'"""
             )
             tables = {r[0] for r in cur.fetchall()}
-            assert_ok(tables == EXPECTED_TABLES,
-                      f"Exactly 13 application tables (found: {sorted(tables)})")
+            assert_ok(EXPECTED_TABLES <= tables and not tables - EXPECTED_TABLES - {'order_request_identity'},
+                      f"13 core tables plus approved supplementary persistence (found: {sorted(tables)})")
 
             cur.execute(
                 """SELECT rolname FROM pg_roles

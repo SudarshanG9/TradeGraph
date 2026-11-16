@@ -23,7 +23,7 @@ if args.phase>=3 and (not Path('.env').is_file() or subprocess.run(['git','check
 with db_connect() as conn:
     conn.execute("SELECT pg_advisory_xact_lock(hashtext('tradegraph-backend-install'))")
     tables = {r[0] for r in conn.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")}
-    if tables != EXPECTED_TABLES:
+    if not EXPECTED_TABLES <= tables or tables - EXPECTED_TABLES - {'order_request_identity'}:
         raise SystemExit('Expected the initialized 13-table schema; refusing installation')
     signature = 'public.place_and_reserve_order(uuid,integer,text,bigint,bigint)'
     if conn.execute('SELECT to_regprocedure(%s)', (signature,)).fetchone()[0] is None:

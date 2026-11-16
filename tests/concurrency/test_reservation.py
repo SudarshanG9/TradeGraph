@@ -308,3 +308,47 @@ def test_generic_roles_cannot_execute_unbound_definer_function(role):
                 (role,),
             )
             assert cur.fetchone()[0] is False
+
+
+def test_durable_request_identity_concurrent_restart_conflict_and_archival(temporary_trader):
+    from backend.api.routes.orders import NewOrder
+    from backend.config import Settings
+    from backend.stores.postgres import Database, query_text
+    from backend.risk.request_identity import DuplicateRequest
+    from datetime import datetime, timedelta, timezone
+    db = Database(Settings.from_env())
+    request = NewOrder(instrument_id=acme_id(), side='BUY', price_ticks=100, quantity=1)
+    try:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            rows = list(pool.map(lambda _: db.reserve(temporary_trader, request, 'durable-key'), range(8)))
+        assert len({r['id'] for r in rows}) == 1
+        assert account_state(temporary_trader) == (99899, 101)
+        restarted = Database(Settings.from_env())
+        assert restarted.reserve(temporary_trader, request, 'durable-key')['id'] == rows[0]['id']
+        with pytest.raises(DuplicateRequest):
+            restarted.reserve(temporary_trader, request.model_copy(update={'quantity':2}), 'durable-key')
+        db.cancel(rows[0]['id'], temporary_trader)
+        with db_connect() as conn:
+            conn.execute(query_text('archive'), {'cutoff':datetime.now(timezone.utc)+timedelta(days=1), 'trader_ids':[temporary_trader]})
+        assert restarted.reserve(temporary_trader, request, 'durable-key')['id'] == rows[0]['id']
+        assert account_state(temporary_trader) == (100000, 0)
+    finally:
+        with db_connect() as conn:
+            conn.execute('DELETE FROM order_request_identity WHERE trader_id=%s', (temporary_trader,))
+            conn.execute('DELETE FROM order_history WHERE trader_id=%s', (temporary_trader,))
+
+
+def test_identity_insert_failure_rolls_back_reservation(temporary_trader, monkeypatch):
+    from backend.api.routes.orders import NewOrder
+    from backend.config import Settings
+    from backend.stores.postgres import Database
+    import backend.stores.postgres as module
+    db = Database(Settings.from_env())
+    request = NewOrder(instrument_id=acme_id(), side='BUY', price_ticks=100, quantity=1)
+    # Fails after the reservation function's writes, before identity/COMMIT.
+    monkeypatch.setattr(module, 'request_hash', lambda _: 'invalid-hash')
+    from psycopg.errors import CheckViolation
+    with pytest.raises(CheckViolation): db.reserve(temporary_trader, request, 'rolled-back')
+    assert account_state(temporary_trader) == (100000, 0)
+    assert order_count(temporary_trader) == 0
+    assert db.request_identity(temporary_trader, 'rolled-back') is None
