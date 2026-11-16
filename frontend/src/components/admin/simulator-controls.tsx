@@ -164,6 +164,27 @@ export function SimulatorControls() {
                   <span className="caption">Active bots: {status.active_bots}</span>
                 </div>
                 <div className="toolbar">
+                  {status.state === 'ERROR' && (
+                    <Button
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        setBusy(true);
+                        setError('');
+                        try {
+                          setLocal(await api.simulator.recover());
+                          setMessage('Recovery verified. Simulator is STOPPED.');
+                        } catch (e) {
+                          setError((e as Error).message);
+                        } finally {
+                          setBusy(false);
+                          resource.reload();
+                        }
+                      }}
+                    >
+                      Verify recovery
+                    </Button>
+                  )}
                   <Button variant="primary" type="submit" disabled={locked || !ids.length}>
                     Start Simulation
                   </Button>

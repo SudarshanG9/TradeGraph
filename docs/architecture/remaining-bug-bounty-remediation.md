@@ -386,3 +386,28 @@ MAINTENANCE_ENABLED=true and deployed routine/index. A-03 remains partial until
 retention review. Phase 9 `19374b3` confirmed pushed. Rollback disables scheduler,
 drains task, drops maintenance routine/index only; archived financial rows remain
 canonical history and are never moved back during trading.
+
+## Phase 11 — I-04/A-02 controlled simulator recovery
+
+live_supervisor.py adds explicit recover(): prior task must be done, financial
+pipeline/owner and derived consumers healthy, settlement drained, every accepted
+order owned and terminal, and filled quantities canonically reconciled. It never
+resets financial failures, cancels human orders or starts another task. An active
+or missing bot order blocks recovery. ERROR changes to STOPPED only after checks.
+Temporary capacity uses typed PipelineFull and bounded exponential scheduling
+backoff, keeping one global attempt rate and no catch-up backlog.
+
+Minimal authenticated admin /admin/simulator/recover route added; strict frontend
+allowlist/client/services and existing controls gain one Verify recovery button.
+No status-contract or layout redesign. Shared Coordinator still means contention;
+this is workload throttling, not physical isolation.
+
+Tests: **28 lifecycle unit tests, 7 native simulator tests, 37 frontend tests and
+typecheck passed** (one opt-in native session check skipped in service-free tests).
+Native recovery validates admin-only access, terminal bot history, preserved human
+resting order, previous task termination and distinct subsequent task. Existing
+native finance/polyglot stop/restart tests remain passing. Native error-recovery
+case injects ERROR after verified cleanup; prolonged pressure remains unit-tested.
+I-04: FIXED upon push; A-02: PARTIALLY_FIXED due shared resources. Phase 10 `5583c61`
+confirmed pushed. Exact files: live_supervisor.py, simulator route, frontend
+services/client/operations/controls, unit and integration simulator tests, ledger.

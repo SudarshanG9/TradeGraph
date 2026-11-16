@@ -52,6 +52,7 @@ export interface Services {
     status(signal?: AbortSignal): Promise<C.SimulationStatus>;
     start(config: C.SimulationStart): Promise<C.SimulationStatus>;
     stop(): Promise<C.SimulationStatus>;
+    recover(): Promise<C.SimulationStatus>;
   };
 }
 const wait = () => new Promise<void>((resolve) => setTimeout(resolve, 220));
@@ -347,6 +348,13 @@ export function createMockServices(
       },
     },
     simulator: {
+      recover: async () => {
+        await guard('COMPLIANCE_ADMIN');
+        if (sim.state !== 'ERROR' || sim.active_bot_orders !== '0')
+          throw new Error('RECONCILIATION_REQUIRED');
+        sim = { ...sim, state: 'STOPPED', last_error: null };
+        return copy(sim);
+      },
       status: async () => {
         await guard('COMPLIANCE_ADMIN');
         return copy(sim);

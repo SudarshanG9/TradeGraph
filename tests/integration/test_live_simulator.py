@@ -364,3 +364,29 @@ def test_live_derived_outage_preserves_sql_and_retries_real_delivery(live_fixtur
             wait_until(lambda:client.app.state.graph.run('''MATCH (a:Trader {id:$a})-[r:EXECUTED_AGAINST]->(b:Trader {id:$b})
                 RETURN r.trade_count AS n''',{'a':str(data['users'][0]['trader_id']),'b':str(data['bot'][0])}),
                 lambda r:bool(r) and r[0]['n']==1)
+
+
+def test_verified_error_recovery_preserves_terminal_bot_session_and_human_orders(live_fixture):
+    from backend.simulator.live_supervisor import SimulationState
+    users,iid=live_fixture['users'],live_fixture['iid']
+    with TestClient(create_app()) as client:
+        human,admin=login(client,users[0]),login(client,users[1])
+        supervisor=client.app.state.live_simulator;supervisor.agent_factory=proof_factory
+        assert client.post('/admin/simulator/recover',headers=human).status_code==403
+        config={'instrument_ids':[iid],'bot_count':4,'orders_per_second':5,'max_duration_seconds':30}
+        assert client.post('/admin/simulator/start',headers=admin,json=config).status_code==200
+        wait_until(lambda:client.get('/admin/simulator/status',headers=admin).json(),lambda r:r['orders_accepted']>=1)
+        oid=client.post('/orders',headers=human,json=order(iid,'BUY',50)).json()['order_id']
+        assert client.post('/admin/simulator/stop',headers=admin).json()['state']=='STOPPED'
+        old=supervisor.task
+        async def pressure_error():
+            supervisor.state=SimulationState.ERROR;supervisor.last_error='injected transient pressure after safe cleanup'
+        client.portal.call(pressure_error)
+        result=client.post('/admin/simulator/recover',headers=admin)
+        assert result.status_code==200 and result.json()['state']=='STOPPED'
+        assert supervisor.task is old and old.done()
+        assert client.get(f'/orders/{oid}',headers=human).json()['status']=='OPEN'
+        assert client.post('/admin/simulator/start',headers=admin,json=config).status_code==200
+        assert supervisor.task is not old
+        assert client.post('/admin/simulator/stop',headers=admin).json()['state']=='STOPPED'
+        assert client.post(f'/orders/{oid}/cancel',headers=human).status_code==200

@@ -135,6 +135,7 @@ export function createRealDataServices(): Omit<Services, 'auth'> {
         apiRequest('simulator', 'admin/simulator/status', undefined, undefined, signal),
       start: (config) => apiRequest('simulator', 'admin/simulator/start', config),
       stop: () => apiRequest('simulator', 'admin/simulator/stop', null),
+      recover: () => apiRequest('simulator', 'admin/simulator/recover', null),
     },
   };
 }

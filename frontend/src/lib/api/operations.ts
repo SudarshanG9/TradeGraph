@@ -138,7 +138,11 @@ export function operation(
       csrf = true;
     } else if (method === 'GET' && name === 'admin/desks/rollup') kind = 'desks';
     else if (name === 'admin/simulator/status' && method === 'GET') kind = 'simulator';
-    else if (name === 'admin/simulator/stop' && method === 'POST') kind = 'simulator';
+    else if (
+      ['admin/simulator/stop', 'admin/simulator/recover'].includes(name) &&
+      method === 'POST'
+    )
+      kind = 'simulator';
     else if (name === 'admin/simulator/start' && method === 'POST') {
       const v = parseWire(raw ?? '');
       exactKeys(v, [
