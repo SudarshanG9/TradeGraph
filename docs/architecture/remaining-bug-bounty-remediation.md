@@ -207,3 +207,33 @@ Phase 3 `c7b2948` confirmed pushed. Its 13 native tests and formatting passed;
 `npm run build -- --webpack` compiled and generated all routes successfully.
 Default Turbopack remains environment-blocked (EPERM); webpack is an existing
 supported Next.js build option, not a production source workaround.
+
+## Phase 5 — F-01 shared encrypted sessions
+
+Replaced global session Map/cap with an asynchronous injectable SessionStore in
+frontend/src/lib/server/session-core.ts. redis-session-store.ts uses one lazy,
+reconnecting ioredis connection, bounded connection/command deadlines, no offline
+queue and no local fallback. Opaque random 32-byte session IDs remain; Redis keys
+use the dedicated frontend namespace and TTL cannot exceed actual backend JWT exp.
+AES-256-GCM encrypts stored JWTs with per-session IV and key/ID-bound authentication.
+SESSION_ENCRYPTION_KEY (32-byte hex) and REDIS_URL are mandatory server configuration;
+rotation invalidates existing encrypted sessions. Production deployments require
+Redis persistence/availability policy; Redis memory alone is not disk durability.
+
+Affected: session-core.ts, new redis-session-store.ts, app/api/session/route.ts,
+app/api/backend/[...path]/route.ts, frontend/package{,-lock}.json, .env.example,
+frontend/tests/session.test.ts. session.ts already returns the async getSession
+promise from its async readSession, so page authorization awaits shared storage.
+Login/logout and 401 cleanup await revocation; store outages return controlled 503.
+Original roles, expiry, HTTP-only browser cookie and token non-disclosure preserved.
+
+Verification: session tests with injectable store verify expiry, role, multiple
+sessions, failure behavior and revocation. **All four session tests passed with
+native Redis**, including separate connections/restart-style store construction,
+ciphertext inspection, real TTL expiration and cross-connection deletion. Full
+frontend tests/typecheck/format results recorded before commit. npm installed
+only ioredis (+8 transitive packages); audit reported zero vulnerabilities.
+Client reconnect/timeout options checked against the maintained upstream docs:
+https://github.com/redis/ioredis . F-01: FIXED upon push; production configuration
+and end-to-end login acceptance remain deployment verification. Phase 4 `dd88cef`
+confirmed pushed. No existing Redis keys deleted; only random test session keys.
