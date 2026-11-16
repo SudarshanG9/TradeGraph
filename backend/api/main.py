@@ -38,9 +38,18 @@ def create_app(settings=None, *, settlement=True):
         try:
             # Only settled history is rehydrated. Active orders already triggered
             # a fail-closed reconciliation stop in acquire_owner().
-            for row in await asyncio.to_thread(app.state.database.query,'SELECT * FROM execution ORDER BY id'):
-                app.state.service.engine.apply_settled(TradeEvent(row['id'],row['instrument_id'],row['buy_order_id'],row['sell_order_id'],
-                    row['buy_trader_id'],row['sell_trader_id'],row['price_ticks'],row['quantity'],max(row['buy_order_id'],row['sell_order_id']),row['executed_at']))
+            app.state.replay_complete = False
+            app.state.replayed_executions = 0
+            batches = app.state.database.execution_batches()
+            try:
+                while (batch := await app.state.service.committed_io(next, batches, None)) is not None:
+                    for row in batch:
+                        app.state.service.engine.apply_settled(TradeEvent(row['id'],row['instrument_id'],row['buy_order_id'],row['sell_order_id'],
+                            row['buy_trader_id'],row['sell_trader_id'],row['price_ticks'],row['quantity'],max(row['buy_order_id'],row['sell_order_id']),row['executed_at']))
+                        app.state.replayed_executions += 1
+            finally:
+                await asyncio.to_thread(batches.close)
+            app.state.replay_complete = True
             if settlement:
                 app.state.depth=RedisDepth(app.state.settings.redis_url,app.state.settings.health_timeout_seconds)
                 cache=CacheWorker(app.state.database,app.state.depth,app.state.service.dispatcher)

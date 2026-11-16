@@ -48,6 +48,21 @@ class Database:
         with self.connect() as conn:
             return conn.execute(sql, params).fetchall()
 
+    def execution_batches(self, batch_size=1000):
+        """Server-side cursor, one read-only snapshot, bounded client materialization."""
+        if type(batch_size) is not int or not 1 <= batch_size <= 10000:
+            raise ValueError('Replay batch size must be 1..10000')
+        with self.connect() as conn:
+            conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            with conn.cursor(name='tradegraph_execution_replay') as cursor:
+                cursor.execute('SELECT * FROM public.execution ORDER BY id')
+                while rows := cursor.fetchmany(batch_size):
+                    yield rows
+
+    def iter_executions(self, batch_size=1000):
+        for batch in self.execution_batches(batch_size):
+            yield from batch
+
     def identity(self, subject):
         rows = self.query('SELECT u.id,u.role,t.id AS trader_id FROM user_account u LEFT JOIN trader t ON t.user_account_id=u.id WHERE u.id=%s', (subject,))
         return rows[0] if rows else None

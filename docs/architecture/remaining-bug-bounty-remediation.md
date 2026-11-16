@@ -324,3 +324,38 @@ process-crash delivery and active-order restart remain persistence limitations.
 Cache snapshot overflow/admission failure is not reset by this method. Required
 regime snapshots cannot be reconstructed from executions alone. No durable-outbox
 or physical HA guarantee is claimed.
+
+## Restart operating procedure (N-06)
+
+Run `PYTHONPATH=. .venv/bin/python scripts/reconcile_restart.py` for read-only
+counts, execution-volume mismatches and actual advisory-lock ownership. Do not
+terminate an existing owner to obtain startup. Keep admissions closed while
+reconciling a retained event; never cancel human orders just to satisfy startup.
+Archive only terminal reconciled orders. A clean cold start acquires the sole
+owner before replay and stays unready until replay completes. With active orders,
+reconcile accepted reservations, FIFO, remaining quantity and outstanding matched
+events under operator control before a planned drain; the process must still refuse
+automatic reconstruction. Three existing active live orders are untouched.
+
+## Phase 9 — I-03 bounded startup history
+
+Database.execution_batches/iter_executions use a named server cursor in one
+repeatable-read, read-only snapshot with validated batch size (default 1,000).
+Startup fetches each batch off the owner loop, applies events in exact ID order on
+the owner thread, tracks replay progress, and closes the cursor on interruption.
+It no longer eagerly materializes all execution rows. Historical analytics/dedup
+state still grows (P-03); bounded transport does not claim bounded total analytics.
+
+New scripts/reconcile_restart.py is read-only and does not acquire ownership.
+New tests/concurrency/test_execution_replay.py checks batch order, concurrent-write
+snapshot exclusion, exact VWAP/volume, duplicate replay, invalid sizes and early
+cursor close. **15 native replay/pipeline tests passed**, including clean restart,
+second-owner rejection and active-order refusal. I-03: FIXED upon push; N-06 remains
+BLOCKED by accepted-but-unmatched and publication persistence/FIFO recovery.
+Phase 8 `79c75d1` confirmed pushed.
+
+Read-only live diagnostic later observed zero active orders, 547 executions,
+no volume mismatches and one owner lock (database changed externally during work).
+It correctly reports cold_start_safe=false. No live ownership/data was changed by
+this task. Unrelated auth-form.tsx changes and generated next-env.d.ts edits are
+preserved and excluded from remediation commits.
