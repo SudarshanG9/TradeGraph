@@ -128,3 +128,32 @@ test('timeout and abort report uncertain mutation outcome without retries', asyn
     clearTimeout(keepAlive);
   }
 });
+
+test('uncertain submission survives a new adapter and never dispatches a second order', async () => {
+  const { createSubmissionGate } = await import('../src/lib/api/submission');
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => values.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      values.set(k, v);
+    },
+    removeItem: (k: string) => {
+      values.delete(k);
+    },
+  };
+  let calls = 0;
+  await assert.rejects(
+    createSubmissionGate(storage)(async () => {
+      calls++;
+      throw new ApiError(504, 'TIMEOUT', true);
+    }),
+  );
+  await assert.rejects(
+    createSubmissionGate(storage)(async () => {
+      calls++;
+      return 'duplicate';
+    }),
+    /reconcile/i,
+  );
+  assert.equal(calls, 1);
+});

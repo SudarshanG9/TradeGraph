@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { ApiError } from '@/lib/api/errors';
+import { useState, useRef } from 'react';
 import type { OrderSummary } from '@/lib/contracts';
 import { fmt } from '@/lib/exact';
 import { usePreview } from '../preview-provider';
@@ -13,20 +14,23 @@ export function CancelDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const { api } = usePreview(),
+  const { api, mock, invalidate } = usePreview(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
+  const pending = useRef(false);
+  const [uncertain, setUncertain] = useState(false);
   return (
     <Modal
-      title={`Cancel demo order #${order.id}?`}
+      title={`Cancel order #${order.id}?`}
       onClose={() => {
         if (!busy) onClose();
       }}
     >
       <p>
-        Preview cancellation of the remaining{' '}
-        {fmt(BigInt(order.quantity) - BigInt(order.filled_quantity))} units. No backend order or
-        balance will change.
+        Cancel the remaining {fmt(BigInt(order.quantity) - BigInt(order.filled_quantity))} units.{' '}
+        {mock
+          ? 'This is a local preview.'
+          : 'The backend waits for pending settlement and releases eligible remaining reservations.'}
       </p>
       {error && <Notice tone="error">{error}</Notice>}
       <div className="toolbar" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
@@ -35,20 +39,29 @@ export function CancelDialog({
         </Button>
         <Button
           variant="sell"
-          disabled={busy}
+          disabled={busy || uncertain}
           onClick={async () => {
+            if (pending.current || uncertain) return;
+            pending.current = true;
             setBusy(true);
             try {
               await api.orders.cancel(order.id);
               onDone();
             } catch (e) {
               setError((e as Error).message);
+              if (e instanceof ApiError && e.uncertain) setUncertain(true);
+              invalidate();
             } finally {
+              pending.current = false;
               setBusy(false);
             }
           }}
         >
-          {busy ? 'Cancellation pending…' : 'Confirm demo cancellation'}
+          {busy
+            ? 'Cancellation pending…'
+            : mock
+              ? 'Confirm demo cancellation'
+              : 'Confirm cancellation'}
         </Button>
       </div>
     </Modal>

@@ -180,3 +180,26 @@ Strict TypeScript and all 28 Node tests passed. Real BFF acceptance expanded to
 catalog/account: **2 native HTTP tests passed**, exact synthetic fixture cash
 20000/escrow 0, empty positions, actual catalog ID and string tick/lot units.
 No account provisioning beyond existing scoped test fixtures or schema change.
+
+## Phase 5 — real order operations
+
+Phase 4 remote commit: `ea740f644f11000cb41d73bdc0bfe08defb6cfe6`.
+Order/cancel UI now describes actual backend acceptance and cancellation. Submission
+uses one key per intent, a synchronous duplicate guard and a tab-persistent unresolved
+intent marker written before dispatch. Timeout/disconnect cannot silently generate a
+new submission after navigation/reload; operator reconciliation is required. No
+balance or execution is synthesized. Cancellation failures refresh server facts.
+
+Checks: 29 Node tests, strict types, production build passed. **3 native HTTP tests
+passed** including resting SELL 100 x 3, unchanged empty execution history, duplicate
+key/funds/invalid-price rejection, crossing BUY 105 x 1 settled at maker 100,
+seller PARTIAL 1/3, buyer FILLED, cursor history, cancellation of remaining 2,
+released escrow, converged Redis depth and VWAP 100/band volume 1. Only isolated
+fixture accounts/instrument were used. The first cancellation test omitted the
+JSON content type and returned 415; its request was fixed, readiness confirmed
+zero persisted active orders, and the single test API owner was cleanly restarted
+before rerunning. No backend behavior or assertions were weakened.
+
+Uncertain submission reconciliation cannot be fully automatic because the backend
+has no durable request-key lookup. The tab stays locked pending operator review;
+this conservative limitation will be documented in the final handoff.

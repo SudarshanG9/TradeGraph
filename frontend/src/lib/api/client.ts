@@ -1,3 +1,4 @@
+import { createSubmissionGate } from './submission';
 import { ApiError } from './errors';
 import { schemas, type ApiResult, type ResponseKind } from './schema';
 import type { Services, PageQuery } from '../services';
@@ -53,12 +54,15 @@ const query = (values: Record<string, string | number | undefined>) => {
 const page = (q: PageQuery = {}) => query({ limit: q.limit, before_id: q.before_id });
 const market = (symbol: string, suffix: string) => `market/${encodeURIComponent(symbol)}/${suffix}`;
 export function createRealDataServices(): Omit<Services, 'auth'> {
+  const submit = createSubmissionGate(
+    typeof window === 'undefined' ? undefined : window.sessionStorage,
+  );
   return {
     instruments: { list: () => apiRequest('instruments', 'instruments') },
     account: { get: (signal) => apiRequest('account', 'account/me', undefined, undefined, signal) },
     orders: {
       list: (q) => apiRequest('orders', `orders/me?${page(q)}`),
-      submit: (order) => apiRequest('submit', 'orders', order, crypto.randomUUID()),
+      submit: (order) => submit((key) => apiRequest('submit', 'orders', order, key)),
       cancel: (id) => apiRequest('cancel', `orders/${id}/cancel`, null),
     },
     market: {
