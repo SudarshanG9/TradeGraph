@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import ssl
 import time
 from uuid import uuid4
 
@@ -49,20 +50,31 @@ async def measure(stack, users, iid, count):
     settings=Settings.from_env()
     delivered=[];establish=[];received=[[] for _ in users];connections=[];readers=[]
     semaphore=asyncio.Semaphore(10)
+    transport_retries=[]
     async with httpx.AsyncClient(verify=stack.ssl,trust_env=False,timeout=20) as client:
         async def attach(index):
             async with semaphore:
                 user=users[index];start=time.perf_counter()
-                token=issue_token(user['id'],user['role'],settings)
-                response=await client.post(stack.backend+'/live/ticket',headers={'Authorization':'Bearer '+token},json={'session_key':uuid4().hex*2})
-                assert response.status_code==200
-                ticket=response.json()['ticket']
-                ws=await connect(stack.origin.replace('https:','wss:')+'/live/ws',ssl=stack.ssl,origin=stack.origin,
-                    subprotocols=['tradegraph.v1','ticket.'+ticket],max_queue=16,open_timeout=20)
-                assert ws.subprotocol=='tradegraph.v1'
-                await ws.send(json.dumps({'type':'subscribe','instrument_ids':[iid]}))
-                establish.append((time.perf_counter()-start)*1000)
-                return ws
+                for attempt in range(3):
+                    ws=None
+                    try:
+                        token=issue_token(user['id'],user['role'],settings)
+                        response=await client.post(stack.backend+'/live/ticket',headers={'Authorization':'Bearer '+token},json={'session_key':uuid4().hex*2})
+                        assert response.status_code==200
+                        ticket=response.json()['ticket']
+                        ws=await connect(stack.origin.replace('https:','wss:')+'/live/ws',ssl=stack.ssl,origin=stack.origin,
+                            subprotocols=['tradegraph.v1','ticket.'+ticket],max_queue=16,open_timeout=20,proxy=None)
+                        assert ws.subprotocol=='tradegraph.v1'
+                        await ws.send(json.dumps({'type':'subscribe','instrument_ids':[iid]}))
+                        establish.append((time.perf_counter()-start)*1000)
+                        return ws
+                    except ssl.SSLCertVerificationError:
+                        raise  # Never weaken verification or retry an untrusted certificate.
+                    except (ssl.SSLError,OSError,TimeoutError) as exc:
+                        if ws is not None:await ws.close()
+                        transport_retries.append(type(exc).__name__)
+                        if attempt==2:raise
+                        await asyncio.sleep(.1*(attempt+1))
         async def receive(index,ws):
             try:
                 async for raw in ws:
@@ -123,7 +135,7 @@ async def measure(stack, users, iid, count):
             'bff_order_ms':distribution(order_latency),'settlement_ms':distribution(final['settlement_ms']),
             'peak_observed_queue':metrics['max_client_queue'],'dropped':final['dropped'],
             'database_connections':metrics['database_connections'],'process_usage':usage.splitlines(),
-            'reconnect_success':count,'accepted_socket_tasks_after_disconnect':final['socket_tasks'],
+            'transport_retries':transport_retries,'reconnect_success':count,'accepted_socket_tasks_after_disconnect':final['socket_tasks'],
             'credential_setup':'test-issued signed JWTs; real internal ticket endpoint and full WSS identity validation'}
 
 

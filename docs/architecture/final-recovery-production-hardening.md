@@ -248,3 +248,20 @@ restart diagnostics, including preservation of unknown historical snapshots.
 The isolated soak uses compatible additive migration during its run and loads the
 updated worker on the planned backend restart; this is recorded as a limitation of
 revision uniformity, not hidden as a single-revision benchmark.
+
+## Reconnect storm follow-up
+
+Observation-ordering commit `f34b82d` pushed and confirmed on origin.
+Final full-suite attempt after that fix: **422 passed, 1 failed** (180.96 seconds).
+The failure was `SSL: UNEXPECTED_MESSAGE` during the 100-client TLS reconnect burst,
+before WebSocket authentication. No financial/auth invariant failed. The capacity
+client now models bounded reconnect behavior (at most three transport attempts,
+fresh single-use tickets and measured retry counts), without retrying certificate
+verification failures or authorization rejections. Loopback tests explicitly avoid
+system proxies. The cause of the transient TLS error is not asserted.
+
+Focused remeasurement under concurrent soak load: **4 passed** (26.87 seconds),
+no transport retries in that run. Connect p95: 151.17/349.77/348.24 ms at 10/50/100;
+settlement p95: 38.25/22.46/24.12 ms. Higher latency than the initial measurement
+illustrates shared-host load, not a guaranteed production ceiling. Raw second-run
+evidence: `recovery-hardening-evidence/websocket-capacity-under-soak.json`.
