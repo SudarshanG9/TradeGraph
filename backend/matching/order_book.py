@@ -198,6 +198,31 @@ class OrderBook:
             del self._levels[key]
         return cancelled_qty
 
+    def potential_fill_count(self, instrument_id, side, price_ticks, trader_id):
+        """Read-only upper bound; walk executable maker FIFOs until head STP.
+
+        Quantity is deliberately ignored: each compatible maker can generate at
+        most one event. Never call _best_price here (it removes stale heap entries).
+        The caller must serialize estimation and submit with the same owner lock.
+        """
+        self._validate(Order(1, trader_id, instrument_id, side, price_ticks, 1))
+        opposite = "SELL" if side == "BUY" else "BUY"
+        levels = sorted(
+            ((price, level) for (inst, s, price), level in self._levels.items()
+             if inst == instrument_id and s == opposite and
+             (price <= price_ticks if side == "BUY" else price >= price_ticks)),
+            key=lambda item: item[0], reverse=(side == "SELL"),
+        )
+        count = 0
+        for _, level in levels:
+            node = level.head
+            while node is not None:
+                if node.order.trader_id == trader_id:
+                    return count
+                count += 1
+                node = node.next
+        return count
+
     def depth(self, instrument_id: int, side: str):
         """Sorted snapshot: (price_ticks, aggregate resting quantity)."""
         if side not in ("BUY", "SELL"):

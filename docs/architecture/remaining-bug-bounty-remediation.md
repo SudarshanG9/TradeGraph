@@ -92,3 +92,29 @@ and final Git/remote audit remain Phase 19. No production deployment claimed.
 Corrected findings remain intentional/accurate: head-of-queue STP cancels incoming
 residual; randomized ReferenceBook differential coverage already exists;
 price_level.py is an unused placeholder, not a proven runtime defect.
+
+## Phase 1 — N-02 executable-liquidity capacity
+
+Root cause: admission used every resting ID for queue capacity and sequence
+allocation. Changed `backend/matching/order_book.py` to estimate compatible
+opposite-side maker FIFOs on the requested instrument, stopping at the existing
+head-STP boundary. The estimator is read-only, ignores quantity conservatively,
+and never cleans lazy heaps. `backend/risk/order_reservation.py` uses the bound
+before reservation and again before publication under the existing global lock.
+No fee, pricing, FIFO, schema, or API change.
+
+Tests added in `tests/unit/test_matching_engine.py`: 4,000 unrelated/noncrossing
+orders, stale heap preservation, both sides, crossing/partial/multiple fills,
+head-STP, exact capacity and insufficient capacity. `tests/integration/test_order_pipeline.py`
+proves admission above total resting-order capacity with exactly one reservation
+per request and exact escrow. **29 matching tests and 12 native isolated pipeline
+tests passed** (existing Starlette warning). Isolated database is
+`tradegraph_audit_20261116`, schema-only copy plus synthetic seeds; original data
+was not copied or reset. Existing backpressure-before-reservation regression passes.
+
+Disposition: FIXED upon this commit's successful push. Phase 0 commit `182ae97`
+is confirmed pushed. Phase 1 commit is identified by subject
+`fix(admission): estimate event capacity from executable liquidity`; SHA/push
+confirmation follows in the next ledger update. Limit: upper bound may overcount
+makers when incoming quantity is small, intentionally; depth estimation scan/sort
+optimization remains Phase 14.

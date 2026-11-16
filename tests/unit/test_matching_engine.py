@@ -193,3 +193,47 @@ def test_randomized_differential_matching(seed):
                     seed, order_id, instrument_id, side
                 )
         fast.assert_internal_invariants()
+
+
+@pytest.mark.parametrize('side', ['BUY', 'SELL'])
+def test_capacity_estimate_ignores_unrelated_and_non_crossing_liquidity(side):
+    book = OrderBook()
+    opposite = 'SELL' if side == 'BUY' else 'BUY'
+    noncrossing = 101 if side == 'BUY' else 99
+    for i in range(1, 2001):
+        book.submit(Order(i, 'maker', 2, opposite, 100, 1))
+        book.submit(Order(2000+i, 'maker', 1, opposite, noncrossing, 1))
+    # Include a stale heap entry; estimation must not clean it.
+    book.submit(Order(4001, 'maker', 1, opposite, 100, 1))
+    book.cancel(4001)
+    heaps = {k: list(v) for k, v in book._heaps.items()}
+    queued = {k: set(v) for k, v in book._queued_prices.items()}
+    assert book.potential_fill_count(1, side, 100, 'taker') == 0
+    assert dict(book._heaps) == heaps
+    assert dict(book._queued_prices) == queued
+    book.assert_internal_invariants()
+
+
+@pytest.mark.parametrize('quantity', [1, 3, 10, 100])
+@pytest.mark.parametrize('self_maker', [False, True])
+def test_capacity_estimate_bounds_partial_multiple_fills_and_fifo_stp(quantity, self_maker):
+    book = OrderBook()
+    for i in range(1, 5):
+        trader = 'taker' if i == 3 and self_maker else 'maker'
+        book.submit(Order(i, trader, 1, 'SELL', 99+i, 2))
+    estimate = book.potential_fill_count(1, 'BUY', 105, 'taker')
+    assert estimate == (2 if self_maker else 4)
+    result = book.submit(Order(5, 'taker', 1, 'BUY', 105, quantity))
+    assert len(result.fills) <= estimate
+    book.assert_internal_invariants()
+
+
+def test_capacity_exact_bound_and_insufficient_bound():
+    from backend.events.dispatcher import Dispatcher
+    book = OrderBook()
+    for i in (1, 2):
+        book.submit(Order(i, 'maker', 1, 'SELL', 100, 1))
+    estimate = book.potential_fill_count(1, 'BUY', 100, 'taker')
+    Dispatcher(2).check_capacity(estimate)
+    with pytest.raises(RuntimeError, match='full'):
+        Dispatcher(1).check_capacity(estimate)

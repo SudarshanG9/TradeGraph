@@ -283,3 +283,27 @@ def test_canceled_reservation_holds_owner_until_commit_thread_finishes(accounts)
             coordinator.close()
         with pytest.raises(RuntimeError,match='operator reconciliation'): db.acquire_owner()
     asyncio.run(exercise())
+
+
+def test_noncrossing_orders_above_queue_capacity_reserve_once(accounts):
+    from dataclasses import replace
+    users, instrument = accounts
+    settings = replace(Settings.from_env(), event_queue_capacity=1)
+    with TestClient(create_app(settings, settlement=False)) as client:
+        headers = login(client, users[0])
+        service = client.app.state.service
+        reserved = []
+        original = service.database.reserve
+        def track(*args):
+            row = original(*args)
+            reserved.append(row['id'])
+            return row
+        service.database.reserve = track
+        for _ in range(4):
+            assert client.post('/orders', headers=headers, json=order(instrument)).status_code == 201
+        assert len(reserved) == len(set(reserved)) == 4
+        assert service.dispatcher.queue.qsize() == 0
+        assert len(service.engine.book._by_id) > service.dispatcher.queue.maxsize
+        with db_connect() as conn:
+            assert conn.execute('SELECT cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s',
+                                (users[0]['trader_id'],)).fetchone() == (19596, 404)

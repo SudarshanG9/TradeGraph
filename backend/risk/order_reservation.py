@@ -76,7 +76,8 @@ class Coordinator:
                 self.dispatcher.failure = 'Matching ownership connection lost; reconciliation required'
                 raise RuntimeError(self.dispatcher.failure) from None
             # Each resting order can cause at most one fill in this turn.
-            maximum = len(self.engine.book._by_id)
+            maximum = self.engine.book.potential_fill_count(
+                request.instrument_id, request.side, request.price_ticks, str(trader_id))
             self.dispatcher.check_capacity(maximum)
             if request.price_ticks > 2**53 - 1:
                 raise ValueError('Price exceeds exact Redis demo range')
