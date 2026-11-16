@@ -465,3 +465,40 @@ polling, freshness and recovery rules. With one API server running, check readin
 ```bash
 .venv/bin/python scripts/verify_frontend_readiness.py --api-base-url http://127.0.0.1:8000
 ```
+
+## Integrated local application
+
+The live frontend uses encrypted shared Redis sessions, genuine trader registration,
+operator-provisioned PostgreSQL RLS identities, and authenticated WebSocket
+notifications with HTTP snapshot reconciliation. See
+[registration operations](docs/architecture/registration-operations.md) and
+[live protocol/proxy operations](docs/architecture/live-operations.md).
+
+For a **new isolated test environment only** (native PostgreSQL+pgvector, Redis and
+an existing reachable Neo4j connection in `.env` are prerequisites):
+
+```sh
+.venv/bin/python -m scripts.create_test_stack --root /tmp/tradegraph-new-test
+.venv/bin/python -m scripts.create_test_stack --root /tmp/tradegraph-new-test --apply
+cd frontend
+npm ci
+npm run build
+cd ..
+.venv/bin/python -m scripts.run_local --env-file /tmp/tradegraph-new-test/runtime.env --check
+.venv/bin/python -m scripts.run_local --env-file /tmp/tradegraph-new-test/runtime.env
+```
+
+Open the printed canonical URL, `http://127.0.0.1:3000`. New signup creates a
+pending trader; an operator runs `scripts.provision_registrations` with the private
+identity manifest and explicit admin connection before first login. This demo does
+not send verification email or claim KYC verification. The new test installer alone
+opts into synthetic funding; production registration defaults to zero/pending verification.
+Never apply test seed scripts to an existing deployment.
+
+For an existing prepared deployment, pass its private configuration to `run_local`.
+It checks services, migrations, identities, cold-start safety and free ports, then
+starts one backend, one production Next process and the same-origin proxy. It
+refuses a second owner/unresolved orders; it does not migrate, seed, cancel or reset
+anything. Ctrl-C shuts down its process groups. Review retained logs for unresolved
+financial state before restarting. Production HTTPS deployment remains a separate
+operator task; the loopback proxy is a local workflow.

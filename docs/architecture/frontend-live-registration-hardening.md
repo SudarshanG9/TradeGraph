@@ -283,3 +283,29 @@ authorization/registration/pipeline/socket cases passed. Additional interleaved
 settlement/account snapshot regression and auth privilege checks recorded below.
 Webpack production build passed; default Turbopack had an environment worker-port
 restriction. Build regenerated Next type declaration formatting, normalized again.
+
+Phase 14: 12 additional registration/privilege/account snapshot cases passed,
+including settlement deliberately interleaved between balance and position reads.
+Commit `4e76001`, pushed.
+
+## Phase 15 — repeatable full-stack workflow
+
+Status: FIXED for a clean isolated installation/startup; production TLS unverified.
+Added a non-destructive preflight/lifecycle launcher and an explicitly NEW-directory
+SCRAM PostgreSQL/dedicated Redis test installer. Preflight validates config, services,
+migrations, private identities, cold-start diagnostics and ports before starting
+one owner/Next/proxy. No seeds/migrations/cancellation occur in the launcher. Admin
+credentials are stripped from child runtime environments. Pending registration does
+not require already-provisioned credentials. New test installer alone opts into
+synthetic funds and scopes Neo4j by newly generated trader identities.
+
+The first clean install hit host disk exhaustion; removed only generated Next cache,
+then installed successfully in a new directory. First working isolated stack was
+gracefully stopped; clean installer-produced environment passed preflight and started
+through the documented command. Discovered missing native Uvicorn WebSocket protocol
+package (in-process tests do not need it); added/test-installed websockets 15.0.1.
+Production build uses supported webpack and passes; preserves/normalizes existing
+Next type-import edits. Schema verifiers allow only approved supplementary tables.
+Files: create_test_stack/run_local/with_test_environment, requirements, schema/setup
+allowlists, package/build, env example, root/frontend/identity deployment docs.
+Private configs/logs remain under /tmp, never staged. Stop retains test data.

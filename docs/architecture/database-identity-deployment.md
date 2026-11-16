@@ -78,3 +78,13 @@ Tests requiring administrative fixtures in the separate SCRAM test cluster may
 supply `--admin-password-file /private/path/admin-password` to run_isolated.py.
 This is a private test-fixture credential, not a production runtime fallback.
 Ordinary API connections always supply their explicit service/trader passwords.
+
+New public trader accounts use the additive registration migration and operator
+reconciler described in [registration operations](registration-operations.md).
+Apply the registration migration with the dedicated auth role after this identity
+migration. Never give the HTTP runtime CREATEROLE or an owner connection. Stage and
+back up the private manifest; missing secrets are not repaired by silently resetting
+roles. ACTIVE requires independent authenticated RLS verification. Registration
+rollback retains status gates and all accounts; never remove gates while pending
+or disabled records exist. The read-only `run_local --check` preflight refuses a
+second matching owner and validates the required migration/identity dependencies.

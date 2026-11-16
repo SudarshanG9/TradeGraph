@@ -10,7 +10,7 @@ from getpass import getuser
 from pathlib import Path
 from psycopg import sql as pgsql
 from dotenv import dotenv_values
-from scripts.verify_schema import db_connect, EXPECTED_TABLES
+from scripts.verify_schema import db_connect, EXPECTED_TABLES, SUPPLEMENTARY_TABLES
 
 parser = argparse.ArgumentParser(description='Incremental native backend installation; no bootstrap or seeds')
 parser.add_argument('--phase', type=int, default=2, choices=[2, 3, 4, 5])
@@ -25,7 +25,7 @@ if args.phase>=3 and values.get('DATABASE_IDENTITY_MODE','isolated')!='legacy':
 with db_connect() as conn:
     conn.execute("SELECT pg_advisory_xact_lock(hashtext('tradegraph-backend-install'))")
     tables = {r[0] for r in conn.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")}
-    if not EXPECTED_TABLES <= tables or tables - EXPECTED_TABLES - {'order_request_identity'}:
+    if not EXPECTED_TABLES <= tables or tables - EXPECTED_TABLES - SUPPLEMENTARY_TABLES:
         raise SystemExit('Expected the initialized 13-table schema; refusing installation')
     signature = 'public.place_and_reserve_order(uuid,integer,text,bigint,bigint)'
     if conn.execute('SELECT to_regprocedure(%s)', (signature,)).fetchone()[0] is None:
