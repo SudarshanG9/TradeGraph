@@ -107,6 +107,10 @@ class Database:
         rows=self.trader_query(trader_id,'SELECT * FROM public.order_request_identity WHERE trader_id=%s AND request_key=%s',(trader_id,key))
         return rows[0] if rows else None
 
+    def registration_status(self, subject):
+        rows = self.auth_query('SELECT status FROM public.registration_state WHERE user_account_id=%s', (subject,))
+        return rows[0]['status'] if rows else None
+
     def identity(self, subject):
         rows = self.auth_query('SELECT u.id,u.role,t.id AS trader_id FROM user_account u LEFT JOIN trader t ON t.user_account_id=u.id WHERE u.id=%s', (subject,))
         return rows[0] if rows else None

@@ -84,3 +84,19 @@ No protected children render on unknown authorization. Raw error messages are no
 shown. Verified against this installed Next version's error/proxy documentation,
 which uses `retry` in error boundaries. Frontend suite and typecheck pass.
 DB/API: unchanged. Server-render outage/recovery browser evidence pending.
+
+Phase 3 commit `25b9fad`, pushed. 43 frontend tests passed, typecheck passed.
+
+## Phase 4 — atomic registration
+
+Status: FIXED for native persistence tests; provisioning is Phase 5.
+Added registration state/policy tables and normalized-email uniqueness, a restricted
+SECURITY DEFINER transaction, validated registration store/model, POST /register,
+normalized login and readiness checks for both login and existing tokens.
+Migration installer binds a dedicated auth role; rollback preserves pending states.
+Default zero-funded pending verification; explicit synthetic policy supports fixed
+starter funds without fake KYC. No existing core relationship or financial routine
+changed. Documents: registration-operations.md. Tests: 20 concurrent distinct
+accounts, normalized concurrent duplicates, required-insert rollback, bcrypt,
+fee/funding/FKs, no fabricated verification, privilege/byte validation.
+Native result recorded below after completion. HTTP rate limits follow in Phase 6.
