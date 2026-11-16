@@ -198,5 +198,5 @@ export type Outcome = 'accepted' | 'partial' | 'filled' | 'rejected' | 'unknown'
 export interface PreviewSession {
   role: AccountRole;
   expiresAt: number;
-  kind: 'mock-preview';
+  kind: 'mock-preview' | 'live';
 }

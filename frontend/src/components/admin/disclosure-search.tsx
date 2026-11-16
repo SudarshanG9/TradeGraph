@@ -33,6 +33,8 @@ export function DisclosureSearch({
         setBusy(true);
         onBusy(true);
         try {
+          if (!query.trim() || query.length > 500)
+            throw new Error('Enter a query from 1 to 500 characters.');
           const result = await api.disclosures.search(query);
           if (request === requestSequence.current) onResult(result);
         } catch (e) {
@@ -56,7 +58,7 @@ export function DisclosureSearch({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             maxLength={500}
-            placeholder="Search disclosure titles…"
+            placeholder="Search disclosures…"
           />
         </label>
         <Button variant="primary" disabled={busy || fixture === 'loading'} type="submit">

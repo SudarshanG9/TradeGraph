@@ -6,7 +6,7 @@ import { InvestigationTools } from '@/components/admin/investigation-tools';
 import { SimulatorControls } from '@/components/admin/simulator-controls';
 export default function Overview() {
   const { api } = usePreview();
-  const r = useResource(() => api.health.get());
+  const r = useResource((signal) => api.health.get(signal), [], 10000);
   return (
     <>
       <Heading

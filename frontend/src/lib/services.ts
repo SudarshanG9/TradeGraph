@@ -14,18 +14,23 @@ export interface Services {
     login(request: C.LoginRequest, selected: C.AccountRole): Promise<C.PreviewSession>;
   };
   instruments: { list(): Promise<C.InstrumentCatalog> };
-  account: { get(): Promise<C.Account> };
+  account: { get(signal?: AbortSignal): Promise<C.Account> };
   orders: {
-    list(query?: PageQuery): Promise<C.OwnOrders>;
+    list(query?: PageQuery, signal?: AbortSignal): Promise<C.OwnOrders>;
     submit(order: C.NewOrder): Promise<C.AcceptedOrder>;
     cancel(id: C.Int): Promise<C.CancelledOrder>;
   };
   market: {
-    book(symbol: string): Promise<C.Book>;
-    trades(symbol: string, query?: PageQuery): Promise<C.Trades>;
-    analytics(symbol: string, lower: C.Int, upper: C.Int): Promise<C.Analytics>;
+    book(symbol: string, signal?: AbortSignal): Promise<C.Book>;
+    trades(symbol: string, query?: PageQuery, signal?: AbortSignal): Promise<C.Trades>;
+    analytics(
+      symbol: string,
+      lower: C.Int,
+      upper: C.Int,
+      signal?: AbortSignal,
+    ): Promise<C.Analytics>;
   };
-  health: { get(): Promise<C.HealthResponse> };
+  health: { get(signal?: AbortSignal): Promise<C.HealthResponse> };
   surveillance: { cycles(limit: number): Promise<C.Cycles> };
   regimes: { similar(query: RegimeQuery): Promise<C.Similar> };
   disclosures: { search(q: string, limit?: number): Promise<C.Search> };
@@ -39,7 +44,7 @@ export interface Services {
   };
   desks: { rollup(): Promise<C.Rollup> };
   simulator: {
-    status(): Promise<C.SimulationStatus>;
+    status(signal?: AbortSignal): Promise<C.SimulationStatus>;
     start(config: C.SimulationStart): Promise<C.SimulationStatus>;
     stop(): Promise<C.SimulationStatus>;
   };

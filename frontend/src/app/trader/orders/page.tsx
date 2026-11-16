@@ -6,21 +6,25 @@ import { DataState, Heading, Notice, Pagination } from '@/components/ui';
 import { OrderHistory, OrderDetails } from '@/components/trader/order-history';
 import { CancelDialog } from '@/components/trader/cancel-dialog';
 export default function Orders() {
-  const { api, invalidate } = usePreview();
+  const { api, invalidate, mock } = usePreview();
   const [filter, setFilter] = useState('ALL'),
     [cursors, setCursors] = useState<(Int | undefined)[]>([undefined]),
     [selectedId, setSelectedId] = useState<Int | null>(null),
     [cancel, setCancel] = useState<OrderSummary | null>(null),
     [message, setMessage] = useState('');
   const cursor = cursors.at(-1);
-  const r = useResource(() => api.orders.list({ limit: 5, before_id: cursor }), [cursor]);
+  const r = useResource(
+    (signal) => api.orders.list({ limit: 5, before_id: cursor }, signal),
+    [cursor],
+    2000,
+  );
   const rows = r.data?.items.filter((o) => filter === 'ALL' || o.status === filter) ?? [];
   const selected = rows.find((o) => o.id === selectedId) ?? rows[0] ?? null;
   return (
     <>
       <Heading
         title="My Orders"
-        description="Full demo order history, including archived and settled orders."
+        description="Persisted order history, including archived and settled orders."
       />
       <div className="stack">
         <div className="filter-pills" role="group" aria-label="Order status filter">
@@ -64,7 +68,11 @@ export default function Orders() {
           order={cancel}
           onClose={() => setCancel(null)}
           onDone={() => {
-            setMessage(`Demo order #${cancel.id} cancelled locally. No transaction was committed.`);
+            setMessage(
+              mock
+                ? `Demo order #${cancel.id} cancelled locally.`
+                : `Order #${cancel.id} cancelled by the backend. Account and market state are refreshing.`,
+            );
             setCancel(null);
             invalidate();
           }}

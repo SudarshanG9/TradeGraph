@@ -7,7 +7,7 @@ export function PriceChart({ trades }: { trades: Trade[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const series = useMemo(
     () =>
-      [...trades].sort(
+      [...new Map(trades.map((t) => [t.id, t])).values()].sort(
         (a, b) =>
           Date.parse(a.executed_at) - Date.parse(b.executed_at) ||
           (BigInt(a.id) < BigInt(b.id) ? -1 : 1),
@@ -40,7 +40,7 @@ export function PriceChart({ trades }: { trades: Trade[] }) {
       <div className="chart-heading">
         <span className="caption">Last Price</span>
         <strong className="mono chart-last">{fmt(last.price_ticks)}</strong>
-        <Badge tone="blue">Demo executions</Badge>
+        <Badge tone="blue">Settled executions</Badge>
       </div>
       <svg
         className="chart"

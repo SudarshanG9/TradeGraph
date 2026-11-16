@@ -12,7 +12,7 @@ export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>('signin'),
     [role, setRole] = useState<AccountRole>('TRADER'),
     [expired, setExpired] = useState(false);
-  const { api, signIn } = usePreview(),
+  const { api, signIn, mock } = usePreview(),
     router = useRouter();
   useEffect(() => {
     setExpired(new URLSearchParams(window.location.search).get('reason') === 'expired');
@@ -25,17 +25,23 @@ export function AuthPage() {
     <AuthContainer
       title={mode === 'signin' ? 'Sign in' : 'Sign up'}
       footer={
-        <div className="auth-footer">
-          <p className="eyebrow">Mock role preview — for review only</p>
-          <div className="toolbar">
-            <button className="link positive" onClick={() => enter(api.auth.preview('TRADER'))}>
-              View as Trader →
-            </button>
-            <button className="link" onClick={() => enter(api.auth.preview('COMPLIANCE_ADMIN'))}>
-              View as Compliance Admin →
-            </button>
+        mock ? (
+          <div className="auth-footer">
+            <p className="eyebrow">Mock role preview — for review only</p>
+            <div className="toolbar">
+              <button className="link positive" onClick={() => enter(api.auth.preview('TRADER'))}>
+                View as Trader →
+              </button>
+              <button className="link" onClick={() => enter(api.auth.preview('COMPLIANCE_ADMIN'))}>
+                View as Compliance Admin →
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <p className="auth-hint">
+            Sign in with an existing provisioned account. Account registration is unavailable.
+          </p>
+        )
       }
     >
       <ModeSelector value={mode} onChange={setMode} />
@@ -43,7 +49,7 @@ export function AuthPage() {
       {expired && (
         <div className="auth-feedback">
           <Notice tone="warning">
-            Preview session expired. Open a new mock session to continue.
+            Session expired or access unavailable. Sign in with an authorized account to continue.
           </Notice>
         </div>
       )}

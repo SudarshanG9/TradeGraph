@@ -135,11 +135,13 @@ export function Skeleton() {
   );
 }
 export function DataState({
+  data,
   loading,
   error,
   children,
   retry,
 }: {
+  data?: unknown;
   loading: boolean;
   error: string;
   children: ReactNode;
@@ -150,7 +152,10 @@ export function DataState({
       {loading && <Skeleton />}
       {error && (
         <Notice tone="error">
-          {error}{' '}
+          {error}
+          {data != null
+            ? ' — showing the last successful snapshot; values may be delayed.'
+            : ''}{' '}
           {retry && (
             <button className="link" onClick={retry}>
               Retry
@@ -158,7 +163,7 @@ export function DataState({
           )}
         </Notice>
       )}
-      <div hidden={loading || !!error}>{children}</div>
+      <div hidden={loading || (!!error && data == null)}>{children}</div>
     </div>
   );
 }

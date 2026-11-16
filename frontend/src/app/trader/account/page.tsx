@@ -6,7 +6,7 @@ import { PositionsTable } from '@/components/trader/positions-table';
 import { AccountExplanation } from '@/components/trader/account-explanation';
 export default function Account() {
   const { api } = usePreview();
-  const r = useResource(() => api.account.get());
+  const r = useResource((signal) => api.account.get(signal), [], 5000);
   return (
     <>
       <Heading
@@ -21,7 +21,7 @@ export default function Account() {
             <AccountSummary account={r.data} withPnl={false} />
             <PositionsTable positions={r.data.positions} details />
             <AccountExplanation />
-            <p className="caption mono">Mock trader ID: {r.data.trader_id}</p>
+            <p className="caption mono">Trader ID: {r.data.trader_id}</p>
           </div>
         )}
       </DataState>

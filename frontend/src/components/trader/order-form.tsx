@@ -1,17 +1,21 @@
 'use client';
-import { useState } from 'react';
+import { ApiError } from '@/lib/api/errors';
+import Link from 'next/link';
+import { useState, useRef } from 'react';
 import type { Int, NewOrder } from '@/lib/contracts';
 import { fmt, validateOrder } from '@/lib/exact';
 import { usePreview } from '../preview-provider';
 import { Button, Card, Notice, Segmented } from '../ui';
 export function OrderForm() {
-  const { instrument, api, invalidate, outcome } = usePreview();
+  const { instrument, api, invalidate, outcome, mock } = usePreview();
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY'),
     [price, setPrice] = useState('100'),
     [quantity, setQuantity] = useState(instrument?.lot_size ?? ''),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [error, setError] = useState('');
+  const pending = useRef(false);
+  const [uncertain, setUncertain] = useState(false);
   if (!instrument) return null;
   const order: NewOrder = {
     instrument_id: instrument.id,
@@ -32,22 +36,31 @@ export function OrderForm() {
         className="stack padded"
         onSubmit={async (e) => {
           e.preventDefault();
+          if (pending.current || uncertain) return;
           setMessage('');
           setError('');
           if (validation) {
             setError(validation);
             return;
           }
+          pending.current = true;
           setBusy(true);
           try {
             const r = await api.orders.submit(order);
             setMessage(
-              `Mock order #${r.order_id}: ${outcome === 'partial' ? 'partial fill preview' : outcome === 'filled' ? 'filled preview' : 'accepted preview'}. No real order was placed. Acceptance is not settlement.`,
+              mock
+                ? `Mock order #${r.order_id}: ${outcome === 'partial' ? 'partial fill preview' : outcome === 'filled' ? 'filled preview' : 'accepted preview'}. No real order was placed. Acceptance is not settlement.`
+                : `Order #${r.order_id} accepted. Matching and settlement are asynchronous; refreshed orders and executions show the final result.`,
             );
             invalidate();
           } catch (e) {
             setError((e as Error).message);
+            if (e instanceof ApiError && e.uncertain) {
+              setUncertain(true);
+              invalidate();
+            }
           } finally {
+            pending.current = false;
             setBusy(false);
           }
         }}
@@ -92,14 +105,30 @@ export function OrderForm() {
           Estimated notional (est.): <span className="mono">{estimate}</span> minor units. Fees
           excluded.
         </p>
-        <Button variant={side === 'BUY' ? 'buy' : 'sell'} disabled={busy} type="submit">
-          {busy ? 'Submitting preview…' : `Submit ${side} Order · Demo`}
+        <Button
+          variant={side === 'BUY' ? 'buy' : 'sell'}
+          disabled={busy || uncertain}
+          type="submit"
+        >
+          {busy ? 'Submitting…' : `Submit ${side} Order${mock ? ' · Demo' : ''}`}
         </Button>
         {error && <Notice tone="error">{error}</Notice>}
+        {uncertain && (
+          <Notice tone="warning">
+            Submission is locked to prevent duplicate orders.{' '}
+            <Link className="link" href="/trader/orders">
+              Review persisted orders
+            </Link>{' '}
+            and account reservations with your operator before clearing this tab's unresolved
+            intent.
+          </Notice>
+        )}
         {message && <Notice tone="success">{message}</Notice>}
         <p className="caption">
-          Both BUY and SELL reserve cash in the synthetic collateral model. Demo actions update
-          local order history only.
+          Both BUY and SELL reserve cash in the synthetic collateral model.{' '}
+          {mock
+            ? 'Demo actions update local history only.'
+            : 'Backend collateral checks and settlement determine actual balances.'}
         </p>
       </form>
     </Card>

@@ -1,12 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { Int, SimulationStart, SimulationStatus } from '@/lib/contracts';
 import { fmt, integer, time } from '@/lib/exact';
 import { usePreview, useResource } from '../preview-provider';
 import { Badge, Button, Card, DataState, Notice, OrderStatus } from '../ui';
 export function SimulatorControls() {
-  const { api, instruments } = usePreview();
-  const resource = useResource(() => api.simulator.status());
+  const { api, instruments, mock } = usePreview();
   const [ids, setIds] = useState<number[]>([]),
     [bots, setBots] = useState('8'),
     [rate, setRate] = useState('2'),
@@ -16,7 +15,16 @@ export function SimulatorControls() {
     [local, setLocal] = useState<SimulationStatus | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
-    [message, setMessage] = useState('');
+    [message, setMessage] = useState(''),
+    [reconciling, setReconciling] = useState(false);
+  const pending = useRef(false);
+  const resource = useResource((signal) => api.simulator.status(signal), [], busy ? -1 : 2500);
+  useEffect(() => {
+    if (resource.data) {
+      setLocal(resource.data);
+      setReconciling(false);
+    }
+  }, [resource.data]);
   useEffect(() => {
     setIds((previous) => {
       const valid = previous.filter((id) => instruments.some((i) => i.id === id));
@@ -24,8 +32,10 @@ export function SimulatorControls() {
     });
   }, [instruments]);
   const status = local ?? resource.data;
-  const locked = busy || status?.state !== 'STOPPED';
+  const locked = busy || reconciling || !!resource.error || status?.state !== 'STOPPED';
   const start = async () => {
+    if (pending.current) return;
+    pending.current = true;
     setError('');
     setMessage('');
     setBusy(true);
@@ -40,43 +50,55 @@ export function SimulatorControls() {
       };
       const r = await api.simulator.start(config);
       setLocal(r);
-      setMessage('Mock simulation is RUNNING. No bot process or backend operation was started.');
+      setMessage(
+        mock
+          ? 'Mock simulation is RUNNING.'
+          : `Backend simulator ${r.state}. Accepted orders do not guarantee executions.`,
+      );
     } catch (e) {
       setError((e as Error).message);
+      setReconciling(true);
     } finally {
+      pending.current = false;
       setBusy(false);
+      resource.reload();
     }
   };
   const stop = async () => {
     if (!status) return;
+    if (pending.current) return;
+    pending.current = true;
     setError('');
     setMessage('');
     setBusy(true);
-    setLocal({ ...status, state: 'STOPPING', active_bots: 0 });
     try {
       const r = await api.simulator.stop();
       setLocal(r);
       if (r.state === 'STOPPED')
-        setMessage('Mock simulation STOPPED. This is a local state preview only.');
+        setMessage(
+          mock
+            ? 'Mock simulation STOPPED.'
+            : 'Backend simulator STOPPED after verified cleanup. Human orders and committed history are preserved.',
+        );
       else if (r.state === 'ERROR')
         setError(r.last_error ?? 'Stop failed. Operator reconciliation required.');
       else setMessage('STOPPING — cleanup is pending.');
     } catch (e) {
       setError((e as Error).message);
-      setLocal({
-        ...status,
-        state: 'ERROR',
-        active_bots: 0,
-        last_error: 'STOP_FAILED_RECONCILIATION_REQUIRED',
-      });
+      setReconciling(true);
+      setMessage('Stop outcome is unknown. Status is refreshing; do not assume cleanup succeeded.');
     } finally {
+      pending.current = false;
       setBusy(false);
+      resource.reload();
     }
   };
   return (
     <Card
       title="Live Market Simulation Controls"
-      action={<Badge tone="blue">Mock controls · non-live</Badge>}
+      action={
+        <Badge tone="blue">{mock ? 'Mock controls · non-live' : 'Live backend controls'}</Badge>
+      }
       className="padded"
     >
       <DataState {...resource} retry={resource.reload}>
@@ -182,6 +204,7 @@ export function SimulatorControls() {
                 ))}
               </div>
             </div>
+            {status.last_error && <Notice tone="error">{status.last_error}</Notice>}
             {error && <Notice tone="error">{error}</Notice>}
             {message && (
               <Notice tone={status.state === 'STOPPED' ? 'success' : 'info'}>{message}</Notice>

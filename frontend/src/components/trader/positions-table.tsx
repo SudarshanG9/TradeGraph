@@ -16,7 +16,8 @@ export function PositionsTable({
   details?: boolean;
 }) {
   const symbolFor = useSymbolFor();
-  const [selected, setSelected] = useState<Position | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const selectedPosition = positions.find((p) => p.instrument_id === selected);
   return (
     <Card title="My Positions">
       <Table
@@ -27,7 +28,7 @@ export function PositionsTable({
           <tr key={p.instrument_id}>
             <td>
               {details ? (
-                <button className="link" onClick={() => setSelected(p)}>
+                <button className="link" onClick={() => setSelected(p.instrument_id)}>
                   {symbolFor(p.instrument_id)}
                 </button>
               ) : (
@@ -41,11 +42,12 @@ export function PositionsTable({
           </tr>
         ))}
       </Table>
-      {!positions.length && <Empty message="No positions in this demo account." />}
-      {selected && (
+      {!positions.length && <Empty message="No settled positions for this account." />}
+      {selectedPosition && (
         <div className="panel-note" role="status">
-          Instrument ID {selected.instrument_id} · Net units {fmt(selected.net_quantity, true)} ·
-          PnL basis: {selected.pnl_basis}. Gross realized PnL excludes fees.
+          Instrument ID {selectedPosition.instrument_id} · Net units{' '}
+          {fmt(selectedPosition.net_quantity, true)} · PnL basis: {selectedPosition.pnl_basis}.
+          Gross realized PnL excludes fees.
         </div>
       )}
     </Card>

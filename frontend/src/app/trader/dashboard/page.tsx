@@ -7,20 +7,26 @@ import { PositionsTable } from '@/components/trader/positions-table';
 import { RecentOrders } from '@/components/trader/recent-orders';
 import { ExecutionsTable } from '@/components/trader/executions-table';
 export default function Dashboard() {
-  const { api } = usePreview();
-  const r = useResource(async () => {
-    const [account, orders, trades] = await Promise.all([
-      api.account.get(),
-      api.orders.list({ limit: 3 }),
-      api.market.trades('ACME', { limit: 2 }),
-    ]);
-    return { account, orders, trades };
-  });
+  const { api, instrument } = usePreview();
+  const r = useResource(
+    async (signal) => {
+      const [account, orders, trades] = await Promise.all([
+        api.account.get(signal),
+        api.orders.list({ limit: 3 }, signal),
+        instrument
+          ? api.market.trades(instrument.symbol, { limit: 2 }, signal)
+          : Promise.resolve({ items: [], next_before_id: null }),
+      ]);
+      return { account, orders, trades };
+    },
+    [instrument?.id],
+    5000,
+  );
   return (
     <>
       <Heading
         title="Dashboard"
-        description="Welcome back, Alice — here's where your demo account stands."
+        description="Your available funds, settled positions and recent orders."
       >
         <Refresh onClick={r.reload} loading={r.loading} />
       </Heading>

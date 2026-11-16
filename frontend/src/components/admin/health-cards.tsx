@@ -18,7 +18,7 @@ export function HealthCards({ health }: { health: HealthResponse }) {
             {up ? (label === 'Trading Engine' ? 'Available' : 'Connected') : 'Unavailable'}
           </strong>
           <p className="caption">
-            {label === 'Trading Engine' ? 'Mock trading readiness' : 'Mock dependency state'}
+            {label === 'Trading Engine' ? 'Backend trading readiness' : 'Backend dependency state'}
           </p>
         </Card>
       ))}

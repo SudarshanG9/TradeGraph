@@ -64,7 +64,7 @@ export function PlanPanel({
       className="padded plan-panel"
     >
       {!plan ? (
-        <Empty message="Compare plans to inspect a mock EXPLAIN ANALYZE response." />
+        <Empty message="Compare plans to inspect PostgreSQL EXPLAIN ANALYZE results." />
       ) : (
         <>
           <dl className="plan-stats">

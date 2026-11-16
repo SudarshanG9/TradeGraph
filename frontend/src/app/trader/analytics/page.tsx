@@ -17,13 +17,17 @@ function AnalyticsContent({ instrument }: { instrument: InstrumentInfo }) {
     setCursors([undefined]);
   }, [instrument.id]);
   const cursor = cursors.at(-1);
-  const r = useResource(async () => {
-    const [analytics, trades] = await Promise.all([
-      api.market.analytics(instrument.symbol, '95', '105'),
-      api.market.trades(instrument.symbol, { limit: 4, before_id: cursor }),
-    ]);
-    return { analytics, trades };
-  }, [instrument.id, cursor]);
+  const r = useResource(
+    async (signal) => {
+      const [analytics, trades] = await Promise.all([
+        api.market.analytics(instrument.symbol, '0', '9007199254740991', signal),
+        api.market.trades(instrument.symbol, { limit: 4, before_id: cursor }, signal),
+      ]);
+      return { analytics, trades };
+    },
+    [instrument.id, cursor],
+    5000,
+  );
   return (
     <>
       <Heading

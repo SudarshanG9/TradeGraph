@@ -55,7 +55,7 @@ export function Brand() {
 export function AppShell({ role, children }: { role: AccountRole; children: ReactNode }) {
   const pathname = usePathname(),
     router = useRouter();
-  const { logout, fixture, setFixture, outcome, setOutcome } = usePreview();
+  const { mock, logout, fixture, setFixture, outcome, setOutcome } = usePreview();
   const [open, setOpen] = useState(false);
   const isTrader = role === 'TRADER',
     nav = isTrader ? traderNav : adminNav,
@@ -82,14 +82,14 @@ export function AppShell({ role, children }: { role: AccountRole; children: Reac
         <div className="topbar-right">
           <span className="preview-status">
             <i />
-            Mock preview
+            {mock ? 'Mock preview' : 'Backend connected mode'}
           </span>
           <Badge tone={isTrader ? 'green' : 'blue'}>
             {isTrader ? <User size={12} /> : <Shield size={12} />}{' '}
             {isTrader ? 'Trader' : 'Compliance Admin'}
           </Badge>
-          <span className="avatar" title="Mock identity">
-            {isTrader ? 'AC' : 'CA'}
+          <span className="avatar" title="Account role">
+            {isTrader ? 'TR' : 'CA'}
           </span>
         </div>
       </header>
@@ -108,59 +108,61 @@ export function AppShell({ role, children }: { role: AccountRole; children: Reac
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <details className="preview-tools">
-            <summary>Preview scenarios</summary>
-            <label className="field">
-              Data fixture
-              <select
-                aria-label="Data fixture"
-                value={fixture}
-                onChange={(e) => setFixture(e.target.value as FixtureState)}
+          {mock && (
+            <details className="preview-tools">
+              <summary>Preview scenarios</summary>
+              <label className="field">
+                Data fixture
+                <select
+                  aria-label="Data fixture"
+                  value={fixture}
+                  onChange={(e) => setFixture(e.target.value as FixtureState)}
+                >
+                  {(
+                    [
+                      'populated',
+                      'empty',
+                      'loading',
+                      'stale',
+                      'error',
+                      'large',
+                      'no-instruments',
+                    ] as const
+                  ).map((x) => (
+                    <option key={x} value={x}>
+                      {x[0].toUpperCase() + x.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Action outcome
+                <select
+                  aria-label="Action outcome"
+                  value={outcome}
+                  onChange={(e) => setOutcome(e.target.value as Outcome)}
+                >
+                  {(['accepted', 'partial', 'filled', 'rejected', 'unknown'] as const).map((x) => (
+                    <option key={x} value={x}>
+                      {x}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                onClick={() => {
+                  logout('expired');
+                  router.replace('/auth?reason=expired');
+                }}
               >
-                {(
-                  [
-                    'populated',
-                    'empty',
-                    'loading',
-                    'stale',
-                    'error',
-                    'large',
-                    'no-instruments',
-                  ] as const
-                ).map((x) => (
-                  <option key={x} value={x}>
-                    {x[0].toUpperCase() + x.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Action outcome
-              <select
-                aria-label="Action outcome"
-                value={outcome}
-                onChange={(e) => setOutcome(e.target.value as Outcome)}
-              >
-                {(['accepted', 'partial', 'filled', 'rejected', 'unknown'] as const).map((x) => (
-                  <option key={x} value={x}>
-                    {x}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              onClick={() => {
-                logout('expired');
-                router.replace('/auth?reason=expired');
-              }}
-            >
-              Preview expired session
-            </button>
-          </details>
+                Preview expired session
+              </button>
+            </details>
+          )}
           <button
             className="logout"
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               router.replace('/auth');
             }}
           >
@@ -181,7 +183,7 @@ export function AppShell({ role, children }: { role: AccountRole; children: Reac
       </main>
       <footer className="footer">
         TradeGraph is an academic trading simulation — synthetic funds and instruments only. No real
-        securities are traded. <span>Demo data · UTC times</span>
+        securities are traded. <span>{mock ? 'Demo data' : 'Server data'} · UTC times</span>
       </footer>
     </div>
   );

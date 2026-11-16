@@ -11,9 +11,11 @@ export function RegimeSearch({
   onResult: (r: Similar | null) => void;
   onBusy: (b: boolean) => void;
 }) {
-  const { api, instrument, fixture } = usePreview();
+  const { api, instrument, fixture, mock } = usePreview();
   const [mode, setMode] = useState<'current' | 'custom'>('current'),
-    [values, setValues] = useState(currentFeatures.map(String)),
+    [values, setValues] = useState(
+      mock ? currentFeatures.map(String) : ['1', '0', '0', '0', '0', '0'],
+    ),
     [k, setK] = useState('10'),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
@@ -110,7 +112,8 @@ export function RegimeSearch({
                 className="mono"
                 disabled={mode === 'current'}
                 aria-label={label}
-                value={mode === 'current' ? String(currentFeatures[i]) : values[i]}
+                placeholder={mode === 'current' ? 'Computed by backend on query' : 'Feature value'}
+                value={mode === 'current' ? (mock ? String(currentFeatures[i]) : '') : values[i]}
                 onChange={(e) =>
                   setValues((old) => old.map((v, j) => (j === i ? e.target.value : v)))
                 }
@@ -125,7 +128,12 @@ export function RegimeSearch({
               : error}
           </Notice>
         )}
-        <p className="caption">Demo current feature vector · Results are retrieved on demand.</p>
+        <p className="caption">
+          {mock
+            ? 'Demo current feature vector.'
+            : 'Current mode captures backend observations on explicit query. The API does not return a standalone current vector.'}{' '}
+          Results are retrieved on demand.
+        </p>
       </form>
     </Card>
   );

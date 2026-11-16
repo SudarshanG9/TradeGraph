@@ -39,7 +39,7 @@ export function RecentOrders({ orders }: { orders: OrderSummary[] }) {
           </tr>
         ))}
       </Table>
-      {!orders.length && <Empty message="No demo orders yet." />}
+      {!orders.length && <Empty message="No persisted orders yet." />}
     </Card>
   );
 }
