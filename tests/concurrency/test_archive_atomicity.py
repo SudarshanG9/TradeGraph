@@ -70,3 +70,16 @@ def test_archive_requires_execution_volume_reconciliation(accounts):
         assert not conn.execute(query_text('archive'),params([a])).fetchall()
         assert conn.execute('SELECT id FROM public."order" WHERE id=%s',(buy,)).fetchone()==(buy,)
         conn.rollback()
+
+
+def test_bounded_archive_skips_locked_rows_and_is_idempotent(accounts):
+    users,instrument=accounts;a=users[0];db=Database(Settings.from_env())
+    ids=[reserve(a,instrument,'BUY',100,1) for _ in range(4)]
+    for oid in ids: db.cancel(oid,a['trader_id'])
+    cutoff=params([a])['cutoff']
+    with db_connect() as locker:
+        locker.execute('SELECT id FROM public."order" WHERE id=%s FOR UPDATE',(ids[0],))
+        moved=db.archive_terminal_orders(cutoff,2,[a['trader_id']])
+        assert len(moved)==2 and ids[0] not in {r['id'] for r in moved}
+    assert len(db.archive_terminal_orders(cutoff,2,[a['trader_id']]))==2
+    assert db.archive_terminal_orders(cutoff,2,[a['trader_id']])==[]

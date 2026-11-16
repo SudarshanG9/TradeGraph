@@ -48,6 +48,14 @@ class Database:
         with self.connect() as conn:
             return conn.execute(sql, params).fetchall()
 
+    def archive_terminal_orders(self, cutoff, batch_size=100, trader_ids=None):
+        if (getattr(cutoff, 'tzinfo', None) is None or cutoff.utcoffset() is None or
+            type(batch_size) is not int or not 1 <= batch_size <= 10000):
+            raise ValueError('Aware cutoff and bounded batch required')
+        with self.connect() as conn:
+            return conn.execute('SELECT * FROM public.archive_terminal_orders(%s,%s,%s::uuid[])',
+                                (cutoff,batch_size,trader_ids)).fetchall()
+
     def execution_batches(self, batch_size=1000):
         """Server-side cursor, one read-only snapshot, bounded client materialization."""
         if type(batch_size) is not int or not 1 <= batch_size <= 10000:

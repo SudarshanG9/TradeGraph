@@ -7,3 +7,6 @@ CREATE INDEX IF NOT EXISTS idx_execution_buy_order ON public.execution(buy_order
 CREATE INDEX IF NOT EXISTS idx_execution_sell_order ON public.execution(sell_order_id);
 CREATE INDEX IF NOT EXISTS idx_execution_buy_instrument_id ON public.execution(buy_trader_id,instrument_id,id);
 CREATE INDEX IF NOT EXISTS idx_execution_sell_instrument_id ON public.execution(sell_trader_id,instrument_id,id);
+
+CREATE INDEX IF NOT EXISTS idx_order_archive_candidates
+ON public."order"(updated_at,id) WHERE status IN ('FILLED','CANCELLED');

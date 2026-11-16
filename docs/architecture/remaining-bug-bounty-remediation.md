@@ -359,3 +359,30 @@ no volume mismatches and one owner lock (database changed externally during work
 It correctly reports cold_start_safe=false. No live ownership/data was changed by
 this task. Unrelated auth-form.tsx changes and generated next-env.d.ts edits are
 preserved and excluded from remediation commits.
+
+## Phase 10 — I-05 bounded scheduled archival
+
+order_archive.sql now selects at most 100 terminal candidates under FOR UPDATE
+SKIP LOCKED, then preserves atomic DELETE RETURNING/INSERT and exact execution-volume
+reconciliation. New bounded_archive migration exposes a validated SECURITY DEFINER
+maintenance routine; no direct runtime financial writes granted. Dedicated Database
+archive method validates aware cutoff and bounded size. New partial updated_at/id
+index supports terminal candidate selection (separate CONCURRENTLY migration).
+Both migrations/index applied only in the isolated database.
+
+New housekeeping_worker.py runs one bounded batch per cadence off the owner loop,
+with bounded retries, metrics/failure state and shutdown that waits for database work.
+main.py owns lifecycle; config.py validates enable flag, cadence, cutoff age, batch
+size and attempts. Safe default is disabled pending operator-selected policy and
+migration deployment. No installer was run on live trading. Existing orders,
+executions, accounting and archive integrity remain preserved.
+
+Tests: tests/concurrency/test_archive_atomicity.py adds locked-row skip, batch bound,
+repeat idempotency; new tests/unit/test_housekeeping.py proves failure recovery and
+bounded scheduling. **108 focused matching/config, maintenance, archive and SQL
+integrity tests passed**, including original rollback/settlement atomicity regressions.
+I-05: FIXED in implementation upon push; production scheduling requires explicit
+MAINTENANCE_ENABLED=true and deployed routine/index. A-03 remains partial until
+retention review. Phase 9 `19374b3` confirmed pushed. Rollback disables scheduler,
+drains task, drops maintenance routine/index only; archived financial rows remain
+canonical history and are never moved back during trading.

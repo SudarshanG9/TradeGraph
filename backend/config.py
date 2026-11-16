@@ -55,6 +55,11 @@ class Settings:
     health_interval_seconds: int
     event_queue_capacity: int
     service_workers: int
+    maintenance_enabled: bool = False
+    maintenance_interval_seconds: int = 60
+    archive_age_seconds: int = 86400
+    maintenance_batch_size: int = 100
+    maintenance_retries: int = 3
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None,
@@ -102,6 +107,8 @@ class Settings:
         algorithm = values.get("JWT_ALGORITHM", "HS256")
         if algorithm != "HS256":
             raise ValueError("JWT_ALGORITHM must be HS256 for contract version 1")
+        if values.get('MAINTENANCE_ENABLED', 'false') not in ('true', 'false'):
+            raise ValueError('MAINTENANCE_ENABLED must be true or false')
         workers = _integer(values, "SERVICE_WORKERS", 1, 1, 1)
         return cls(
             postgres_host=host,
@@ -116,4 +123,9 @@ class Settings:
             health_interval_seconds=_integer(values, "HEALTH_INTERVAL_SECONDS", 10, 1, 300),
             event_queue_capacity=_integer(values, "EVENT_QUEUE_CAPACITY", 1024, 1, 100000),
             service_workers=workers,
+            maintenance_enabled=values.get('MAINTENANCE_ENABLED', 'false') == 'true',
+            maintenance_interval_seconds=_integer(values,'MAINTENANCE_INTERVAL_SECONDS',60,10,3600),
+            archive_age_seconds=_integer(values,'ARCHIVE_AGE_SECONDS',86400,3600,31536000),
+            maintenance_batch_size=_integer(values,'MAINTENANCE_BATCH_SIZE',100,1,10000),
+            maintenance_retries=_integer(values,'MAINTENANCE_RETRIES',3,1,5),
         )

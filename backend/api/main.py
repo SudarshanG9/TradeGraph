@@ -20,6 +20,7 @@ from backend.workers.graph_worker import GraphWorker
 from backend.stores.regimes import Regimes
 from backend.workers.regime_worker import RegimeWorker
 from backend.events.trade_event import TradeEvent
+from backend.workers.housekeeping_worker import HousekeepingWorker
 
 
 class HealthResponse(BaseModel):
@@ -72,8 +73,13 @@ def create_app(settings=None, *, settlement=True):
                 regimes.start()
                 app.state.service.worker.after_commit.append(regimes.publish_settled)
                 app.state.service.worker.start()
+            app.state.housekeeping = HousekeepingWorker(app.state.database, app.state.settings)
+            if app.state.settings.maintenance_enabled:
+                app.state.housekeeping.start()
             yield
         finally:
+            if hasattr(app.state, 'housekeeping'):
+                await app.state.housekeeping.stop()
             await app.state.live_simulator.shutdown()
             await app.state.service.finish_admissions()
             if app.state.service.worker:
