@@ -123,3 +123,20 @@ Runtime command: `.venv/bin/uvicorn backend.api.main:app --host 127.0.0.1 --port
 Stop this owner before native tests that instantiate another coordinator. The
 frontend BFF will use private FASTAPI_BASE_URL=http://127.0.0.1:8000. Preserve
 existing ignored backend environment; never copy credentials into frontend code.
+
+## Phase 2 — transport foundation
+
+Phase 1 remote commit: `c4de28d84ec5664345ff8dd4aa5adf240ca9ec4e`.
+Added explicit operation allowlist/query/body validation, lossless response schemas,
+private server transport, safe machine-code errors/timeouts/aborts, real data
+adapter and safe environment example. Existing pages remain mock-only until the
+session boundary is installed in phase 3. Public route wiring is intentionally
+coupled to that authorization boundary; no unguarded proxy is exposed.
+
+Checks: strict TypeScript, **26 frontend tests**, formatting and production build
+passed. Transport tests cover 401/403/409/422/503, malformed data/content type,
+BIGINT roundtrips, route/query/body allowlists, timeout/abort uncertainty and no
+transport retry. An actual native FastAPI health request through transport-core
+returned ok, all four dependencies up and trading_ready=true. No backend source
+or database schema changes. Sessions, UI integration and real trading acceptance
+remain outstanding; the data adapter is not yet selected by the UI.
