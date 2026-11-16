@@ -60,6 +60,9 @@ class Settings:
     archive_age_seconds: int = 86400
     maintenance_batch_size: int = 100
     maintenance_retries: int = 3
+    maintenance_retry_seconds: int = 1
+    regime_retention_seconds: int = 0
+    regime_retention_instruments: tuple[int, ...] = ()
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None,
@@ -109,6 +112,15 @@ class Settings:
             raise ValueError("JWT_ALGORITHM must be HS256 for contract version 1")
         if values.get('MAINTENANCE_ENABLED', 'false') not in ('true', 'false'):
             raise ValueError('MAINTENANCE_ENABLED must be true or false')
+        retention = _integer(values,'REGIME_RETENTION_SECONDS',0,0,315360000)
+        try:
+            retention_instruments = tuple(int(value) for value in values.get('REGIME_RETENTION_INSTRUMENT_IDS','').split(',') if value.strip())
+        except ValueError:
+            raise ValueError('Invalid retention instrument scope') from None
+        if (len(retention_instruments)>100 or len(set(retention_instruments)) != len(retention_instruments) or
+            any(not 0 < value < 2**31 for value in retention_instruments) or
+            (retention and (retention<86400 or not retention_instruments))):
+            raise ValueError('Retention requires explicit valid instruments and at least one day')
         workers = _integer(values, "SERVICE_WORKERS", 1, 1, 1)
         return cls(
             postgres_host=host,
@@ -128,4 +140,7 @@ class Settings:
             archive_age_seconds=_integer(values,'ARCHIVE_AGE_SECONDS',86400,3600,31536000),
             maintenance_batch_size=_integer(values,'MAINTENANCE_BATCH_SIZE',100,1,10000),
             maintenance_retries=_integer(values,'MAINTENANCE_RETRIES',3,1,5),
+            maintenance_retry_seconds=_integer(values,'MAINTENANCE_RETRY_SECONDS',1,1,60),
+            regime_retention_seconds=retention,
+            regime_retention_instruments=retention_instruments,
         )

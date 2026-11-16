@@ -537,3 +537,25 @@ existing SQL contract. Full elimination requires an approved canonical aggregati
 checkpoint/order contract or persisted state; no unsafe incremental addition adopted.
 Files: graph_worker.py, query_indexes.sql, counterparty_index migration, polyglot
 tests, benchmark/evidence and ledger. Phase 15 `5d0e8f0` confirmed pushed.
+
+## Phase 17 — A-03 opt-in bounded retention
+
+Extended housekeeping/config with validated retry delay and optional regime
+retention age/instrument scope. Default retention is zero (disabled); positive
+retention requires explicit unique valid instrument IDs and at least one day.
+Each pruning pass shares one configured batch budget across those instruments.
+Regimes.prune now validates scope/cutoff/size and materializes a bounded locked
+candidate CTE before deletion. A native test caught that a nonmaterialized IN/LIMIT
+plan could delete beyond the requested batch; the MATERIALIZED CTE corrected it.
+No financial execution history is deleted, and no live pruning/scheduler enabled.
+
+**88 maintenance/config unit tests and 18 native archive/polyglot tests passed**,
+including original archival atomicity, repeated retention, strict batch limits and
+vector search after old snapshots are removed. Only fixture-owned instrument data
+was pruned. Files: config.py, regimes.py, housekeeping_worker.py, .env.example,
+maintenance unit tests, polyglot tests and ledger.
+A-03: PARTIALLY_FIXED: hot-order maintenance/optional nonfinancial retention are
+bounded; financial history remains intentionally retained, and exact analytics
+identity state still grows. These cannot safely be deleted to create an apparent
+bound. Phase 16 `eea9760` confirmed pushed. Production maintenance policy and
+routine/index deployment remain operator actions.

@@ -77,10 +77,14 @@ class Regimes:
         for row in rows: row['features']=json.loads(row['features'])
         return rows
 
-    def prune(self,cutoff,instrument):
-        # Explicit instrument scope; never erase unrelated user snapshots.
+    def prune(self,cutoff,instrument,batch_size=100):
+        # No automatic deletion without an explicitly configured worker policy.
+        if (getattr(cutoff,'tzinfo',None) is None or cutoff.utcoffset() is None or
+            type(instrument) is not int or instrument<=0 or
+            type(batch_size) is not int or not 1<=batch_size<=10000):
+            raise ValueError('Aware retention cutoff, instrument and bounded batch required')
         with self.database.admin_context() as conn:
-            return len(conn.execute('DELETE FROM regime_snapshot WHERE captured_at<%s AND instrument_id=%s RETURNING id',(cutoff,instrument)).fetchall())
+            return len(conn.execute('WITH candidates AS MATERIALIZED (SELECT id FROM regime_snapshot WHERE captured_at<%s AND instrument_id=%s ORDER BY captured_at,id LIMIT %s FOR UPDATE SKIP LOCKED) DELETE FROM regime_snapshot r USING candidates c WHERE r.id=c.id RETURNING r.id',(cutoff,instrument,batch_size)).fetchall())
 
     def disclosure(self,instrument,title,body):
         with self.database.admin_context() as conn:

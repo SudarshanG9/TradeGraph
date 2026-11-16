@@ -11,6 +11,7 @@ class HousekeepingWorker:
         self.failure=None
         self.archived=0
         self.cycles=0
+        self.pruned=0
 
     def start(self):
         if self.task is not None:
@@ -21,6 +22,17 @@ class HousekeepingWorker:
         cutoff=datetime.now(timezone.utc)-timedelta(seconds=self.settings.archive_age_seconds)
         rows=await asyncio.to_thread(self.database.archive_terminal_orders,cutoff,self.settings.maintenance_batch_size)
         self.archived+=len(rows)
+        retention=getattr(self.settings,'regime_retention_seconds',0)
+        if retention:
+            from backend.stores.regimes import Regimes
+            store=Regimes(self.database)
+            cutoff=datetime.now(timezone.utc)-timedelta(seconds=retention)
+            remaining=self.settings.maintenance_batch_size
+            for instrument in self.settings.regime_retention_instruments:
+                count=await asyncio.to_thread(store.prune,cutoff,instrument,remaining)
+                self.pruned+=count
+                remaining-=count
+                if remaining==0: break
         self.cycles+=1
         self.failure=None
 
@@ -37,7 +49,7 @@ class HousekeepingWorker:
                 except Exception:
                     self.failure='Maintenance unavailable; bounded retry pending'
                     if self.stopping.is_set(): break
-                    await self.wait(min(2**attempt,30))
+                    await self.wait(min(getattr(self.settings,'maintenance_retry_seconds',1)*2**attempt,60))
             await self.wait(self.settings.maintenance_interval_seconds)
 
     async def stop(self):

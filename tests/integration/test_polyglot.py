@@ -282,3 +282,17 @@ def test_graph_same_pair_backlog_coalesces_to_canonical_total(accounts):
         graph.apply(events[0]);graph.rebuild([a['trader_id'],b['trader_id']])
         assert graph.pair(a['trader_id'],b['trader_id'])=={'trade_count':3,'total_notional':300}
     finally:graph.close()
+
+
+def test_explicit_bounded_regime_retention_preserves_new_vector_search_and_other_instruments(accounts):
+    from backend.stores.regimes import Regimes
+    from backend.stores.postgres import Database
+    from datetime import datetime,timedelta,timezone
+    users,instrument=accounts;store=Regimes(Database(Settings.from_env()));now=datetime.now(timezone.utc)
+    for days in (100,99,98,0):store.upsert(instrument,now-timedelta(days=days),[1,0,0,0,0,0])
+    assert store.prune(now-timedelta(days=90),instrument,2)==2
+    assert len(store.similar([1,0,0,0,0,0],instrument,10))==2
+    assert store.prune(now-timedelta(days=90),instrument,2)==1
+    matches=store.similar([1,0,0,0,0,0],instrument,10)
+    assert len(matches)==1 and matches[0]['captured_at']==now
+    assert store.prune(now-timedelta(days=90),instrument,2)==0
