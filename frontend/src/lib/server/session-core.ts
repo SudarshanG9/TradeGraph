@@ -1,4 +1,4 @@
-import { applicationOrigin } from './app-origin';
+import { applicationOrigin, wrongDevelopmentOrigin } from './app-origin';
 import { sharedSessionStore } from './redis-session-store';
 import type { AccountRole, LoginResponse } from '../contracts';
 import { ApiError } from '../api/errors';
@@ -76,11 +76,17 @@ export function authorize(s: ServerSession | null, role?: AccountRole) {
 export function checkCsrf(request: Request, origin: string = applicationOrigin()) {
   const expected = applicationOrigin({ APP_ORIGIN: origin });
   const supplied = request.headers.get('origin');
-  if (
-    request.headers.get('x-tradegraph-request') !== '1' ||
-    (supplied !== null && supplied !== expected) ||
-    request.headers.get('sec-fetch-site') === 'cross-site' ||
-    (request.method !== 'GET' && supplied !== expected)
-  )
-    throw new ApiError(403, 'CSRF_REJECTED');
+  if (request.headers.get('sec-fetch-site') === 'cross-site')
+    throw new ApiError(403, 'CSRF_CROSS_SITE');
+  if (request.headers.get('x-tradegraph-request') !== '1')
+    throw new ApiError(403, 'CSRF_HEADER_REQUIRED');
+  if (supplied === null && request.method !== 'GET')
+    throw new ApiError(403, 'CSRF_ORIGIN_REQUIRED');
+  if (supplied !== null && supplied !== expected)
+    throw new ApiError(
+      403,
+      wrongDevelopmentOrigin(supplied, expected)
+        ? 'CANONICAL_ORIGIN_REQUIRED'
+        : 'CSRF_FOREIGN_ORIGIN',
+    );
 }

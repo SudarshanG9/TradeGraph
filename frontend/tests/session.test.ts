@@ -214,3 +214,23 @@ test(
     }
   },
 );
+
+test('CSRF diagnoses each rejection without allowing an alternate development host', () => {
+  const origin = 'http://127.0.0.1:3000';
+  for (const [headers, code] of [
+    [{ origin }, 'CSRF_HEADER_REQUIRED'],
+    [{ 'x-tradegraph-request': '1' }, 'CSRF_ORIGIN_REQUIRED'],
+    [{ origin: 'http://localhost:3000', 'x-tradegraph-request': '1' }, 'CANONICAL_ORIGIN_REQUIRED'],
+    [{ origin: 'https://evil.test', 'x-tradegraph-request': '1' }, 'CSRF_FOREIGN_ORIGIN'],
+    [{ origin, 'x-tradegraph-request': '1', 'sec-fetch-site': 'cross-site' }, 'CSRF_CROSS_SITE'],
+  ] as const) {
+    assert.throws(() => checkCsrf(new Request(origin, { method: 'POST', headers }), origin), {
+      status: 403,
+      code,
+    });
+  }
+  assert.throws(() => checkCsrf(new Request(origin, { method: 'POST' }), 'invalid'), {
+    status: 503,
+    code: 'APP_ORIGIN_CONFIGURATION_INVALID',
+  });
+});

@@ -35,3 +35,19 @@ FIXED means tested behavior in the stated environment. PARTIALLY_FIXED means som
 required behavior remains. BLOCKED identifies an unavailable dependency or unsafe
 action. NOT_VERIFIED means no execution evidence. No UI mock or open socket counts
 as full financial acceptance. Never run a second owner on the existing database.
+
+Phase 0 commit: `27333d8`, pushed successfully. Backend unit baseline: 203 passed.
+Isolated combined baseline: 257 passed, 1 failed, 33 fixture errors; investigating
+fixture schema/environment gaps before interpreting these as product regressions.
+
+## Phase 1 — canonical origin and CSRF
+
+Status: FIXED for tested validator behavior; browser mismatch redirect deferred to
+same-origin proxy phase. Original policy conflated every denial as CSRF_REJECTED.
+Updated `app-origin.ts`, `session-core.ts`, `.env.example`, and session tests:
+strict canonical URL syntax; distinct missing-header, missing-origin, foreign-origin,
+cross-site and alternate-loopback error codes. Neither host headers nor a login
+exception expands origin trust. HTTPS production and explicit loopback test policy
+are preserved. Session cookies still derive security from the configured origin.
+Tests: frontend suite/typecheck run in this phase; see following commit evidence.
+No API/DB relationship changes. No production configuration changed.
