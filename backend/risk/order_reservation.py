@@ -16,7 +16,7 @@ class Coordinator:
     def __init__(self, database, settings):
         self.database = database
         self.settings = settings
-        self.engine = Engine()
+        self.engine = Engine(monotonic_order_ids=True)
         self.lock = asyncio.Lock()
         self.dispatcher = Dispatcher(settings.event_queue_capacity)
         self.lease = database.acquire_owner()

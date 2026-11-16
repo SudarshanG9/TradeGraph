@@ -77,7 +77,9 @@ class _PriceLevel:
 class OrderBook:
     """Single-writer, memory-only, price-time limit-order book."""
 
-    def __init__(self):
+    def __init__(self, *, monotonic_ids=False):
+        self._monotonic_ids = monotonic_ids
+        self._last_id = 0
         # (instrument_id, side, price_ticks) -> linked FIFO price level
         self._levels = {}
         # (instrument_id, side) -> min heap (negative for bids)
@@ -86,7 +88,7 @@ class OrderBook:
         self._queued_prices = defaultdict(set)
         # order_id -> (level_key, intrusive node)
         self._by_id = {}
-        self._seen_ids = set()
+        self._seen_ids = None if monotonic_ids else set()
 
     @staticmethod
     def _validate(order: Order) -> None:
@@ -132,9 +134,14 @@ class OrderBook:
 
     def submit(self, order: Order) -> MatchResult:
         self._validate(order)
-        if order.order_id in self._seen_ids:
-            raise ValueError("Duplicate order ID")
-        self._seen_ids.add(order.order_id)
+        if self._monotonic_ids:
+            if order.order_id <= self._last_id:
+                raise ValueError("Duplicate or nonmonotonic order ID")
+            self._last_id = order.order_id
+        else:
+            if order.order_id in self._seen_ids:
+                raise ValueError("Duplicate order ID")
+            self._seen_ids.add(order.order_id)
 
         remaining = order.quantity
         fills = []

@@ -417,3 +417,30 @@ new recovery-test result was inspected. That test exposed strict tuple/list
 serialization in the new endpoint. The response conversion is now consistent with
 start/stop/status; **all 7 native simulator tests passed**. A separate corrective
 commit preserves history. No failed test was removed or suppressed.
+
+## Phase 12 — historical identity memory
+
+Production Coordinator already requires strictly increasing admitted PostgreSQL
+order IDs. It now explicitly constructs Engine/OrderBook in monotonic mode, which
+uses one high-water integer instead of retaining all IDs. Duplicate IDs after fills
+and cancellations remain rejected. Standalone public OrderBook/Engine defaults
+still support arbitrary IDs using the original exact history set; no caller's
+existing arbitrary-ID contract was silently changed. P-02: FIXED for the production
+owner; standalone arbitrary-ID history remains intentionally unbounded.
+
+Engine stores exact 84-byte packed execution payloads keyed by event ID instead
+of retaining complete object graphs. Integer microsecond UTC timestamps and UUID
+bytes preserve exact conflict/replay comparisons; no hash collision assumption,
+TTL, eviction, historical double-counting or matching-loop DB I/O. Recovery uses
+has_settled(). P-03: PARTIALLY_FIXED: exact all-time history is still O(executions).
+Bounded all-time verification needs a canonical lookup/replay contract before
+historical identities can safely be evicted.
+
+Files: order_book.py, engine.py, order_reservation.py, settlement_worker.py,
+tests/unit/test_order_book.py, scripts/benchmark_identity_memory.py and evidence
+identity-memory.json. **32 matching tests and 28 native recovery/replay/pipeline
+tests passed**. 10,000-event tracemalloc profile: independent database-row-like
+objects retained 4,912,244 bytes vs packed 1,789,956. Shared-reference synthetic
+events retained 1,738,978 vs packed 1,789,499 (slightly worse). These are synthetic
+map allocations, not total RSS or throughput; both scenarios and limitations are
+committed. Phase 11 corrective `5573bb1` confirmed pushed.

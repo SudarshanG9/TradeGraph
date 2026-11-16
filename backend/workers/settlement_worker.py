@@ -114,7 +114,7 @@ class SettlementWorker:
             event = self.pending
             await asyncio.to_thread(coordinator.verify_owner)
             await asyncio.to_thread(self.database.reconcile_execution, event)
-            if self.engine.settled.get(event.event_id) != event:
+            if not self.engine.has_settled(event):
                 raise RuntimeError('Analytics reconciliation required')
             if tuple(self.after_commit) != self.pending_consumers:
                 raise RuntimeError('Publication configuration changed')
