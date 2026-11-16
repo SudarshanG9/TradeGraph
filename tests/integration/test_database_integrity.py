@@ -266,3 +266,32 @@ def test_installer_refuses_placeholder_for_existing_runtime_identity():
     assert 'requires its current password' in result.stderr
     assert hashlib.sha256(path.read_bytes()).hexdigest()==before
     assert Database(settings).query('SELECT 1 AS healthy')[0]['healthy']==1
+
+
+@pytest.mark.parametrize('side',['BUY','SELL'])
+@pytest.mark.parametrize('maker',[True,False])
+@pytest.mark.parametrize('fills', [[],[1],[1,1],[3]])
+def test_exact_fee_refunds_after_single_multiple_and_no_fill(accounts,side,maker,fills):
+    from fractions import Fraction
+    from tests.concurrency.test_settlement_locks import state
+    users,instrument=accounts;a,b=users[:2];db=Database(Settings.from_env())
+    price=500000000000001;initial=10**17;quantity=3
+    with db_conn_for_archive() as conn:
+        conn.execute('UPDATE margin_account SET cash_balance=%s WHERE trader_id=ANY(%s)',(initial,[a['trader_id'],b['trader_id']]))
+    opposite='SELL' if side=='BUY' else 'BUY'
+    if maker:
+        subject=reserve(a,instrument,side,price,quantity);other=reserve(b,instrument,opposite,price,quantity)
+    else:
+        other=reserve(b,instrument,opposite,price,quantity);subject=reserve(a,instrument,side,price,quantity)
+    for amount in fills:
+        event=make_event(subject,other,a,b,instrument,price,amount) if side=='BUY' else make_event(other,subject,b,a,instrument,price,amount)
+        db.settle(event)
+    filled=sum(fills)
+    if filled<quantity: db.cancel(subject,a['trader_id']);db.cancel(other,b['trader_id'])
+    fee=Fraction(price*filled*(1 if maker else 2),10000)
+    assessed=-(-fee.numerator//fee.denominator)
+    expected=initial+(-1 if side=='BUY' else 1)*price*filled-assessed
+    assert state(a)==(expected,0)
+    if filled<quantity:
+        assert db.cancel(subject,a['trader_id'])==0
+        assert state(a)==(expected,0)

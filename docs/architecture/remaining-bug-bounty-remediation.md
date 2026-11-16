@@ -491,3 +491,23 @@ Evidence depth-snapshots.json measures snapshot CPU only, excluding reservation,
 network and settlement; copies still cost O(relevant levels). N-03: FIXED upon push.
 Files: order_book.py, dispatcher.py, cache_worker.py, unit tests, benchmark/evidence.
 Phase 13 `f019866` confirmed pushed.
+
+## Phase 15 — P-07 exact cancellation fee reuse
+
+cancel_order.sql computes actual_order_fee once, after existing locks and before
+financial updates, and reuses it for BUY refund/budget validation. Every rounding
+boundary and update order is unchanged. settle_execution.sql was reviewed: seller
+fees before/after INSERT and buyer cumulative refund are different values and must
+not be merged. New backward-compatible migration and owner-only down migration
+replace only cancellation; deployed/tested only in the isolated database, never
+via the full installer on live trading.
+
+Added 16 independent Fraction-based extreme-value regressions in
+integration/test_database_integrity.py: BUY/SELL, maker/taker, no/single/multiple
+partial fills, full fills, terminal cancellation and no second refund. Existing
+fee partition, VIP fractional, price improvement, concurrent financial replay,
+PnL reversal and overflow checks retained. **45 native SQL integrity/financial tests
+passed**. P-07: FIXED upon push. Exact files: cancellation procedure, up/down
+cancel_fee migrations, SQL integrity tests and ledger. Phase 14 `6bcfc1b` confirmed
+pushed. Production routine replacement still requires controlled deployment;
+no live accounting or routine was modified.
