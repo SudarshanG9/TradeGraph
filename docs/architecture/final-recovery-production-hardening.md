@@ -307,3 +307,32 @@ when a newer canonical trade makes that pair active again.
 Files: `backend/api/main.py`, `backend/stores/neo4j_graph.py`,
 `tests/integration/test_outbox_recovery.py`; trailing blank line removed from the
 new shared diagnostic module to satisfy the final branch diff check.
+
+## Phase 8: measured sustained operation
+
+Historical-retention commit `abc94f9` pushed and confirmed on origin.
+First measured run: **PASS, 1813.43 seconds, 1581 executions, 3162 BFF orders**.
+Three real browsers: 516 successful refreshes, 14,350 frames, zero recovery errors.
+All five planned interruptions recovered. Independent SQL audit: 320 snapshots,
+all 1581 canonical executions checked, exact fee/cash/escrow/position/PnL invariants.
+Final fixture publication backlog, financial mismatches, active orders, duplicate
+IDs, socket clients/tasks and settlement queue were zero. No financial failure.
+
+The first run was a rolling metadata/worker recovery exercise. Review also found
+that its slow-receiver index no longer existed after splitting ten connections
+into seven raw clients and three browsers. That gap is explicitly recorded rather
+than presented as success. The harness now delays raw client 6 and a second complete
+1800-second run with that receiver and all interruptions is underway. The historical
+retention follow-up affects only replay of events older than 90 days; all current
+soak trades continue through the existing recent-event path. Revision uniformity
+limitations are recorded in the results instead of hidden.
+
+Files: `scripts/stress_test_live_stack.py`, `scripts/stability_browser.mjs`,
+`scripts/monitor_stability_accounting.py`, `docs/architecture/live-operations.md`,
+`docs/architecture/production-stability-results.md`,
+`recovery-hardening-evidence/stability-rolling-30min.json` and
+`recovery-hardening-evidence/accounting-rolling-30min.json`.
+Private runtime files, credentials, certificate keys and raw request logs stay in
+owner-only temporary directories and are never committed. The configured source
+financial database was used only for a read-only collateral check (canonical graph
+pairs present); fault injection and financial test writes remain isolated.
