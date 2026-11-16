@@ -51,7 +51,7 @@ def test_bff_human_bot_settlement_and_safe_stop(live_fixture):
             assert human.get(trades).json()['items'] == []
             for price in ('50', '110'):
                 r = human.post('/api/backend/orders', headers=HEADERS | {'Idempotency-Key': str(uuid4())}, json={'instrument_id': iid, 'side': 'BUY', 'price_ticks': price, 'quantity': '1'})
-                assert r.status_code == 200
+                assert r.status_code == 201
                 orders.append(r.json()['order_id'])
             settled = wait_for(lambda: human.get(trades).json()['items'], lambda x: len(x) == 1)
             assert settled[0]['price_ticks'] == '100' and settled[0]['quantity'] == '1'

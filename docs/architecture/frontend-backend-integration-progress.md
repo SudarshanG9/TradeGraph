@@ -298,3 +298,17 @@ Desk page uses actual recursive aggregates, exact signed PnL and returned IDs.
 No fabricated hierarchy/name fields or sums of overlapping rollups were added.
 Native BFF desk contract test passed (1.74s); strict types/format checked with
 this administrative integration batch.
+
+## Phase 14 — security and lifecycle regression gate
+
+Phase 13 remote commit: `a1d56bf8be5b4a0e4827858ff7aa5efbb7ad0cb5`.
+Extracted the resource scheduler for meaningful nonoverlap/visibility/abort/backoff
+regression tests. Preserved backend HTTP 201 for accepted orders and updated new
+BFF acceptance assertions accordingly. Mutation retries remain disabled; exact
+financial strings and server-only JWT boundaries remain intact.
+
+**32 frontend tests passed**, strict TypeScript, production build and formatting
+passed. Full unchanged native backend suite: **284 passed**, one existing
+Starlette/httpx warning, 65.00s. There was no competing API owner. Structural diff
+against baseline confirms backend/, db/, original tests/ and scripts/ unchanged.
+Browser visual/lifecycle verification is the remaining acceptance gate in phase 15.

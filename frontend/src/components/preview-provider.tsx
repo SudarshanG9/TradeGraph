@@ -15,6 +15,7 @@ import type {
   PreviewSession,
   InstrumentInfo,
 } from '@/lib/contracts';
+import { startPolling } from '@/lib/polling';
 import { createRealDataServices } from '@/lib/api/client';
 import * as liveAuth from '@/lib/api/auth-client';
 import { createMockServices, type Services } from '@/lib/services';
@@ -229,57 +230,30 @@ export function useResource<T>(
   const fn = useRef(load);
   fn.current = load;
   useEffect(() => {
-    let active = true,
-      pending = false,
-      failures = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const controller = new AbortController();
     if (previousScope.current !== scope) {
       setData(null);
       setLoading(true);
       previousScope.current = scope;
     }
     setError('');
-    const run = async () => {
-      if (!active || pending || !session || fixture === 'loading' || interval < 0) return;
-      if (document.hidden && !mock) {
-        timer = setTimeout(run, Math.max(interval, 1000));
-        return;
-      }
-      pending = true;
-      try {
-        const value = await fn.current(controller.signal);
-        if (active) {
-          setData(value);
-          setError('');
-          failures = 0;
-        }
-      } catch (e) {
-        if (active) {
-          setError(e instanceof Error ? e.message : 'Service unavailable');
-          failures++;
-        }
-      } finally {
-        pending = false;
-        if (active) {
-          setLoading(false);
-          if (!mock && interval > 0)
-            timer = setTimeout(run, Math.min(interval * 2 ** Math.min(failures, 4), 30000));
-        }
-      }
-    };
-    void run();
+    const poll = startPolling({
+      load: (signal) => fn.current(signal),
+      value: (value) => {
+        setData(value);
+        setError('');
+      },
+      error: (e) => setError(e instanceof Error ? e.message : 'Service unavailable'),
+      settled: () => setLoading(false),
+      interval: mock ? 0 : interval,
+      hidden: () => !mock && document.hidden,
+      enabled: !!session && fixture !== 'loading',
+    });
     const visible = () => {
-      if (!document.hidden && !pending) {
-        clearTimeout(timer);
-        void run();
-      }
+      if (!document.hidden) poll.refresh();
     };
     if (interval > 0 && !mock) document.addEventListener('visibilitychange', visible);
     return () => {
-      active = false;
-      controller.abort();
-      clearTimeout(timer);
+      poll.stop();
       document.removeEventListener('visibilitychange', visible);
     };
   }, [fixture, revision, nonce, mock, session, interval, ...deps]);

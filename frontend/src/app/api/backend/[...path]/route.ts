@@ -52,7 +52,10 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       });
       return response;
     }
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(result, {
+      status: op.kind === 'submit' ? 201 : 200,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (e) {
     const error = e instanceof ApiError ? e : new ApiError(500, 'INTERNAL_ERROR');
     const response = NextResponse.json(

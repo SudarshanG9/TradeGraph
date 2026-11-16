@@ -66,7 +66,7 @@ def test_real_resting_partial_fill_and_cancellation(accounts):
         symbol = next(i['symbol'] for i in buyer.get('/api/backend/instruments').json()['items'] if i['id'] == instrument)
         def submit(client, side, price, qty, key=None):
             r = client.post('/api/backend/orders', headers=HEADERS | {'Idempotency-Key': key or str(uuid4())}, json={'instrument_id': instrument, 'side': side, 'price_ticks': str(price), 'quantity': str(qty)})
-            if r.status_code == 200: orders.append((client, r.json()['order_id']))
+            if r.status_code == 201: orders.append((client, r.json()['order_id']))
             return r
         def wait_for(read, predicate):
             deadline = time.monotonic() + 8
@@ -78,7 +78,7 @@ def test_real_resting_partial_fill_and_cancellation(accounts):
         try:
             key = str(uuid4())
             resting = submit(seller, 'SELL', 100, 3, key)
-            assert resting.status_code == 200
+            assert resting.status_code == 201
             assert submit(seller, 'SELL', 100, 3, key).status_code == 409
             assert submit(buyer, 'BUY', 1000000, 1).status_code == 409
             assert submit(buyer, 'BUY', 0, 1).status_code == 422
@@ -86,7 +86,7 @@ def test_real_resting_partial_fill_and_cancellation(accounts):
             assert book['asks'][0]['quantity'] == '3'
             assert buyer.get(f'/api/backend/market/{symbol}/trades').json()['items'] == []
             crossing = submit(buyer, 'BUY', 105, 1)
-            assert crossing.status_code == 200
+            assert crossing.status_code == 201
             trades = wait_for(lambda: buyer.get(f'/api/backend/market/{symbol}/trades').json()['items'], lambda x: len(x) == 1)
             assert trades[0]['price_ticks'] == '100' and trades[0]['quantity'] == '1'
             assert trades[0]['buy_order_id'] == crossing.json()['order_id']
