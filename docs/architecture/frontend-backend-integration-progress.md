@@ -312,3 +312,51 @@ passed. Full unchanged native backend suite: **284 passed**, one existing
 Starlette/httpx warning, 65.00s. There was no competing API owner. Structural diff
 against baseline confirms backend/, db/, original tests/ and scripts/ unchanged.
 Browser visual/lifecycle verification is the remaining acceptance gate in phase 15.
+
+## Phase 15 — acceptance evidence (in progress)
+
+Phase 14 remote commit: `0be5d937afc8eb1bdc9860329ee314d51153d91a`.
+
+Executed 16 November 2026 against the native services and the production Next
+server. All **8 native BFF acceptance tests passed** (7.35s) and the separate
+single-owner simulator proof passed (2.37s), each with the existing
+Starlette/httpx deprecation warning. The browser harness completed its scoped
+cleanup and removed temporary credentials. The ordinary single-worker API was
+then restored. No database reset or persistent bot provisioning was performed.
+
+Actual Chrome UI observations, using separate regular Administrator and incognito
+Trader sessions and the existing isolated synthetic fixture:
+
+- Real Administrator login reached Overview; all three dependencies were Connected.
+- Simulator RUNNING with eight isolated bots produced an actual ask at 100 for two
+  units on the isolated instrument.
+- Human BUY 50 x 1 (#8324) became OPEN and added a bid without adding a chart point.
+- Human BUY 110 x 1 (#8325) became FILLED at the resting price 100. Persisted
+  execution #122215 appeared in history and the chart; VWAP 100 and band volume 1.
+  Remaining ask quantity became one.
+- Simulator Stop returned STOPPED, zero active bots/orders, one committed execution.
+  The human bid remained OPEN. Its explicit cancellation returned CANCELLED.
+- Account showed available cash 999,899 (including backend fee), zero escrow and
+  settled position +1. No frontend accounting or invented chart data was used.
+- Trader direct navigation to Admin Overview redirected to auth?reason=forbidden.
+- Surveillance empty state, regime query form, disclosure form, actual paired
+  EXPLAIN ANALYZE plans and recursive desk totals rendered. Admin logout returned
+  to /auth. Screenshots are in frontend/evidence/integration/.
+
+The first simulator start still included the default ACME selection because the
+native click had not removed it. It accepted one isolated bot quote, executed no
+trade, and was stopped with its order cancelled before restarting with only the
+fixture instrument. The subsequent acceptance run above used only that instrument.
+
+Removed the unconditional “local frontend preview” wording from authentication.
+32 frontend tests, strict TypeScript and formatting passed again. The current
+Turbopack build failed on a denied local port bind even with an escalated command;
+the supported webpack production build passed (all 19 routes), and the frontend
+was restarted from that verified build.
+
+**Remaining acceptance work:** complete the live mobile terminal/admin layout
+checks and browser refresh/logout/expiry coverage.
+The IAB connection became unavailable for this chat; native Chrome was used for
+actual trading evidence. Do not interpret the historical mock browser matrix in
+frontend/VERIFICATION.md as live acceptance. Phase 15 and final phase 16 handoff
+are not yet declared complete.

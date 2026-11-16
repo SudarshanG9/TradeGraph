@@ -25,7 +25,7 @@ export function AuthContainer({
             <Info size={14} />
             <p>
               Academic trading simulator built on synthetic funds and instruments — no real
-              securities or money are involved. This is a local frontend preview.
+              securities or money are involved.
             </p>
           </div>
         </section>
