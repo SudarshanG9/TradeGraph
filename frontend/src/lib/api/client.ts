@@ -1,4 +1,4 @@
-import { createSubmissionTracker } from './submission';
+import { createSubmissionTracker, createCancellationTracker } from './submission';
 import { ApiError } from './errors';
 import { schemas, type ApiResult, type ResponseKind } from './schema';
 import type { Services, PageQuery } from '../services';
@@ -75,7 +75,16 @@ export function createRealDataServices(): Omit<Services, 'auth'> {
           apiRequest('requestOutcome', `orders/requests/${key}`),
         ),
       retry: async () => tracker().retrySubmission(await scope(), dispatch),
-      cancel: (id) => apiRequest('cancel', `orders/${id}/cancel`, null),
+      cancel: async (id) =>
+        createCancellationTracker(window.sessionStorage).cancel(await scope(), id, () =>
+          apiRequest('cancel', `orders/${id}/cancel`, null),
+        ),
+      cancelPending: (scope, id) =>
+        createCancellationTracker(window.sessionStorage).pending(scope, id),
+      reconcileCancel: (scope, id) =>
+        createCancellationTracker(window.sessionStorage).reconcile(scope, id, () =>
+          apiRequest('order', `orders/${id}`),
+        ),
     },
     market: {
       book: (symbol, signal) =>

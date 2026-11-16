@@ -290,3 +290,59 @@ test('request reconciliation allowlist is exact, authenticated and read only', (
   );
   assert.throws(() => operation('POST', ['orders', 'requests', 'key'], new URLSearchParams()));
 });
+
+test('cancellation intent survives remount and clears only after owned serialized status', async () => {
+  const { createCancellationTracker } = await import('../src/lib/api/submission');
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => values.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      values.set(k, v);
+    },
+    removeItem: (k: string) => {
+      values.delete(k);
+    },
+  };
+  const tracker = createCancellationTracker(storage);
+  let calls = 0;
+  await assert.rejects(
+    tracker.cancel('account-secret', '1', async () => {
+      calls++;
+      throw new ApiError(504, 'TIMEOUT', true);
+    }),
+  );
+  assert.equal(
+    [...values.keys()].some((key) => key.includes('account-secret')),
+    false,
+  );
+  const remount = createCancellationTracker(storage);
+  assert.equal(await remount.pending('account-secret', '1'), true);
+  assert.equal(await remount.pending('other', '1'), false);
+  await assert.rejects(
+    remount.cancel('account-secret', '1', async () => {
+      calls++;
+    }),
+  );
+  assert.equal(calls, 1);
+  await assert.rejects(
+    remount.reconcile('account-secret', '1', async () => {
+      throw new ApiError(503, 'UNAVAILABLE');
+    }),
+  );
+  assert.equal(await remount.pending('account-secret', '1'), true);
+  await assert.rejects(
+    remount.reconcile('account-secret', '1', async () => ({
+      id: '1',
+      trader_id: 'other',
+      status: 'CANCELLED',
+    })),
+  );
+  await remount.reconcile('account-secret', '1', async () => ({
+    id: '1',
+    trader_id: 'account-secret',
+    status: 'CANCELLED',
+  }));
+  assert.equal(await remount.pending('account-secret', '1'), false);
+  await remount.cancel('account-secret', '2', async () => true);
+  assert.equal(await remount.pending('account-secret', '2'), false);
+});

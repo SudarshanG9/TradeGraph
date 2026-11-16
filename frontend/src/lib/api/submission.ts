@@ -99,3 +99,49 @@ export function createSubmissionTracker(storage: IntentStorage) {
     },
   };
 }
+
+/** Cancellation has a separate per-account/order intent. A status read never resends it. */
+export function createCancellationTracker(storage: IntentStorage) {
+  const name = async (scope: string, id: string) => {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(scope));
+    const opaque = Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, '0')).join(
+      '',
+    );
+    return `tradegraph.uncertain-cancel.v1.${opaque}.${id}`;
+  };
+  return {
+    async pending(scope: string, id: string) {
+      return !!storage.getItem(await name(scope, id));
+    },
+    async cancel<T>(scope: string, id: string, send: () => Promise<T>) {
+      const key = await name(scope, id);
+      if (storage.getItem(key)) throw new ApiError(409, 'CANCEL_RECONCILIATION_REQUIRED', true);
+      storage.setItem(key, JSON.stringify({ submittedAt: Date.now(), state: 'SUBMITTING' }));
+      try {
+        const result = await send();
+        storage.removeItem(key);
+        return result;
+      } catch (e) {
+        if (e instanceof ApiError && !e.uncertain) storage.removeItem(key);
+        else storage.setItem(key, JSON.stringify({ submittedAt: Date.now(), state: 'UNCERTAIN' }));
+        throw e;
+      }
+    },
+    async reconcile<T extends { id: string; trader_id: string; status: string }>(
+      scope: string,
+      id: string,
+      lookup: () => Promise<T>,
+    ) {
+      const key = await name(scope, id);
+      const row = await lookup();
+      if (
+        row.id !== id ||
+        row.trader_id !== scope ||
+        !['OPEN', 'PARTIAL', 'FILLED', 'CANCELLED'].includes(row.status)
+      )
+        throw new ApiError(409, 'CANCEL_RECONCILIATION_REQUIRED', true);
+      storage.removeItem(key);
+      return row;
+    },
+  };
+}

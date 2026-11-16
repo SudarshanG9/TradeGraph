@@ -129,6 +129,19 @@ export const schemas = {
       }),
     ),
   }),
+  order: object({
+    id: positive,
+    trader_id: uuid,
+    instrument_id: id,
+    side: oneOf('BUY', 'SELL'),
+    price_ticks: price,
+    quantity: positive,
+    filled_quantity: exact(),
+    status: oneOf('OPEN', 'PARTIAL', 'FILLED', 'CANCELLED'),
+    created_at: timestamp,
+    updated_at: timestamp,
+    archived: bool,
+  }),
   orders: object({
     items: array(
       object({

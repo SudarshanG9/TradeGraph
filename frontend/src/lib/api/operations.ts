@@ -72,6 +72,10 @@ export function operation(
         invalid();
       kind = 'requestOutcome';
       requiredRole = 'TRADER';
+    } else if (method === 'GET' && segments.length === 2 && segments[0] === 'orders') {
+      integer(segments[1]);
+      kind = 'order';
+      requiredRole = 'TRADER';
     } else if (method === 'POST' && name === 'orders') {
       const v = parseWire(raw ?? '');
       exactKeys(v, ['instrument_id', 'side', 'price_ticks', 'quantity']);

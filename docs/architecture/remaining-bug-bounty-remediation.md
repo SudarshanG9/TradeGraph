@@ -182,3 +182,28 @@ F-02: FIXED for post-migration durable intents upon successful push; legacy
 pre-migration unknown requests remain a documented limitation. Phase 2 `abcd4bf`
 confirmed pushed; no live migration/deployment. N-06 and durable publication remain
 separate constraints.
+
+## Phase 4 — F-03 persistent cancellation reconciliation
+
+Root cause: dialog-local uncertainty disappeared on remount. The cancellation
+tracker in frontend/src/lib/api/submission.ts persists intent before dispatch,
+with SHA-256 account scope and target ID in the key, retains unknown results and
+blocks repeat cancellation. client.ts and cancel-dialog.tsx load persisted state
+and expose a status check; account/order views refresh after verified resolution.
+services.ts, schema.ts and operations.ts include strict typed owned status lookup.
+A dedicated backend/api/routes/orders.py read-only lookup serializes behind the
+Coordinator lock and settlement drain: paginated history alone cannot establish
+that an earlier cancellation thread has completed. Missing owner/pipeline readiness
+fails closed. Only authenticated trader-owned hot/history rows are returned.
+No new schema or financial calculation. Tests in frontend/tests/transport.test.ts
+and tests/integration/test_order_pipeline.py cover timeout/remount, duplicate
+suppression, account separation, unavailable/wrong-owner status, terminal unlock,
+owned API lookup and repeated cancellation with exactly zero second refund.
+**35 frontend tests, typecheck and 14 native pipeline tests passed**. Format check
+requires formatting Next's regenerated next-env.d.ts after the supported webpack
+build; no runtime configuration change. F-03: FIXED upon push.
+
+Phase 3 `c7b2948` confirmed pushed. Its 13 native tests and formatting passed;
+`npm run build -- --webpack` compiled and generated all routes successfully.
+Default Turbopack remains environment-blocked (EPERM); webpack is an existing
+supported Next.js build option, not a production source workaround.

@@ -338,3 +338,18 @@ def test_request_outcome_is_owned_readonly_and_survives_lost_response(accounts):
         with db_connect() as conn:
             assert conn.execute('SELECT count(*) FROM public."order" WHERE trader_id=%s',(users[0]['trader_id'],)).fetchone()==(1,)
             assert conn.execute('SELECT cash_balance,escrow_balance FROM margin_account WHERE trader_id=%s',(users[0]['trader_id'],)).fetchone()==(19899,101)
+
+
+def test_owned_cancellation_status_and_repeat_refund(accounts):
+    users, instrument=accounts
+    with TestClient(create_app()) as client:
+        a,b=login(client,users[0]),login(client,users[1])
+        oid=client.post('/orders',headers=a,json=order(instrument)).json()['order_id']
+        assert client.get(f'/orders/{oid}',headers=b).status_code==404
+        assert client.get(f'/orders/{oid}',headers=a).json()['status']=='OPEN'
+        assert client.post(f'/orders/{oid}/cancel',headers=a).json()['cancelled_quantity']==1
+        assert client.get(f'/orders/{oid}',headers=a).json()['status']=='CANCELLED'
+        before=client.get('/account/me',headers=a).json()
+        assert client.post(f'/orders/{oid}/cancel',headers=a).json()['cancelled_quantity']==0
+        assert client.get('/account/me',headers=a).json()==before
+        assert before['cash_balance']==20000 and before['escrow_balance']==0

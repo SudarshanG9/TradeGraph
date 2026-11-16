@@ -22,6 +22,8 @@ export interface Services {
     reconcile(): Promise<C.AcceptedOrder | null>;
     retry(): Promise<C.AcceptedOrder>;
     cancel(id: C.Int): Promise<C.CancelledOrder>;
+    cancelPending(scope: string, id: C.Int): Promise<boolean>;
+    reconcileCancel(scope: string, id: C.Int): Promise<C.OrderSummary>;
   };
   market: {
     book(symbol: string, signal?: AbortSignal): Promise<C.Book>;
@@ -136,6 +138,13 @@ export function createMockServices(
       },
     },
     orders: {
+      cancelPending: async () => false,
+      reconcileCancel: async (_scope, id) => {
+        await guard('TRADER');
+        const row = localOrders.find((o) => o.id === id);
+        if (!row) throw new Error('ORDER_NOT_FOUND');
+        return copy(row);
+      },
       pending: async () => false,
       reconcile: async () => null,
       retry: async () => {
