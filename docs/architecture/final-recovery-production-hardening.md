@@ -140,3 +140,32 @@ Files: `scripts/reconcile_restart.py`, `backend/stores/postgres.py`,
 `backend/api/main.py`, `tests/integration/test_restart_diagnostics.py`.
 Phase 5 verification: **21 passed** (diagnostics, order API and failure windows;
 20.36 seconds). Health checks did not acknowledge outbox work or clear failures.
+
+## Phase 6: actual production proxy validation
+
+Phase 5 commit `e10cd8d` pushed and confirmed on origin.
+The official Caddy binary **v2.11.9** was downloaded to the private temporary test
+directory (no dependency or binary committed). Actual `caddy validate` accepts the
+production configuration. A real Caddy process, production Next build and Uvicorn
+run behind verified test TLS. Only test ports and an explicitly trusted local
+certificate differ from the production configuration; public DNS/ACME issuance is
+not claimed. Documentation references: [Caddy reverse proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy),
+[timeouts/global options](https://caddyserver.com/docs/caddyfile/options), and
+[log filtering](https://caddyserver.com/docs/caddyfile/directives/log).
+
+Caddy retains automatic TLS/redirects for a real configured DNS hostname, a single
+canonical origin, BFF routing for all HTTP routes and direct upgrade only at
+`/live/ws`. Runtime and access logs drop request headers, including ticket-bearing
+subprotocols; access logs also remove Set-Cookie. Upstream WebSockets drop Cookie
+and Authorization while retaining the offered ticket. Backend/Next bind loopback.
+Caddy admin is disabled. Request/header limits and transport/idle/stream timeouts
+are explicit. Uvicorn retains its 2048-byte frame limit, one owner and no access log.
+
+Executable suite: `tests/integration/test_production_tls_proxy.py`; isolated owned
+process harness `scripts/production_test_stack.py`; guarded test-only metrics/header
+presence/fault injection app `scripts/production_test_app.py` refuses non-test DBs.
+**1 passed** (13.60 seconds): HTTPS login, secure HttpOnly/SameSite session cookie,
+HTTP redirect, foreign CSRF rejection, authenticated WSS, single-use ticket,
+invalid/expired ticket, live logout revocation, BFF routing and observed upstream
+credential stripping. Ticket values and injected credential canaries absent in logs.
+Development proxy, authentication and frontend sources were not changed.

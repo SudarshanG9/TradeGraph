@@ -1,13 +1,70 @@
-# Production example. Replace the hostname; configure DNS/TLS before starting.
-tradegraph.example {
+# One canonical public HTTPS origin. Set TRADEGRAPH_DOMAIN to a real DNS hostname.
+# FastAPI and Next must bind loopback (or a private network behind firewall rules).
+{
+    admin off
+    persist_config off
+    servers {
+        max_header_size 16KB
+        timeouts {
+            read_header 10s
+            read_body 30s
+            idle 2m
+        }
+    }
+    # Runtime proxy errors may include requests: remove all request headers too.
+    log default {
+        format filter {
+            wrap json
+            fields {
+                request>headers delete
+            }
+        }
+    }
+}
+
+{$TRADEGRAPH_DOMAIN:tradegraph.example} {
+    # Caddy automatic TLS and HTTP-to-HTTPS redirects remain enabled.
+    header Strict-Transport-Security "max-age=31536000"
+    request_body {
+        max_size 64KB
+    }
+    log {
+        format filter {
+            wrap json
+            fields {
+                request>headers delete
+                resp_headers>Set-Cookie delete
+            }
+        }
+    }
     @live path /live/ws
     handle @live {
+        @foreign not header Origin https://{$TRADEGRAPH_DOMAIN:tradegraph.example}
+        respond @foreign 403
         reverse_proxy 127.0.0.1:8000 {
             header_up -Cookie
             header_up -Authorization
+            # Keep ticket.* offered upstream, but only tradegraph.v1 is selected.
+            # Never enable debug/header logging for ticket-bearing requests.
+            stream_timeout 1h
+            stream_close_delay 5s
+            transport http {
+                dial_timeout 3s
+                response_header_timeout 10s
+                read_timeout 65s
+                write_timeout 30s
+            }
         }
     }
+    # Every HTTP API, session and ticket request passes through the existing BFF.
     handle {
-        reverse_proxy 127.0.0.1:3001
+        reverse_proxy 127.0.0.1:3001 {
+            transport http {
+                dial_timeout 3s
+                response_header_timeout 45s
+                read_timeout 45s
+                write_timeout 30s
+            }
+        }
     }
 }
