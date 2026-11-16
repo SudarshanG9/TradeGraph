@@ -29,6 +29,12 @@ class Coordinator:
         self.request_identities = RequestIdentityStore(database)
         self.closing = False
 
+    def verify_owner(self):
+        row = self.lease.execute("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=pg_backend_pid() AND locktype='advisory' AND classid=((hashtext('tradegraph-matching-owner')::bigint >> 32) & 4294967295) AND objid=(hashtext('tradegraph-matching-owner')::bigint & 4294967295) AND granted) AS held").fetchone()
+        if not row['held']:
+            raise RuntimeError('Matching ownership lost; reconciliation required')
+        return True
+
     async def committed_io(self, operation, *args):
         job=asyncio.create_task(asyncio.to_thread(operation,*args))
         try:
@@ -69,7 +75,7 @@ class Coordinator:
                 if identity:
                     return self.request_identities.verify(identity, request)
             try:
-                await asyncio.to_thread(self.lease.execute, 'SELECT 1')
+                await asyncio.to_thread(self.verify_owner)
             except Exception:
                 self.dispatcher.failure = 'Matching ownership connection lost; reconciliation required'
                 raise RuntimeError(self.dispatcher.failure) from None

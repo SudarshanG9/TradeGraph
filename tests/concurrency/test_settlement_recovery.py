@@ -193,3 +193,32 @@ def test_neo4j_service_failure_retries_derived_work_without_resettlement(account
     asyncio.run(run())
     assert settlements==[event]
     assert_committed(a,b,event)
+
+
+def test_retained_committed_publication_recovers_without_resettlement(accounts):
+    from backend.events.dispatcher import DerivedWorker
+    from backend.matching.engine import Engine
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env())
+    async def run():
+        dispatcher=Dispatcher(2); engine=Engine(); delivered=[]
+        target=DerivedWorker('test-derived',delivered.append,dispatcher)
+        target.publish('earlier-1');target.publish('earlier-2')
+        worker=SettlementWorker(db,engine,dispatcher); worker.after_commit=[target.publish]
+        worker.start();dispatcher.publish([event]);await worker.task
+        assert worker.pending_committed and worker.pending_analytics_applied
+        checks=[]
+        def owner(): checks.append('verified')
+        coordinator=SimpleNamespace(lock=asyncio.Lock(),closing=False,verify_owner=owner,derived={'test':target})
+        with pytest.raises(RuntimeError,match='full'): await worker.recover_committed(coordinator)
+        assert dispatcher.failure and worker.pending is event
+        target.start();await target.queue.join()
+        assert await worker.recover_committed(coordinator)
+        await target.queue.join()
+        assert delivered==['earlier-1','earlier-2',event]
+        assert not dispatcher.failure and worker.pending is None
+        assert engine.volume[event.instrument_id].range_sum(0,2**63-1)==event.quantity
+        assert checks==['verified','verified']
+        await worker.stop();await target.stop()
+    asyncio.run(run())
+    assert_committed(a,b,event)

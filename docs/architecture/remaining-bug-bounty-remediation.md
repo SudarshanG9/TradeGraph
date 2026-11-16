@@ -284,3 +284,43 @@ commit. Exact affected files: migration, installer, authorization tests,
 tests/integration/test_database_integrity.py and this ledger.
 Verification: **39 isolated native authorization, pipeline and SQL integrity tests
 passed**, one existing warning. Phase 6 `5db100c` confirmed pushed. No live migration.
+
+### Phase 8 persistence boundary
+
+Full crash-durable derived delivery remains approval-gated. Existing execution rows
+reconstruct canonical graph totals, but not the original regime order-book snapshot
+or callback acknowledgement progress. A supplementary outbox would need immutable
+execution payload, original book snapshot, per-consumer acknowledgements, uniqueness
+by execution/consumer, and atomic financial/outbox COMMIT. Replay must never
+recapture a different snapshot as if original. Safe rollback retains undelivered
+outbox rows and drains them before disabling delivery. This also affects restart
+and accepted-but-unmatched order recovery; an execution outbox alone cannot solve
+N-06. No outbox table is approved, no failure reset is implemented from these claims.
+
+## Phase 8 — retained post-commit recovery (partial)
+
+backend/events/dispatcher.py now distinguishes typed backlog, post-commit,
+financial-uncertain and ownership failures, with a distinct temporary-capacity
+exception. settlement_worker.py retains analytics-applied and successful callback
+indices. Its internal recover_committed() requires the previous task terminated,
+canonical execution equality, verified owner lock, exact engine event identity,
+unchanged callbacks and healthy derived consumers. Only known atomic enqueue
+callbacks may retry; successful callbacks are skipped. No committed event is
+resettled. regime_worker.py retains the originally rejected event/snapshot tuple
+through overflow so live-process retry cannot recapture a different book.
+Coordinator.verify_owner() checks the actual advisory lock (including signed
+64-bit key halves), not only connection liveness; admission and owned-order
+reconciliation use it. No public reset endpoint or automatic failure clearing.
+
+Tests/concurrency/test_settlement_recovery.py adds full-backlog refusal followed
+by successful controlled publication with exactly one financial commit and one
+analytics application. Existing native timeout, unknown COMMIT, exact/conflicting
+replay, post-commit overflow and Neo4j outage regressions rerun with pipeline tests.
+**27 native recovery/pipeline tests passed** before commit (one existing warning).
+Initial lock-decoding defect was caught by pipeline tests and corrected; failures
+were not suppressed. Phase 7 `66d5872` confirmed pushed.
+I-06/N-05/A-04: PARTIALLY_FIXED. Retained live-process publication can recover;
+process-crash delivery and active-order restart remain persistence limitations.
+Cache snapshot overflow/admission failure is not reset by this method. Required
+regime snapshots cannot be reconstructed from executions alone. No durable-outbox
+or physical HA guarantee is claimed.

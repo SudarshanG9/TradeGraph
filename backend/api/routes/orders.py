@@ -136,7 +136,7 @@ async def owned_order(order_id: int, request: Request, identity=Depends(trader))
             raise HTTPException(503, detail='TRADING_UNAVAILABLE')
         try:
             await service.worker.drain()
-            await asyncio.to_thread(service.lease.execute, 'SELECT 1')
+            await asyncio.to_thread(service.verify_owner)
         except Exception:
             raise HTTPException(503, detail='TRADING_UNAVAILABLE') from None
         rows = await asyncio.to_thread(request.app.state.database.query,
