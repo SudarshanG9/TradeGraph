@@ -170,3 +170,19 @@ and revoked tickets, foreign origins, malformed subscriptions, connection limits
 cleanup and committed two-user trade/account invalidations verified against SQL.
 Slow-client queue bounds covered by unit tests. Cancellation cleanup corrected
 following native TestClient disconnect failures. Results appended next phase.
+
+Phase 8: 2 native WebSocket cases passed (multiple acceptance paths each),
+45 frontend passed, typecheck passed. Commit `55618f3`, pushed.
+
+## Phase 9 — same-origin edge
+
+Status: FIXED for native HTTP/upgrade routing tests; full browser path follows.
+Added a dependency-free loopback Node streaming HTTP/upgrade proxy and production
+TLS Caddy example. Fixed Next/backend targets; every /api request goes to Next,
+only /live/ws upgrades to backend. Socket cookies/JWT headers are stripped.
+Wrong loopback ordinary GET navigation redirects safely to configured origin;
+POST and foreign hosts are rejected. Tests verify actual HTTP and upgrade flow,
+BFF preservation, canonical navigation and credential stripping. Caddy is absent:
+production example is NOT_VERIFIED and must be validated on deployment.
+Files: deploy/local-proxy.mjs/test, Caddy example, live-operations.md. No financial
+or DB changes. End-to-end proxy ticket connection awaits complete startup workflow.
