@@ -27,6 +27,18 @@ def environment(path):
     return values
 
 
+def check_port_available(host,port):
+    # Match server restart semantics: TIME_WAIT connections are not live listeners.
+    # listen() still rejects a conflicting server on platforms permitting reused bind.
+    with socket.socket() as probe:
+        probe.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        try:
+            probe.bind((host,port))
+            probe.listen(1)
+        except OSError:
+            raise ValueError('A requested local port is occupied; no process was started') from None
+
+
 def preflight(values):
     if importlib.util.find_spec('websockets') is None:raise ValueError('Install requirements.txt before starting WebSocket transport')
     settings=Settings.from_env(values)
@@ -61,9 +73,7 @@ def preflight(values):
     with GraphDatabase.driver(settings.neo4j_uri,auth=(settings.neo4j_user,settings.neo4j_password),connection_timeout=3) as graph:
         graph.verify_connectivity()
     for target in targets:
-        with socket.socket() as probe:
-            try:probe.bind((target.hostname,target.port))
-            except OSError:raise ValueError('A requested local port is occupied; no process was started') from None
+        check_port_available(target.hostname,target.port)
     return origin,frontend,backend
 
 

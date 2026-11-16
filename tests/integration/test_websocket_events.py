@@ -86,3 +86,18 @@ def test_committed_trade_private_invalidation_and_connection_limits(accounts):
                 with pytest.raises(WebSocketDisconnect):
                     with connect(client,value):pass
         wait_until(lambda:len(client.app.state.live_bus.clients),lambda n:n==0)
+
+
+def test_revocation_disconnects_an_already_connected_socket(accounts):
+    users,_=accounts
+    with TestClient(create_app()) as client:
+        headers=login(client,users[0])
+        value,key=ticket(client,headers)
+        with connect(client,value) as ws:
+            receive(ws,'resync.required')
+            assert client.post('/live/revoke',headers=headers,json={'session_key':key}).status_code==200
+            with pytest.raises(WebSocketDisconnect):
+                for _ in range(3):
+                    event=ws.receive_json()
+                    if event['type']=='ping':ws.send_json({'type':'pong'})
+        wait_until(lambda:len(client.app.state.live_bus.clients),lambda n:n==0)

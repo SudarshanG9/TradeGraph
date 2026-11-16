@@ -309,3 +309,56 @@ Next type-import edits. Schema verifiers allow only approved supplementary table
 Files: create_test_stack/run_local/with_test_environment, requirements, schema/setup
 allowlists, package/build, env example, root/frontend/identity deployment docs.
 Private configs/logs remain under /tmp, never staged. Stop retains test data.
+
+Phase 15 commit `b064bc8`, pushed.
+
+## Phase 16 — real multi-user acceptance
+
+Status: FIXED for the executed isolated scenarios; production/load limits below.
+Five UI registrations plus fifteen real BFF registrations produced twenty distinct
+ACTIVE, operator-verified RLS identities per run. Five concurrent browser contexts
+logged in. The final Chrome run settled 61 crossing pairs with independent open
+dashboards, periodic offline receivers and instrument changes. Account cash, escrow,
+positions/PnL and filled orders matched canonical SQL; no resting residuals remained.
+All eleven trader/admin routes loaded without browser exceptions.
+
+Actual Redis stop/restart returned session/login 503 without cookie deletion or
+false login redirect. Once the BFF reconnects, server-layout Retry restores protected
+content. Same encrypted session survived a second Next instance and its restart.
+A clean full-stack restart changed owner epoch and the existing browser reconnected,
+refetched authoritative state and retained its account without navigation or login.
+Invalid cookie, hostile origins, cross-user order reads and admin access were denied.
+Independent account/orders/depth/trades/catalogue/surveillance/optimizer failures
+recovered through Retry; unaffected widgets remained usable. Fifteen rapid instrument
+changes converged to the selected book.
+
+Acceptance found and fixed three integration edges: missing/old-epoch cache now
+schedules a bounded authoritative depth rebuild; server-layout Retry also rechecks
+client authentication; local preflight distinguishes TCP TIME_WAIT from a live
+listener (bind/reuse plus listen). The last has a native regression test. Schema
+assertions now explicitly include only the approved supplementary tables. Added
+post-role-COMMIT provisioning failure/retry and active-socket revocation regressions.
+Files: market route, shared unavailable UI, run_local, integration tests, three Chrome
+harnesses and scoped operator fixture bridge. No financial procedure was modified.
+
+Evidence: `live-hardening-evidence/browser-{acceptance,recovery,restart}.json` and
+`settled-trader.png`. Final activity: 95,953 ms, 61 executions, 2,313 observed live
+frames; publication-to-Chrome receipt median 5 ms, p95 25 ms, maximum 518 ms.
+First submission-to-verified-screen: 1,024 ms (includes SQL assertions and browser
+test overhead). These are one local run, not an SLA or an isolated rendering benchmark.
+
+Validation: complete backend suite 388 passed before two extra security regressions
+and the port regression; targeted security suite 15 passed, native port test 1 passed.
+Frontend 55 passed, zero skipped (native Redis enabled); typecheck/format passed.
+Three final browser reports passed. Earlier failing harness runs were retained in
+private /tmp logs; races in readiness/element/URL waits were corrected, not hidden by
+weakening application checks. Extended run initially clicked before BFF reconnect;
+final check waits for actual session endpoint readiness before testing Retry.
+
+Limitations: 96-second controlled trading run is not a prolonged capacity soak.
+Production TLS/Caddy, per-process memory growth, production failure-rate/latency SLOs,
+and hundreds/thousands of roles remain NOT_VERIFIED. Queue bounds, slow-consumer
+overflow and simulator dependency gates are regression-tested; no production Neo4j
+service was stopped. Native scoped Neo4j/pgvector integration and browser surveillance
+recovery passed. Default production registration remains PENDING_VERIFICATION until
+a real operator verification workflow is supplied; no KYC verification is invented.

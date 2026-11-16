@@ -112,7 +112,10 @@ def test_book_empty_uninitialized_ordered_fresh_stale_and_unavailable(accounts,m
         store=client.app.state.depth
         wait_until(lambda:client.get(url,headers=a).json(),lambda r:r.get('as_of') is not None)
         store.client.delete(*store.keys(symbol))  # eviction of this fixture's cache only
-        assert client.get(url,headers=a).json()==dict(symbol=symbol,bids=[],asks=[],as_of=None,stale=True,version=0)
+        missing=client.get(url,headers=a)
+        assert missing.status_code==503 and missing.json()['error']['code']=='DEPTH_RESYNC_REQUIRED'
+        recovered=wait_until(lambda:client.get(url,headers=a).json(),lambda r:r.get('epoch')==client.app.state.service.epoch)
+        assert recovered['bids']==[] and recovered['asks']==[] and recovered['version']==0
         ids=[]
         for h,side,price,qty in ((a,'BUY',100,3),(a,'BUY',99,2),(b,'SELL',103,4),(b,'SELL',102,5)):
             r=client.post('/orders',headers=h,json=order(iid,side,price,qty));assert r.status_code==201

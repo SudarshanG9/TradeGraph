@@ -110,3 +110,27 @@ def test_public_auth_role_has_no_role_creation_or_financial_write_privileges():
         row=conn.execute('SELECT rolcreaterole,rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user').fetchone()
         assert not any(row.values())
         with pytest.raises(InsufficientPrivilege):conn.execute('DELETE FROM margin_account WHERE false')
+
+
+def test_provisioning_recovers_after_role_commit_without_rotating_credentials(registrations,monkeypatch):
+    from backend.services import trader_provisioning as provisioning
+    from scripts.setup_database_identity import read_manifest,provision_test_traders
+    settings=Settings.from_env()
+    receipt=registrations()
+    with db_connect() as conn:
+        tid=conn.execute("UPDATE registration_state SET status='PENDING_PROVISIONING' WHERE user_account_id=%s RETURNING trader_id",(receipt['registration_id'],)).fetchone()[0]
+    verify=provisioning.verify_trader_identity
+    def unavailable(*args):raise RuntimeError('Injected verification outage after role COMMIT')
+    try:
+        monkeypatch.setattr(provisioning,'verify_trader_identity',unavailable)
+        with pytest.raises(RuntimeError,match='Injected verification outage'):
+            provisioning.provision_trader_identity(tid,settings,expected_database=settings.postgres_db)
+        before=read_manifest(settings.trader_credentials_file)['traders'][str(tid)]
+        with db_connect() as conn:
+            assert conn.execute('SELECT status FROM registration_state WHERE trader_id=%s',(tid,)).fetchone()[0]=='FAILED_RETRYABLE'
+        monkeypatch.setattr(provisioning,'verify_trader_identity',verify)
+        assert provisioning.provision_trader_identity(tid,settings,expected_database=settings.postgres_db)['status']=='ACTIVE'
+        assert read_manifest(settings.trader_credentials_file)['traders'][str(tid)]==before
+        assert provisioning.registration_ready(tid,settings)
+    finally:
+        provision_test_traders([tid],remove=True)

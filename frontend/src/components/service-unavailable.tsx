@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { usePreview } from './preview-provider';
 import { Button, Notice } from './ui';
 export function ServiceUnavailable({
   retry,
@@ -9,6 +10,7 @@ export function ServiceUnavailable({
   session?: boolean;
 }) {
   const router = useRouter();
+  const { retrySession } = usePreview();
   return (
     <div className="loading-route">
       <Notice tone="warning">
@@ -19,6 +21,7 @@ export function ServiceUnavailable({
       </Notice>
       <Button
         onClick={() => {
+          if (session) retrySession();
           router.refresh();
           retry?.();
         }}
