@@ -762,3 +762,12 @@ production failure/deployment transition remain NOT_VERIFIED; no speedup or HA
 claim is inferred for those scenarios. Default Turbopack remains NOT_VERIFIED due
 the recorded host permission error. The full financial regression/Chrome checks
 above passed; those limitations are not hidden by the completion of source fixes.
+
+Final acceptance commit: `4d449a6f3e1660336d506ab8a4ae6ad8ca24cb80`, confirmed
+pushed after fetch; local HEAD and origin/codex/dbms-reliability-hardening were
+identical, ahead/behind `0 / 0`. Final merge-base with origin/main:
+`29a0185644940c0557e91655287ce08a193964ee`. Both main...HEAD diff hygiene and
+working-tree diff hygiene passed; merge-base comparison includes older integration
+work already present at starting reference d29ae00, not only this remediation.
+Only the unrelated auth-form.tsx and generated next-env.d.ts workspace edits remain.
+This ledger-only pointer update is committed/pushed separately; it changes no code.
