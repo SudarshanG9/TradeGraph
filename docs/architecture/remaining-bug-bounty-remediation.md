@@ -402,12 +402,18 @@ allowlist/client/services and existing controls gain one Verify recovery button.
 No status-contract or layout redesign. Shared Coordinator still means contention;
 this is workload throttling, not physical isolation.
 
-Tests: **28 lifecycle unit tests, 7 native simulator tests, 37 frontend tests and
+Tests: **28 lifecycle unit tests, 6 existing native simulator tests, 37 frontend tests and
 typecheck passed** (one opt-in native session check skipped in service-free tests).
-Native recovery validates admin-only access, terminal bot history, preserved human
+The new native recovery case initially caught tuple/list response validation; it requires a corrective verified commit. Its intended assertions cover admin-only access, terminal bot history, preserved human
 resting order, previous task termination and distinct subsequent task. Existing
 native finance/polyglot stop/restart tests remain passing. Native error-recovery
 case injects ERROR after verified cleanup; prolonged pressure remains unit-tested.
 I-04: FIXED upon push; A-02: PARTIALLY_FIXED due shared resources. Phase 10 `5583c61`
 confirmed pushed. Exact files: live_supervisor.py, simulator route, frontend
 services/client/operations/controls, unit and integration simulator tests, ledger.
+
+Phase 11 verification correction: the first commit `33da60f` was pushed before the
+new recovery-test result was inspected. That test exposed strict tuple/list
+serialization in the new endpoint. The response conversion is now consistent with
+start/stop/status; **all 7 native simulator tests passed**. A separate corrective
+commit preserves history. No failed test was removed or suppressed.

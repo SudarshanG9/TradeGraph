@@ -115,7 +115,10 @@ async def status(request: Request):
 @router.post('/recover', response_model=SimulationStatus)
 async def recover(request: Request):
     try:
-        return await supervisor(request).recover()
+        result = await supervisor(request).recover()
+        if result['config']:
+            result['config']['instrument_ids'] = list(result['instrument_ids'])
+        return result
     except SimulationConflict as exc:
         raise HTTPException(409,detail=str(exc)) from None
     except (SimulationUnavailable, RuntimeError):
