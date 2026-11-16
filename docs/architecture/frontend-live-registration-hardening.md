@@ -51,3 +51,20 @@ exception expands origin trust. HTTPS production and explicit loopback test poli
 are preserved. Session cookies still derive security from the configured origin.
 Tests: frontend suite/typecheck run in this phase; see following commit evidence.
 No API/DB relationship changes. No production configuration changed.
+
+Phase 1: 41 frontend tests passed, 2 native tests skipped; typecheck passed.
+Commit `b049c88`, pushed. Baseline isolated fixture errors were missing dedicated
+Redis (connection refused on 6391); a separate Redis server is now running there.
+
+## Phase 2 — session initialization
+
+Status: FIXED in controller regression tests; browser failure injection pending.
+Files: `auth-state.ts`, provider, auth client, session recovery tests. Bootstrap now
+has loading/authenticated/unauthenticated/temporarily_unavailable states, a retry,
+and generation-based protection from stale checks following login/logout.
+503/network/timeout/malformed session responses preserve unknown status and hide
+protected content; only confirmed absence/401 redirects. BroadcastChannel and
+visibility verification reconcile tabs without storing credentials in the browser.
+Existing encrypted shared Redis session storage and non-deletion on outages remain.
+Tests cover outage/recovery, absent/invalid cookies and stale completion after
+login/logout. No DB or public API contract change. Native restart evidence pending.

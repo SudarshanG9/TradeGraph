@@ -15,6 +15,7 @@ import type {
   PreviewSession,
   InstrumentInfo,
 } from '@/lib/contracts';
+import { createAuthController, type AuthState } from '@/lib/auth-state';
 import { startPolling } from '@/lib/polling';
 import { createRealDataServices } from '@/lib/api/client';
 import * as liveAuth from '@/lib/api/auth-client';
@@ -25,6 +26,8 @@ interface Preview {
   mock: boolean;
   session: PreviewSession | null;
   ready: boolean;
+  authState: AuthState;
+  retrySession: () => void;
   fixture: FixtureState;
   setFixture: (s: FixtureState) => void;
   outcome: Outcome;
@@ -50,9 +53,16 @@ export function PreviewProvider({
   children: ReactNode;
   mock?: boolean;
 }) {
-  const [session, setSession] = useState<PreviewSession | null>(null),
-    [ready, setReady] = useState(false),
-    [fixture, setFixture] = useState<FixtureState>('populated'),
+  const [authState, setAuthState] = useState<AuthState>({ status: 'loading' });
+  const [auth] = useState(() => createAuthController(setAuthState));
+  const session = authState.status === 'authenticated' ? authState.session : null;
+  const ready = authState.status !== 'loading';
+  const setSession = auth.accept;
+  const channel = useRef<BroadcastChannel | null>(null);
+  const retrySession = useCallback(() => {
+    if (!mock) void auth.verify(liveAuth.session);
+  }, [auth, mock]);
+  const [fixture, setFixture] = useState<FixtureState>('populated'),
     [outcome, setOutcome] = useState<Outcome>('accepted'),
     [instrumentId, setInstrument] = useState(1),
     [revision, setRevision] = useState(0);
@@ -107,22 +117,10 @@ export function PreviewProvider({
   }, [api, session, fixture]);
   useEffect(() => {
     if (!mock) {
-      let active = true;
-      void liveAuth
-        .session()
-        .then((s) => {
-          if (active) setSession(s);
-        })
-        .catch(() => {
-          if (active) setSession(null);
-        })
-        .finally(() => {
-          if (active) setReady(true);
-        });
-      return () => {
-        active = false;
-      };
+      retrySession();
+      return () => auth.cancel();
     }
+    setSession(null);
     try {
       const raw = sessionStorage.getItem(key);
       if (raw) {
@@ -140,11 +138,11 @@ export function PreviewProvider({
     } catch {
       /* Storage may be unavailable; an in-memory preview still works. */
     }
-    setReady(true);
-  }, [mock]);
+  }, [mock, auth, retrySession]);
   const signIn = useCallback(
     (s: PreviewSession) => {
       setSession(s);
+      channel.current?.postMessage('changed');
       try {
         if (mock) sessionStorage.setItem(key, JSON.stringify(s));
       } catch {
@@ -152,13 +150,14 @@ export function PreviewProvider({
       }
       setFixture('populated');
     },
-    [mock],
+    [mock, auth],
   );
   const logout = useCallback(
     async (reason: 'expired' | 'logout' = 'logout') => {
-      if (!mock && reason === 'logout') await liveAuth.logout();
       setSessionReason(reason);
-      setSession(null);
+      if (!mock && reason === 'logout') await auth.logout(liveAuth.logout);
+      else setSession(null);
+      channel.current?.postMessage('changed');
       try {
         sessionStorage.removeItem(key);
       } catch {
@@ -166,8 +165,23 @@ export function PreviewProvider({
       }
       setFixture('populated');
     },
-    [mock],
+    [mock, auth],
   );
+  useEffect(() => {
+    if (mock) return;
+    const bus = new BroadcastChannel('tradegraph-session');
+    channel.current = bus;
+    bus.onmessage = retrySession;
+    const visible = () => {
+      if (!document.hidden) retrySession();
+    };
+    document.addEventListener('visibilitychange', visible);
+    return () => {
+      channel.current = null;
+      bus.close();
+      document.removeEventListener('visibilitychange', visible);
+    };
+  }, [mock, retrySession]);
   useEffect(() => {
     const expired = () => {
       void logout('expired');
@@ -189,6 +203,8 @@ export function PreviewProvider({
         mock,
         session,
         ready,
+        authState,
+        retrySession,
         fixture,
         setFixture,
         outcome,
@@ -289,12 +305,21 @@ export function MissingInstrument() {
   );
 }
 export function RoleGuard({ role, children }: { role: AccountRole; children: ReactNode }) {
-  const { session, ready, sessionReason } = usePreview();
+  const { session, ready, sessionReason, authState, retrySession } = usePreview();
   const router = useRouter();
   useEffect(() => {
-    if (ready && !session)
+    if (authState.status === 'unauthenticated')
       router.replace(sessionReason === 'expired' ? '/auth?reason=expired' : '/auth');
-  }, [ready, session, sessionReason, router]);
+  }, [authState.status, sessionReason, router]);
+  if (authState.status === 'temporarily_unavailable')
+    return (
+      <Notice tone="warning">
+        Session service unavailable. Your login has not been discarded.{' '}
+        <button className="link" onClick={retrySession}>
+          Retry session
+        </button>
+      </Notice>
+    );
   if (!ready || !session)
     return (
       <div className="loading-route" role="status">
