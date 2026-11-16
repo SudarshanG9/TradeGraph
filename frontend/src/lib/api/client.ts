@@ -61,20 +61,32 @@ export function createRealDataServices(): Omit<Services, 'auth'> {
     instruments: { list: () => apiRequest('instruments', 'instruments') },
     account: { get: (signal) => apiRequest('account', 'account/me', undefined, undefined, signal) },
     orders: {
-      list: (q) => apiRequest('orders', `orders/me?${page(q)}`),
+      list: (q, signal) =>
+        apiRequest('orders', `orders/me?${page(q)}`, undefined, undefined, signal),
       submit: (order) => submit((key) => apiRequest('submit', 'orders', order, key)),
       cancel: (id) => apiRequest('cancel', `orders/${id}/cancel`, null),
     },
     market: {
-      book: (symbol) => apiRequest('book', market(symbol, 'book')),
-      trades: (symbol, q) => apiRequest('trades', `${market(symbol, 'trades')}?${page(q)}`),
-      analytics: (symbol, lower, upper) =>
+      book: (symbol, signal) =>
+        apiRequest('book', market(symbol, 'book'), undefined, undefined, signal),
+      trades: (symbol, q, signal) =>
+        apiRequest(
+          'trades',
+          `${market(symbol, 'trades')}?${page(q)}`,
+          undefined,
+          undefined,
+          signal,
+        ),
+      analytics: (symbol, lower, upper, signal) =>
         apiRequest(
           'analytics',
           `${market(symbol, 'analytics')}?${query({ lower_ticks: lower, upper_ticks: upper })}`,
+          undefined,
+          undefined,
+          signal,
         ),
     },
-    health: { get: () => apiRequest('health', 'health') },
+    health: { get: (signal) => apiRequest('health', 'health', undefined, undefined, signal) },
     surveillance: {
       cycles: (limit) => apiRequest('cycles', `admin/surveillance/cycles?${query({ limit })}`),
     },
@@ -99,7 +111,8 @@ export function createRealDataServices(): Omit<Services, 'auth'> {
     },
     desks: { rollup: () => apiRequest('desks', 'admin/desks/rollup') },
     simulator: {
-      status: () => apiRequest('simulator', 'admin/simulator/status'),
+      status: (signal) =>
+        apiRequest('simulator', 'admin/simulator/status', undefined, undefined, signal),
       start: (config) => apiRequest('simulator', 'admin/simulator/start', config),
       stop: () => apiRequest('simulator', 'admin/simulator/stop', null),
     },

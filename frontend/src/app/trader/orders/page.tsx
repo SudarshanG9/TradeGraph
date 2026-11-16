@@ -13,7 +13,11 @@ export default function Orders() {
     [cancel, setCancel] = useState<OrderSummary | null>(null),
     [message, setMessage] = useState('');
   const cursor = cursors.at(-1);
-  const r = useResource(() => api.orders.list({ limit: 5, before_id: cursor }), [cursor]);
+  const r = useResource(
+    (signal) => api.orders.list({ limit: 5, before_id: cursor }, signal),
+    [cursor],
+    2000,
+  );
   const rows = r.data?.items.filter((o) => filter === 'ALL' || o.status === filter) ?? [];
   const selected = rows.find((o) => o.id === selectedId) ?? rows[0] ?? null;
   return (

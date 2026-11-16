@@ -12,9 +12,9 @@ export default function Dashboard() {
     async (signal) => {
       const [account, orders, trades] = await Promise.all([
         api.account.get(signal),
-        api.orders.list({ limit: 3 }),
+        api.orders.list({ limit: 3 }, signal),
         instrument
-          ? api.market.trades(instrument.symbol, { limit: 2 })
+          ? api.market.trades(instrument.symbol, { limit: 2 }, signal)
           : Promise.resolve({ items: [], next_before_id: null }),
       ]);
       return { account, orders, trades };

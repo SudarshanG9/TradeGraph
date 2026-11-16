@@ -203,3 +203,24 @@ before rerunning. No backend behavior or assertions were weakened.
 Uncertain submission reconciliation cannot be fully automatic because the backend
 has no durable request-key lookup. The tab stays locked pending operator review;
 this conservative limitation will be documented in the final handoff.
+
+## Phase 6 — independent market polling and execution chart
+
+Phase 5 remote commit: `6de751b5540b2058967322fd6f401b878c3573af`.
+Terminal now polls book, committed executions and analytics independently at
+1.5-second completion-based intervals. A Redis failure no longer hides successful
+trade/chart/account observations. Last snapshots remain visible with explicit
+error/delay notices; quiet stale depth does not claim financial failure. Requests
+abort on cleanup/instrument changes, pause hidden tabs and back off to 30 seconds.
+No monotonic-version assumption prevents recovery after a backend restart.
+
+Execution IDs are deduplicated losslessly and instrument-scoped; the chart retains
+up to 1,000 observed records, fetching the latest 100 each refresh. The view labels
+this bounded coverage and never interpolates missing trades. Analytics use real
+settled VWAP and explicit full supported price bounds. Orders poll every 2 seconds.
+
+Verification: 30 Node tests, strict types, formatting and production build passed.
+The phase 5 real BFF acceptance already proved resting depth without trades,
+settled maker-price execution, actual partial status, book convergence and real
+analytics; this phase adds independent UI refresh and exact history tests. Full
+browser polling/visual proof remains part of phase 15 acceptance, not claimed here.

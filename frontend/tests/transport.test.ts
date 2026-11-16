@@ -157,3 +157,23 @@ test('uncertain submission survives a new adapter and never dispatches a second 
   );
   assert.equal(calls, 1);
 });
+
+test('execution history deduplicates exact IDs, scopes instruments and bounds memory', async () => {
+  const { mergeExecutions } = await import('../src/lib/executions');
+  const { executions } = await import('../src/lib/mock/fixtures');
+  const sample = executions[0];
+  const result = mergeExecutions(
+    [{ ...sample, id: '9007199254740993' }],
+    [
+      { ...sample, id: '9007199254740993' },
+      { ...sample, id: '9007199254740994' },
+      { ...sample, id: '9007199254740995', instrument_id: 999 },
+    ],
+    sample.instrument_id,
+    2,
+  );
+  assert.deepEqual(
+    result.map((x) => x.id),
+    ['9007199254740994', '9007199254740993'],
+  );
+});

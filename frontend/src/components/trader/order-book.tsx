@@ -22,7 +22,7 @@ export function OrderBook({ book }: { book: Book }) {
       {!rows.length && <Empty message="No resting orders." />}
       <div className="panel-note">
         <Badge tone={book.stale ? 'amber' : 'muted'}>
-          {book.stale ? 'Stale depth' : 'Demo depth'}
+          {book.stale ? 'Stale depth' : 'Observed depth'}
         </Badge>
         <p className="caption" style={{ marginTop: 8 }}>
           Top 20 levels per side · Price ticks
