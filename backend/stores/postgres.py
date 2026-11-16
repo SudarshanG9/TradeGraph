@@ -105,6 +105,23 @@ class Database:
             quantity = conn.execute('SELECT public.cancel_order(%s,%s) AS quantity',(order_id,trader_id)).fetchone()['quantity']
         return quantity
 
+    def reconcile_execution(self, event):
+        """Confirm an exact canonical commit; absence is NOT permission to retry."""
+        if event.taker_order_id != max(event.buy_order_id, event.sell_order_id):
+            raise RuntimeError('Invalid execution taker; operator reconciliation required')
+        rows = self.query('SELECT * FROM public.execution WHERE id=%s', (event.event_id,))
+        if not rows:
+            raise RuntimeError('Execution commit unresolved; operator reconciliation required')
+        row = rows[0]
+        expected = {'id':event.event_id, 'instrument_id':event.instrument_id,
+            'buy_order_id':event.buy_order_id, 'sell_order_id':event.sell_order_id,
+            'buy_trader_id':event.buy_trader_id, 'sell_trader_id':event.sell_trader_id,
+            'price_ticks':event.price_ticks, 'quantity':event.quantity,
+            'executed_at':event.occurred_at}
+        if any(row[key] != value for key, value in expected.items()):
+            raise RuntimeError('Conflicting committed execution; operator reconciliation required')
+        return True
+
     def acquire_owner(self):
         conn = self.connect(autocommit=True)
         try:

@@ -51,7 +51,12 @@ class SettlementWorker:
                             raise
                         break
                     except psycopg.Error as exc:
-                        if attempt==2 or exc.sqlstate not in (None,'40001','40P01'):
+                        # Server transaction-abort errors leave settle()'s connection
+                        # context rolled back. Connection failures may hide COMMIT.
+                        if exc.sqlstate is None or (exc.sqlstate or '').startswith('08') or exc.sqlstate in ('57P01','57P02','57P03'):
+                            await asyncio.to_thread(self.database.reconcile_execution,event)
+                            break
+                        if attempt==2 or exc.sqlstate not in ('40001','40P01','57014','55P03'):
                             raise
                         await asyncio.sleep(0.01 * (attempt+1))
                 self.engine.apply_settled(event)

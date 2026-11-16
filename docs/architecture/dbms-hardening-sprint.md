@@ -42,3 +42,21 @@ CONCURRENTLY and MUST run outside a transaction wrapper. Reversal is documented;
 interrupted/invalid or conflicting existing indexes require operator inspection.
 **Migration not applied to the running exchange.** Existing financial concurrency
 and long/short/PnL/fee partition/replay tests passed in the baseline above.
+
+## Phase 2C — bounded transaction recovery
+
+Only PostgreSQL transaction-abort SQLSTATEs 40001, 40P01, 57014 and 55P03 retry,
+with the unchanged immutable event, maximum three attempts and bounded delay.
+Connection/unknown acknowledgement failures are no longer blindly retried: an exact
+canonical execution row (including timestamp, counterparties and taker invariant)
+is required to acknowledge success. Absence, mismatch or failed reconciliation
+retains the event and fails admissions closed. No new financial persistence.
+
+Native recovery + original financial tests: **23 passed**, 11.63 seconds, existing
+warning. Injection covers deadlock/serialization/statement/lock aborts after real
+transactional financial writes and confirms rollback; additional tests induce real
+PostgreSQL statement and lock timeouts. Lost acknowledgement after actual COMMIT,
+absent/conflicting canonical records, three-attempt exhaustion, exact execution
+count, cash, escrow, order quantities and position/PnL are checked. Original tests
+cover concurrent replay, conflicting replay, weighted reversals, cumulative
+single/many-fill fees and partial cancellation. No API owner instantiated.
