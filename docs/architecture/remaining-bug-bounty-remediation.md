@@ -253,3 +253,34 @@ when explicitly enabled. Foreign/originless CSRF regressions remain passing.
 F-04: FIXED upon push. Phase 5 `a2797f1` confirmed pushed, with full webpack build,
 typecheck and formatting passed after resolving the TypeScript status-narrowing
 check (no runtime behavior suppressed). No live configuration or service restart.
+
+## Phase 7 — I-01/I-02 authorization boundary
+
+Audit: reserve/settle/cancel use tightly scoped SECURITY DEFINER financial routines,
+with EXECUTE denied to generic trader/admin roles. Authentication needs id/email/
+password_hash/role; identity, graph and simulator need trader id/user_account_id/
+desk_id/full_name. New migration 20261116_runtime_columns.sql and setup_backend.sh
+replace broad direct identity-table SELECT with those column grants. Financial
+read grants remain necessary for current matching/startup/analytics; NOINHERIT
+and explicit transaction-local admin role remain. No trader identity GUC introduced.
+Migration applied only to the isolated database; production grants unchanged.
+
+New tests/integration/test_database_authorization.py verifies direct financial and
+identity writes denied, narrowed columns, explicit admin context, missing context
+failure, transaction-local role cleanup and generic financial EXECUTE denial.
+Original pipeline tests cover body-identity rejection and owned status denial.
+Schema regression now proves exactly the 13 original core tables plus the approved
+identity table, rather than wrongly requiring only 13 total objects.
+
+I-01: PARTIALLY_FIXED (narrower identity reads); I-02: BLOCKED for database tenant
+isolation. A compromised shared service credential can still read other traders'
+financial rows and explicitly SET ROLE compliance_admin_role. API identity filtering
+is real authorization, not proof of DB tenant isolation. Full isolation needs separate
+trusted trader/admin/financial credentials or a reviewed cryptographically bound
+stored-procedure read boundary, plus rewritten query paths and deployment secrets.
+That is a new architectural contract requiring approval; no speculative RLS policy
+or credential rotation applied. Financial/SQL compatibility results follow before
+commit. Exact affected files: migration, installer, authorization tests,
+tests/integration/test_database_integrity.py and this ledger.
+Verification: **39 isolated native authorization, pipeline and SQL integrity tests
+passed**, one existing warning. Phase 6 `5db100c` confirmed pushed. No live migration.
