@@ -60,3 +60,20 @@ absent/conflicting canonical records, three-attempt exhaustion, exact execution
 count, cash, escrow, order quantities and position/PnL are checked. Original tests
 cover concurrent replay, conflicting replay, weighted reversals, cumulative
 single/many-fill fees and partial cancellation. No API owner instantiated.
+
+## Phase 2D — separate committed settlement from publication failures
+
+Worker tracks whether its retained event is already committed. A failed downstream
+handoff attempts remaining independent callbacks, retains the event, explicitly
+reports committed financial success with publication failure, and fails admissions
+closed. It does not resettle or silently discard that event. Existing derived
+worker retains/retries a failed Neo4j handler. No durable outbox/recovery guarantee
+is claimed: pending queues and callback progress are process-local, and pgvector
+capture is not inherently replay-idempotent. Operator reconciliation is required
+for overflow; no automatic blanket re-publication was added.
+
+Combined recovery, financial, reservation and matching run: **131 passed**,
+18.07 seconds; existing warning only. Queue-overflow injection confirms exactly
+one execution, unchanged fees/cash/escrow/PnL, remaining callback delivery, retained
+committed event, failed admissions and idempotent canonical replay. Neo4j
+ServiceUnavailable injection confirms retained derived retry and one settlement.

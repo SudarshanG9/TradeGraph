@@ -133,3 +133,62 @@ def test_real_postgres_timeout_rolls_back_then_recovers(accounts,kind):
     assert codes==['57014' if kind=='statement' else '55P03']
     assert len(calls)==2 and observed==[event] and not dispatcher.failure
     assert_committed(a,b,event)
+
+
+def test_postcommit_queue_overflow_is_not_financial_failure(accounts):
+    from backend.events.dispatcher import DerivedWorker
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env()); original=db.settle; calls=[]; delivered=[]
+    def record(e):
+        calls.append(e)
+        return original(e)
+    db.settle=record
+    full=DerivedWorker('neo4j',lambda e: None,Dispatcher(1))
+    full.publish('earlier immutable event')
+    worker,dispatcher,observed=drive(db,event,[full.publish,delivered.append])
+    assert calls==[event] and observed==[event] and delivered==[event]
+    assert worker.pending is event and worker.pending_committed
+    assert 'Settlement committed' in dispatcher.failure
+    assert 'backlog full' in full.dispatcher.failure
+    assert full.queue.qsize()==1
+    assert_committed(a,b,event)
+    # Canonical replay cannot apply cash/positions twice after publication failure.
+    assert not original(event)
+    assert_committed(a,b,event)
+
+
+def test_neo4j_service_failure_retries_derived_work_without_resettlement(accounts):
+    from backend.workers.graph_worker import GraphWorker
+    from neo4j.exceptions import ServiceUnavailable
+    a,b,event=fixture_event(accounts)
+    db=Database(Settings.from_env()); original=db.settle; settlements=[]
+    def record(e):
+        settlements.append(e)
+        return original(e)
+    db.settle=record
+    async def run():
+        dispatcher=Dispatcher(8); observed=[]; attempts=[]
+        release=asyncio.Event()
+        def apply(e):
+            attempts.append(e)
+            if len(attempts)==1: raise ServiceUnavailable('injected graph outage')
+        graph=GraphWorker(SimpleNamespace(apply=apply),dispatcher)
+        worker=SettlementWorker(db,SimpleNamespace(apply_settled=observed.append),dispatcher)
+        worker.after_commit=[graph.publish]
+        graph.start(); worker.start(); dispatcher.publish([event])
+        try:
+            await worker.drain()
+            # Financial commit does not wait for graph retry success.
+            assert worker.pending is None and observed==[event]
+            for _ in range(100):
+                if graph.failed: break
+                await asyncio.sleep(.001)
+            assert graph.failed and graph.pending is event
+            await asyncio.wait_for(graph.queue.join(),5)
+            assert graph.failed is None and graph.pending is None
+            assert attempts==[event,event] and not dispatcher.failure
+        finally:
+            await worker.stop(); await graph.stop()
+    asyncio.run(run())
+    assert settlements==[event]
+    assert_committed(a,b,event)

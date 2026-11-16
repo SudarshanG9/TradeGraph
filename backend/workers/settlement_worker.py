@@ -8,6 +8,7 @@ class SettlementWorker:
     def __init__(self, database, engine, dispatcher):
         self.database, self.engine, self.dispatcher = database, engine, dispatcher
         self.pending = None
+        self.pending_committed = False
         self.task = None
         self.after_commit = []
 
@@ -37,6 +38,7 @@ class SettlementWorker:
         while True:
             event = await self.dispatcher.queue.get()
             self.pending = event
+            self.pending_committed = False
             try:
                 for attempt in range(3):
                     try:
@@ -59,15 +61,29 @@ class SettlementWorker:
                         if attempt==2 or exc.sqlstate not in ('40001','40P01','57014','55P03'):
                             raise
                         await asyncio.sleep(0.01 * (attempt+1))
+                self.pending_committed = True
                 self.engine.apply_settled(event)
+                publication_failed = False
                 for consumer in self.after_commit:
-                    consumer(event)  # nonblocking handoffs only
+                    try:
+                        consumer(event)  # nonblocking handoffs only
+                    except Exception:
+                        # Attempt the remaining independent consumers too. Retain
+                        # the canonical event and stop admissions; never resettle.
+                        publication_failed = True
+                if publication_failed:
+                    self.dispatcher.failure = 'Settlement committed; downstream publication failed; pending event retained for reconciliation'
+                    return
                 self.pending = None
+                self.pending_committed = False
             except asyncio.CancelledError:
                 self.dispatcher.failure = 'Settlement interrupted; operator reconciliation required'
                 raise
             except Exception:
-                self.dispatcher.failure = 'Settlement failed; immutable pending event retained for reconciliation'
+                self.dispatcher.failure = (
+                    'Settlement committed; post-commit processing failed; pending event retained for reconciliation'
+                    if self.pending_committed else
+                    'Settlement failed; immutable pending event retained for reconciliation')
                 return  # pending retains the event; never acknowledge financial success
             finally:
                 self.dispatcher.queue.task_done()
