@@ -206,3 +206,13 @@ export interface RequestOutcome {
   status: 'ACCEPTED' | 'UNRESOLVED';
   accepted_order: AcceptedOrder | null;
 }
+
+export interface RegistrationRequest {
+  full_name: string;
+  email: string;
+  password: string;
+}
+export interface RegistrationReceipt {
+  registration_id: string;
+  status: 'PENDING_VERIFICATION' | 'PENDING_PROVISIONING' | 'ACTIVE';
+}

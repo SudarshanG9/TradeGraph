@@ -39,7 +39,7 @@ export function AuthPage() {
           </div>
         ) : (
           <p className="auth-hint">
-            Sign in with an existing provisioned account. Account registration is unavailable.
+            Register a trader account or sign in with your provisioned identity.
           </p>
         )
       }

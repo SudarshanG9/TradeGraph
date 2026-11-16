@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 import psycopg
 from backend.stores.registration import Registration, register_account, normalize_email
+from backend.auth.rate_limit import check_limit
 from backend.auth.security import password_matches, issue_token
 
 router = APIRouter()
@@ -38,6 +39,9 @@ class LoginResponse(BaseModel):
 @router.post('/login', response_model=LoginResponse)
 async def login(body: Login, request: Request):
     db, settings = request.app.state.database, request.app.state.settings
+    peer = request.client.host if request.client else 'unknown'
+    await asyncio.to_thread(check_limit,settings,'login-ip',peer,120,60)
+    await asyncio.to_thread(check_limit,settings,'login-account',body.email,20,60)
     rows = await asyncio.to_thread(db.auth_query, 'SELECT id,role,password_hash FROM user_account WHERE lower(btrim(email))=%s', (body.email,))
     row = rows[0] if rows else None
     valid = await asyncio.to_thread(password_matches, body.password, row['password_hash'] if row else DUMMY_HASH)
@@ -56,6 +60,7 @@ class RegistrationReceipt(BaseModel):
 
 @router.post('/register', response_model=RegistrationReceipt, status_code=201)
 async def register(body: Registration, request: Request):
+    await asyncio.to_thread(check_limit, request.app.state.settings, 'register-ip', request.client.host if request.client else 'unknown', 60,3600)
     try:
         result = await asyncio.to_thread(register_account, request.app.state.database, body)
     except psycopg.errors.UniqueViolation:

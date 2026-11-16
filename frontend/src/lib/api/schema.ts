@@ -104,7 +104,21 @@ const explain: Decoder<C.ExplainPlan> = (v) => {
     if (r[k] !== undefined) out[k] = finite(r[k]);
   return out;
 };
+export const registrationRequest = object({ full_name: str, email: str, password: str });
+export const registrationReceipt = (value: unknown): C.RegistrationReceipt => {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Object.keys(value).some((k) => !['registration_id', 'status'].includes(k))
+  )
+    return bad();
+  return object({
+    registration_id: uuid,
+    status: oneOf('PENDING_VERIFICATION', 'PENDING_PROVISIONING', 'ACTIVE'),
+  })(value);
+};
 export const schemas = {
+  register: registrationReceipt,
   login: object({
     access_token: str,
     token_type: oneOf('bearer'),

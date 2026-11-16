@@ -58,3 +58,8 @@ export async function logout() {
   });
   if (!response.ok) throw new ApiError(response.status, 'LOGOUT_FAILED');
 }
+
+export async function register(request: import('../contracts').RegistrationRequest) {
+  const { apiRequest } = await import('./client');
+  return apiRequest('register', 'register', request);
+}

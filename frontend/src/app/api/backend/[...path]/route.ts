@@ -53,7 +53,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       return response;
     }
     return NextResponse.json(result, {
-      status: op.kind === 'submit' ? 201 : 200,
+      status: ['submit', 'register'].includes(op.kind) ? 201 : 200,
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch (e) {

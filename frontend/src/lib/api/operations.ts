@@ -1,7 +1,15 @@
 import type { AccountRole } from '../contracts';
 import { integer, MAX_PRICE, parseWire, serializeOrder, serializeSimulationStart } from '../exact';
 import { ApiError } from './errors';
-import { count, object, oneOf, simulationConfig, str, type ResponseKind } from './schema';
+import {
+  count,
+  object,
+  oneOf,
+  simulationConfig,
+  registrationRequest,
+  str,
+  type ResponseKind,
+} from './schema';
 
 export interface Operation {
   path: string;
@@ -54,6 +62,21 @@ export function operation(
         invalid();
       body = JSON.stringify(login);
       kind = 'login';
+    } else if (method === 'POST' && name === 'register') {
+      const v = parseWire(raw ?? '');
+      exactKeys(v, ['full_name', 'email', 'password']);
+      const registration = registrationRequest(v);
+      if (
+        registration.full_name.trim().length < 2 ||
+        registration.full_name.length > 150 ||
+        !/^[a-z0-9.!#$%&'*+/=?^_`|~-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(registration.email.trim()) ||
+        registration.email.length > 255 ||
+        registration.password.length < 12 ||
+        new TextEncoder().encode(registration.password).length > 72
+      )
+        invalid();
+      body = JSON.stringify(registration);
+      kind = 'register';
     } else if (method === 'GET' && name === 'instruments') kind = 'instruments';
     else if (method === 'GET' && name === 'account/me') {
       kind = 'account';
@@ -197,7 +220,7 @@ export function operation(
       method: method as 'GET' | 'POST',
       kind,
       role: requiredRole,
-      authenticated: kind !== 'login',
+      authenticated: !['login', 'register'].includes(kind),
       csrf,
       body,
       idempotencyKey: kind === 'submit' ? key : undefined,

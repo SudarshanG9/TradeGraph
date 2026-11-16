@@ -117,3 +117,20 @@ operations docs. No financial changes. Tests cover two parallel users, independe
 margin access, cross-user denial, readiness and stable secrets on repeated provision.
 Limitations: actual process-kill fault injection and thousand-user scale not yet
 verified; recovery ordering is explicit and tested by repeat execution.
+
+Phase 5: 10 native registration/provisioning tests passed. Commit `6a79f20`, pushed.
+
+## Phase 6 — real signup integration
+
+Status: PARTIALLY_FIXED pending browser multi-user exercise.
+Replaced fake signup with validated async registration, strict request/receipt
+contracts, public CSRF-protected BFF allowlist, pending status messages and disabled
+repeat submission. Admin creation remains operator-only. Existing local auth email
+placeholder change is preserved in this phase. Redis-backed hashed-key limits cover
+login IP/account and signup IP; outages return 503, excess 429. No email delivery
+provider is configured; no email or KYC verification is claimed. Ambiguous registration
+uses normalized identity/login reconciliation instead of automatic retry.
+Tests: 45 frontend passed, 2 native skipped, typecheck passed; abuse classification
+unit test passed. Five-user browser signup is reserved for full-stack acceptance.
+Files: auth route/limiter, frontend auth forms/page/client/contracts/schema/operations,
+BFF route, registration and limiter tests. Financial HTTP mutation flow unchanged.
