@@ -151,3 +151,22 @@ mutations notify admins. Files: live_protocol/live_bus, main, coordinator, simul
 routes and live bus tests. Unit tests prove privacy, sequence and queue limits;
 real socket authorization and COMMIT tests follow with tickets. Notification
 loss is handled by snapshots and polling; no durable event delivery claim.
+
+Phase 7: 206 unit tests passed. Commit `adedaf2`, pushed.
+
+## Phase 8 — authenticated WebSocket transport and BFF tickets
+
+Status: FIXED for native socket tests; same-origin browser proxy follows Phase 9.
+Added `/live/ws`, Redis GETDEL single-use 20-second tickets, session-scoped revocation,
+strict Origin/subprotocol checks, heartbeat/idle/message limits, subscription
+validation, sender timeouts, expiry/role/readiness rechecks and disconnect cleanup.
+No JWT or ticket appears in a URL or negotiated secret subprotocol. Only tradegraph.v1
+is negotiated. Next `/api/live/ticket` uses cookie session + CSRF and server JWT;
+logout revokes private access, with active sockets checked every 10 seconds.
+Redis authentication failures close live access; HTTP remains authoritative.
+Files: websocket endpoint/ticket store, backend config/lifespan, BFF ticket/session
+routes/live helper/schema, native socket tests. Tests exercise missing/reused/expired
+and revoked tickets, foreign origins, malformed subscriptions, connection limits,
+cleanup and committed two-user trade/account invalidations verified against SQL.
+Slow-client queue bounds covered by unit tests. Cancellation cleanup corrected
+following native TestClient disconnect failures. Results appended next phase.

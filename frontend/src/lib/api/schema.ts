@@ -118,6 +118,15 @@ export const registrationReceipt = (value: unknown): C.RegistrationReceipt => {
   })(value);
 };
 export const schemas = {
+  liveTicket: object({
+    ticket: (v: unknown) => {
+      const s = str(v);
+      return /^[A-Za-z0-9_-]{43}$/.test(s) ? s : bad();
+    },
+    expires_in: count(1, 20),
+    path: oneOf('/live/ws'),
+  }),
+  liveRevoke: object({ revoked: (v: unknown) => (v === true ? true : bad()) }),
   register: registrationReceipt,
   login: object({
     access_token: str,

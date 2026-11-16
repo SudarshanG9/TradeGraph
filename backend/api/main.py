@@ -21,6 +21,8 @@ from backend.stores.regimes import Regimes
 from backend.workers.regime_worker import RegimeWorker
 from backend.events.trade_event import TradeEvent
 from backend.events.live_bus import LiveBus
+from backend.api import websocket
+from backend.auth.websocket_ticket import TicketStore
 from backend.workers.housekeeping_worker import HousekeepingWorker
 
 
@@ -47,6 +49,8 @@ def create_app(settings=None, *, settlement=True):
         app.state.settings = settings or Settings.from_env()
         app.state.database = Database(app.state.settings)
         app.state.service = Coordinator(app.state.database, app.state.settings)
+        app.state.live_socket_tasks=set()
+        app.state.live_tickets=TicketStore(app.state.settings.redis_url,app.state.settings.postgres_db)
         app.state.live_bus = LiveBus(app.state.service.epoch)
         app.state.service.live_bus = app.state.live_bus
         app.state.service.book_observers.append(app.state.live_bus.book_changed)
@@ -94,6 +98,9 @@ def create_app(settings=None, *, settlement=True):
                 app.state.housekeeping.start()
             yield
         finally:
+            for task in app.state.live_socket_tasks: task.cancel()
+            await asyncio.gather(*app.state.live_socket_tasks,return_exceptions=True)
+            await app.state.live_tickets.close()
             if hasattr(app.state, 'housekeeping'):
                 await app.state.housekeeping.stop()
             await app.state.live_simulator.shutdown()
@@ -109,6 +116,7 @@ def create_app(settings=None, *, settlement=True):
             app.state.service.close()
 
     application = FastAPI(title='TradeGraph', version='1.0', lifespan=lifespan)
+    application.include_router(websocket.router)
     application.include_router(auth.router)
     application.include_router(orders.router)
     application.include_router(admin.router)
