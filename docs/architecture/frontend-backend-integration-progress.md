@@ -263,3 +263,12 @@ returned UUIDs/counts and candidate-only language. Removed fixture-specific empt
 copy. Native BFF surveillance/role/bounds test passed (2.72s); five component tests
 including directed graph rendering and strict TypeScript passed. No synthetic graph
 edges were inserted to make the read succeed.
+
+## Phase 10 — actual regime queries
+
+Phase 9 remote commit: `fb65497d6def5708cf16fdf985ce8730e461eb37`.
+Removed fabricated current-vector values in live mode while preserving the six
+fields/layout. Current capture and custom search remain explicit, exclusive and
+instrument-scoped. Native pgvector BFF test passed (2.10s): empty custom search,
+404 NO_MARKET_OBSERVATIONS for a new isolated instrument, invalid mixed modes,
+and CSRF rejection without the request header. Strict TypeScript passed.

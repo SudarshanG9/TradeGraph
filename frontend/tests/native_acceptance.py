@@ -121,3 +121,17 @@ def test_real_surveillance_permissions_and_candidates(accounts):
             assert len(row['edge_counts']) == len(row['trader_ids'])
             assert all(isinstance(v, str) and int(v) >= 0 for v in row['edge_counts'])
         assert client.get('/api/backend/admin/surveillance/cycles?limit=101').status_code == 422
+
+
+def test_real_regime_queries(accounts):
+    users, instrument = accounts
+    with httpx.Client(base_url=ORIGIN, timeout=40) as client:
+        assert signin(client, users[3]).status_code == 200
+        path = '/api/backend/admin/regimes/similar'
+        params = [('instrument_id', str(instrument)), ('k', '5')] + [('features', v) for v in ['1','0','0','0','0','0']]
+        result = client.get(path, headers=HEADERS, params=params)
+        assert result.status_code == 200 and result.json() == {'matches': []}
+        current = client.get(path, headers=HEADERS, params={'instrument_id': instrument, 'current': 'true'})
+        assert current.status_code == 404 and current.json()['error']['code'] == 'NO_MARKET_OBSERVATIONS'
+        assert client.get(path, headers=HEADERS, params=params + [('current', 'true')]).status_code == 422
+        assert client.get(path, params=params).status_code == 403
