@@ -290,3 +290,11 @@ recursive nodes and exact counts. No arbitrary SQL or automatic expensive query
 is exposed. Native test passed (1.69s) for price_band/recent_executions, plan shape,
 exact row/dataset counts and invalid scenario denial. Five component checks and
 strict TypeScript passed. No universal speedup claim is made.
+
+## Phase 13 — recursive desk analytics
+
+Phase 12 remote commit: `869213afb47e5cf204fad7d1899acdc9d679c151`.
+Desk page uses actual recursive aggregates, exact signed PnL and returned IDs.
+No fabricated hierarchy/name fields or sums of overlapping rollups were added.
+Native BFF desk contract test passed (1.74s); strict types/format checked with
+this administrative integration batch.

@@ -51,7 +51,7 @@ export function DeskRollup({ desks }: { desks: Desk[] }) {
           </tr>
         ))}
       </Table>
-      {!desks.length && <Empty message="No desk rollups in this demo fixture." />}
+      {!desks.length && <Empty message="No desk rollups returned by the backend." />}
     </Card>
   );
 }

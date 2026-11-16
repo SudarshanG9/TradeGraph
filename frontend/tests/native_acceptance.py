@@ -166,3 +166,18 @@ def test_real_optimizer_plans(accounts):
                 assert plan['Execution Time'] >= 0
                 assert isinstance(plan['Plan']['Actual Rows'], str)
         assert client.get('/api/backend/admin/optimizer/compare', headers=HEADERS, params={'scenario': 'arbitrary_sql'}).status_code == 422
+
+
+def test_real_recursive_desk_rollup(accounts):
+    users, _ = accounts
+    with httpx.Client(base_url=ORIGIN, timeout=40) as client:
+        assert signin(client, users[3]).status_code == 200
+        r = client.get('/api/backend/admin/desks/rollup')
+        assert r.status_code == 200
+        for row in r.json()['items']:
+            assert set(row) == {'desk_id', 'realized_pnl', 'execution_volume'}
+            assert isinstance(row['desk_id'], int)
+            assert isinstance(row['realized_pnl'], str)
+            assert isinstance(row['execution_volume'], str)
+            int(row['realized_pnl'])
+            assert int(row['execution_volume']) >= 0
