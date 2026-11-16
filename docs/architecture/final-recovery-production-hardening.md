@@ -96,3 +96,28 @@ and concurrent outbox tests; 33.64 seconds). Frontend production build passed;
 its incidental generated next-env change was discarded to preserve scope.
 Additional phase 3 verification: **6 passed** including delayed regime retry ordering
 (3.78 seconds). No skipped observations were treated as delivered.
+
+## Phase 4: active-order restart safety gate
+
+Phase 3 commit `12f55c3` pushed and confirmed on origin.
+**Automatic active-order recovery is blocked; the existing refusal is preserved.**
+SQL reconstructs order IDs, instruments, traders, side, limit, original/remaining
+quantities, committed partial fills and reservations. IDs encode the accepted FIFO
+sequence. It does not persist the completed admission turn, ordered pending fill
+intents (IDs/times), STP residual action, or the precise resting/matching checkpoint.
+Outbox intent starts at financial COMMIT and cannot repair pre-settlement intent loss.
+
+Enabling restart safely requires a durable admission/match-intent protocol covering
+reservation, matching turn, all fills and cancel/STP progress, plus a versioned book
+checkpoint and owner fencing. That changes the admission/settlement protocol beyond
+this narrow committed-event hardening. Reloading OPEN rows alone is not proof of
+matching equivalence. No automatic cancellation, balance adjustment, FIFO change or
+rematching workaround was added.
+
+New tests cover BUY/SELL refusal with unchanged escrow, partial fill refusal and
+exact duplicate replay, terminal archival restart and exclusion of a second owner.
+Existing phase 1 tests cover reservation COMMIT and lost matching-queue boundaries;
+existing matching/FIFO suites remain the regression authority.
+Phase 4 verification: **40 passed** (active-order refusal, terminal restart, failure
+windows, order book and engine invariants; 3.74 seconds). This phase is a verified
+safety refusal, not a claim that active-order recovery is fixed.
