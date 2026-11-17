@@ -63,14 +63,20 @@ export function PreviewProvider({
   mock?: boolean;
 }) {
   const resources = useRef(new Set<() => Promise<boolean>>());
+  const catalogPoll = useRef<ReturnType<typeof startPolling> | null>(null);
   const registerResource = useCallback((refresh: () => Promise<boolean>) => {
     resources.current.add(refresh);
     return () => {
       resources.current.delete(refresh);
     };
   }, []);
-  const refreshResources = useCallback(async () => {
-    const results = await Promise.allSettled([...resources.current].map((refresh) => refresh()));
+  const refreshResources = useCallback(async (event?: LiveEvent) => {
+    const refreshes = [...resources.current];
+    // Market notifications invalidate market data, not the instrument catalogue.
+    // Keep catalogue recovery on reconnect, explicit resync and periodic refresh.
+    if ((!event || event.type === 'resync.required') && catalogPoll.current)
+      refreshes.push(catalogPoll.current.refresh);
+    const results = await Promise.allSettled(refreshes.map((refresh) => refresh()));
     return (
       results.length > 0 && results.every((result) => result.status === 'fulfilled' && result.value)
     );
@@ -93,7 +99,6 @@ export function PreviewProvider({
   const [sessionReason, setSessionReason] = useState<'expired' | 'logout'>('expired');
   const [instruments, setInstruments] = useState<InstrumentInfo[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
-  const catalogPoll = useRef<ReturnType<typeof startPolling> | null>(null);
   const retryCatalog = useCallback(() => {
     void catalogPoll.current?.refresh();
   }, []);
@@ -147,10 +152,8 @@ export function PreviewProvider({
       enabled: fixture !== 'loading',
     });
     catalogPoll.current = polling;
-    const unregister = registerResource(polling.refresh);
     return () => {
       catalogPoll.current = null;
-      unregister();
       polling.stop();
     };
   }, [api, session, fixture, mock, sessionGeneration, registerResource]);
@@ -364,14 +367,14 @@ export function useResource<T>(
   };
 }
 export function InstrumentSelector() {
-  const { instrument, setInstrument, instruments, catalogLoading } = usePreview();
+  const { instrument, setInstrument, instruments } = usePreview();
   return (
     <label className="instrument-select">
       <span className="sr-only">Instrument</span>
       <select
         aria-label="Selected instrument"
         value={instrument?.id ?? ''}
-        disabled={!instruments.length || catalogLoading}
+        disabled={!instruments.length}
         onChange={(e) => setInstrument(Number(e.target.value))}
       >
         {!instruments.length && <option value="">No active instruments</option>}
