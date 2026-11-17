@@ -95,7 +95,7 @@ try {
       await page.locator(`[name=${field}]`).fill(value);
     await page.getByRole('button', { name: 'Create trader account', exact: true }).click();
     await page
-      .getByText('Account created, awaiting database provisioning.', { exact: false })
+      .getByText('Account created. Automatic setup is in progress.', { exact: false })
       .waitFor();
     assert.equal(
       await page.getByRole('button', { name: 'Create trader account', exact: true }).isDisabled(),
@@ -114,8 +114,10 @@ try {
     headers: { ...headers, 'X-TradeGraph-Role': 'TRADER' },
     data: { email: users[0].email, password: users[0].password },
   });
-  assert.equal(pending.status(), 403);
-  assert.equal((await pending.json()).error.code, 'REGISTRATION_PENDING_PROVISIONING');
+  if (pending.status() !== 200) {
+    assert.equal(pending.status(), 403);
+    assert.equal((await pending.json()).error.code, 'ACCOUNT_SETUP_IN_PROGRESS');
+  }
   assert.equal(fixture('provision').verified, 20);
   const initial = fixture('snapshot');
   assert.equal(initial.length, 20);

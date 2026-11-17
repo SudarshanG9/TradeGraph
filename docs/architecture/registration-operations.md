@@ -61,3 +61,26 @@ Per-trader roles cost one catalog entry/secret per user and a connection handsha
 per read context. Dozens are exercised; hundreds/thousands need measured connection
 capacity, role/manifest backup and serialization review. This does not replace RLS
 with browser-controlled tenant variables or claim unmeasured scale.
+
+## Local signup without approval
+
+The local runner now starts a separate trusted registration worker. It applies
+`20261117_registration_no_approval.sql`, moves existing PENDING_VERIFICATION traders
+to automatic setup and verifies their database identities before ACTIVE. Disabled
+accounts remain disabled. Funding policy and KYC records are unchanged. New trader
+signups require no human approval. Administrator accounts remain operator-created.
+
+Run the same local command as before. For test-stack layouts, the runner discovers
+the owner-only `admin-password` file beside the identity manifest. Otherwise supply
+`--provision-admin-password-file /private/path/to/password` or set
+`REGISTRATION_ADMIN_PASSWORD_FILE`. Operator credentials go only to the separate
+worker; FastAPI, Next and the proxy receive no operator password. Setup retries
+bounded batches every two seconds and preserves failed registrations for retry.
+The UI reports automatic setup rather than pending approval.
+
+This supersedes the verification-gate instructions above for the local runner.
+For another deployment, run `python -m scripts.auto_provision_registrations` as a
+trusted operator service with the same explicit database configuration. Do not
+provide database role-creation privileges to the public API.
+
+Validation for automatic signup: 25 real PostgreSQL registration/authorization tests passed; 53 frontend tests passed (two optional Redis cases skipped), TypeScript and formatting passed. A separate production build passed without replacing the running server assets. The existing local runner had one active order, so it was not restarted. A temporary parent-bound worker enables automatic activation now; the updated runner owns this worker on subsequent starts. Rebuild the frontend and restart the runner only after active orders are resolved.

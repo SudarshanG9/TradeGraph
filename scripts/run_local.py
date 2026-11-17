@@ -1,4 +1,4 @@
-"""Checked local stack lifecycle. Never migrates, seeds, resets or cancels orders."""
+"""Checked local stack lifecycle. Automatically provisions trader signups; never seeds, resets or cancels orders."""
 import argparse
 import importlib.util
 import os
@@ -81,9 +81,19 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--env-file',type=Path,default=ROOT/'.env')
     parser.add_argument('--check',action='store_true')
+    parser.add_argument('--provision-admin-password-file',type=Path,help='Private operator password file; used only by the separate signup worker')
     parser.add_argument('--log-dir',type=Path,default=Path('/tmp/tradegraph-local-logs'))
     args=parser.parse_args()
     values=environment(args.env_file)
+    password_file=args.provision_admin_password_file or Path(values.get('REGISTRATION_ADMIN_PASSWORD_FILE',str(Path(values.get('TRADER_DATABASE_CREDENTIALS_FILE','')).parent/'admin-password')))
+    operator_env=dict(values)
+    if password_file.is_file():
+        info=password_file.stat()
+        if info.st_uid!=os.getuid() or info.st_mode & 0o077:
+            raise ValueError('Registration operator password file must be owner-only')
+        operator_env['PGPASSWORD']=password_file.read_text().strip()
+    if not operator_env.get('PGPASSWORD'):
+        raise ValueError('Automatic signup requires --provision-admin-password-file or operator PGPASSWORD; it is never passed to the API')
     origin,frontend,backend=preflight(values)
     if args.check:print('Preflight passed: services, migrations, private identities, ports and safe cold start');return
     if not (ROOT/'frontend/.next/BUILD_ID').is_file():raise ValueError('Run npm run build in frontend first')
@@ -95,9 +105,9 @@ def main():
     processes=[];streams=[]
     def stop(signum=None,frame=None):raise KeyboardInterrupt()
     signal.signal(signal.SIGINT,stop);signal.signal(signal.SIGTERM,stop)
-    def spawn(name,command,cwd=ROOT):
+    def spawn(name,command,cwd=ROOT,*,child_env=None):
         stream=(args.log_dir/(name+'.log')).open('a');streams.append(stream)
-        process=subprocess.Popen(command,cwd=cwd,env=env,stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
+        process=subprocess.Popen(command,cwd=cwd,env=child_env if child_env is not None else env,stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
         processes.append(process)
     def wait_for(url,ready,timeout=45):
         deadline=time.monotonic()+timeout
@@ -110,6 +120,7 @@ def main():
             time.sleep(.25)
         raise RuntimeError('Startup health check timed out; inspect local logs')
     try:
+        spawn('registration-worker',[sys.executable,'-m','scripts.auto_provision_registrations'],child_env=operator_env)
         spawn('backend',[sys.executable,'-m','uvicorn','backend.api.main:app','--host','127.0.0.1','--port',str(urlsplit(backend).port),'--workers','1','--ws-max-size','2048','--no-access-log'])
         wait_for(backend+'/health',lambda response:response.status_code==200 and response.json().get('trading_ready') is True)
         spawn('frontend',['node','node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',str(urlsplit(frontend).port)],ROOT/'frontend')

@@ -75,6 +75,7 @@ def main():
     values.update(environment(root/'identities.json'))
     values.update(REDIS_URL=f'redis://127.0.0.1:{args.redis_port}/0',APP_ORIGIN='http://127.0.0.1:3000',ALLOW_INSECURE_LOOPBACK_ORIGIN='true',FASTAPI_BASE_URL='http://127.0.0.1:8000',NEXT_INTERNAL_ORIGIN='http://127.0.0.1:3001',JWT_SECRET=secrets.token_urlsafe(48),SESSION_ENCRYPTION_KEY=secrets.token_hex(32))
     private_env(root/'runtime.env',values)
+    run([sys.executable,"-m","scripts.auto_provision_registrations","--once"],dict(env,**values))
     log.close()
     print('Created isolated test environment. Private runtime configuration: '+str(root/'runtime.env'))
     print('Stop this cluster explicitly with pg_ctl -D '+str(root/'data')+' stop -m fast; stop only its Redis PID. Files are retained; no automatic data deletion.')

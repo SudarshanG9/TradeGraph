@@ -117,7 +117,7 @@ export function SignUpForm({ role, onReturn }: { role: AccountRole; onReturn: ()
   if (role === 'COMPLIANCE_ADMIN')
     return (
       <Notice>
-        Administrator access requires approved administrative provisioning.{' '}
+        Administrator accounts are created by the operator. Public signup is for traders.{' '}
         <button className="link" onClick={onReturn}>
           Return to Sign In
         </button>
@@ -175,7 +175,7 @@ export function SignUpForm({ role, onReturn }: { role: AccountRole; onReturn: ()
         autoComplete="new-password"
       />
       <p className="auth-hint">
-        Account type: Trader. Access begins after verification and database provisioning.
+        Account type: Trader. Account setup is automatic; no approval is required.
       </p>
       {error && <Notice tone="error">{error}</Notice>}
       {receipt && (
@@ -183,8 +183,8 @@ export function SignUpForm({ role, onReturn }: { role: AccountRole; onReturn: ()
           {receipt.status === 'ACTIVE'
             ? 'Your account is active. You can sign in.'
             : receipt.status === 'PENDING_VERIFICATION'
-              ? 'Account created, awaiting verification. No verification email has been sent. Contact the operator.'
-              : 'Account created, awaiting database provisioning. Sign in after the operator activates it.'}{' '}
+              ? 'Account created. Automatic setup is in progress. You can sign in shortly.'
+              : 'Account created. Automatic setup is in progress. You can sign in shortly.'}{' '}
           <button type="button" className="link" onClick={onReturn}>
             Return to Sign In
           </button>

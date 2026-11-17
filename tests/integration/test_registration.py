@@ -42,7 +42,7 @@ def test_twenty_atomic_accounts(registrations):
             assert row[0]=='TRADER' and bcrypt.checkpw(b'synthetic-registration-password',row[1].encode())
             policy=conn.execute('SELECT initial_cash,synthetic_demo FROM registration_policy').fetchone()
             assert row[2:6]==(policy[0],0,'STANDARD',None)
-            assert row[6]==('PENDING_PROVISIONING' if policy[1] else 'PENDING_VERIFICATION')
+            assert row[6]=='PENDING_PROVISIONING'
 
 
 def test_concurrent_normalized_duplicate(registrations):

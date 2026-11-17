@@ -49,7 +49,7 @@ async def login(body: Login, request: Request):
         raise HTTPException(401, detail='UNAUTHORIZED')
     state = await asyncio.to_thread(db.registration_status, row['id'])
     if state is not None and state != 'ACTIVE':
-        raise HTTPException(403, detail='REGISTRATION_' + state)
+        raise HTTPException(403, detail='ACCOUNT_SETUP_IN_PROGRESS' if state in ('PENDING_VERIFICATION','PENDING_PROVISIONING','FAILED_RETRYABLE') else 'REGISTRATION_' + state)
     return {'access_token':issue_token(row['id'], row['role'], settings), 'token_type':'bearer', 'role':row['role'], 'expires_in':settings.jwt_ttl_seconds}
 
 
